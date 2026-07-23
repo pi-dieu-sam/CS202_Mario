@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build:
+    name: ${{ matrix.platform.name }} (${{ matrix.config.name }})
+    runs-on: ${{ matrix.platform.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - { name: Windows VS2022, os: windows-2022, flags: "" }
+          - { name: Linux GCC,      os: ubuntu-latest, flags: "" }
+          - { name: Linux Clang,    os: ubuntu-latest, flags: "-DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++" }
+          - { name: macOS,          os: macos-latest,  flags: "" }
+        config:
+          - { name: Shared, flags: "-DBUILD_SHARED_LIBS=TRUE" }
+          - { name: Static, flags: "-DBUILD_SHARED_LIBS=FALSE" }
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Linux Dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libxrandr-dev \
+            libxcursor-dev \
+            libxi-dev \
+            libudev-dev \
+            libflac-dev \
+            libvorbis-dev \
+            libgl1-mesa-dev \
+            libegl1-mesa-dev \
+            libfreetype-dev \
+            libopenal-dev
+
+      - name: Configure
+        run: >
+          cmake -B build
+          -DCMAKE_BUILD_TYPE=Release
+          ${{ matrix.platform.flags }}
+          ${{ matrix.config.flags }}
+
+      - name: Build
+        run: cmake --build build --config Release
