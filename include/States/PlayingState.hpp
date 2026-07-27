@@ -5,10 +5,10 @@
 #include "Entities/Player.hpp"
 #include "World/Level.hpp"
 #include "World/Camera.hpp"
+#include "UI/HUD.hpp"
 #include <SFML/Graphics.hpp>
 #include <memory>
 #include <string>
-#include <optional>
 
 class InputHandler;
 
@@ -50,10 +50,7 @@ private:
     std::unique_ptr<Camera> m_camera;
     std::unique_ptr<InputHandler> m_inputHandler;
 
-    sf::Font m_font;
-    std::optional<sf::Text> m_hudText;
-
-    void updateHUD();
+    UI::HUD m_hud;
 };
 
 #endif // PLAYING_STATE_HPP

@@ -2,6 +2,7 @@
 #define PAUSE_STATE_HPP
 
 #include "GameState.hpp"
+#include "UI/Button.hpp"
 #include <SFML/Graphics.hpp>
 #include <vector>
 #include <string>
@@ -20,7 +21,7 @@ public:
 private:
     sf::Font m_font;
     std::optional<sf::Text> m_titleText;
-    std::vector<sf::Text> m_optionsText;
+    std::vector<UI::Button> m_buttons;
     std::vector<std::string> m_options;
     sf::RectangleShape m_overlay;
     int m_selectedIndex;

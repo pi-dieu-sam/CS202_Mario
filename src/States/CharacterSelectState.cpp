@@ -6,7 +6,10 @@
 std::string CharacterSelectState::s_selectedCharacter = "Mario";
 
 CharacterSelectState::CharacterSelectState(GameStateManager& stateManager)
-    : GameState(stateManager), m_selectedIndex(0) {}
+    : GameState(stateManager),
+      m_marioCard("MARIO", "Speed: *****\nJump:  ****\nTraction: High\n\nBalanced hero!", {110.0f, 130.0f}, sf::Color(180, 40, 40)),
+      m_luigiCard("LUIGI", "Speed: ****\nJump:  *****\nTraction: Low\n\nHigh jump master!", {430.0f, 130.0f}, sf::Color(40, 150, 40)),
+      m_selectedIndex(0) {}
 
 void CharacterSelectState::init() {
     if (!m_font.openFromFile("assets/fonts/arial.ttf")) {
@@ -17,33 +20,8 @@ void CharacterSelectState::init() {
     m_titleText->setFillColor(sf::Color::Yellow);
     m_titleText->setPosition({240.0f, 40.0f});
 
-    // Mario Card setup
-    m_marioCard.setSize({260.0f, 320.0f});
-    m_marioCard.setPosition({110.0f, 130.0f});
-    m_marioCard.setFillColor(sf::Color(180, 40, 40));
-    m_marioCard.setOutlineThickness(4.0f);
-
-    m_marioText.emplace(m_font, "MARIO", 30);
-    m_marioText->setFillColor(sf::Color::White);
-    m_marioText->setPosition({180.0f, 150.0f});
-
-    m_marioStatsText.emplace(m_font, "Speed: *****\nJump:  ****\nTraction: High\n\nBalanced hero!", 18);
-    m_marioStatsText->setFillColor(sf::Color::White);
-    m_marioStatsText->setPosition({130.0f, 230.0f});
-
-    // Luigi Card setup
-    m_luigiCard.setSize({260.0f, 320.0f});
-    m_luigiCard.setPosition({430.0f, 130.0f});
-    m_luigiCard.setFillColor(sf::Color(40, 150, 40));
-    m_luigiCard.setOutlineThickness(4.0f);
-
-    m_luigiText.emplace(m_font, "LUIGI", 30);
-    m_luigiText->setFillColor(sf::Color::White);
-    m_luigiText->setPosition({510.0f, 150.0f});
-
-    m_luigiStatsText.emplace(m_font, "Speed: ****\nJump:  *****\nTraction: Low\n\nHigh jump master!", 18);
-    m_luigiStatsText->setFillColor(sf::Color::White);
-    m_luigiStatsText->setPosition({450.0f, 230.0f});
+    m_marioCard.init(m_font);
+    m_luigiCard.init(m_font);
 
     m_confirmText.emplace(m_font, "Press ENTER to Select | ESC to Back", 20);
     m_confirmText->setFillColor(sf::Color::White);
@@ -76,13 +54,8 @@ void CharacterSelectState::handleInput(const sf::Event& event) {
 }
 
 void CharacterSelectState::updateCardHighlight() {
-    if (m_selectedIndex == 0) {
-        m_marioCard.setOutlineColor(sf::Color::Yellow);
-        m_luigiCard.setOutlineColor(sf::Color::Transparent);
-    } else {
-        m_marioCard.setOutlineColor(sf::Color::Transparent);
-        m_luigiCard.setOutlineColor(sf::Color::Yellow);
-    }
+    m_marioCard.setSelected(m_selectedIndex == 0);
+    m_luigiCard.setSelected(m_selectedIndex == 1);
 }
 
 void CharacterSelectState::update(float dt) {
@@ -91,13 +64,9 @@ void CharacterSelectState::update(float dt) {
 
 void CharacterSelectState::render(sf::RenderWindow& window) {
     if (m_titleText) window.draw(*m_titleText);
-    window.draw(m_marioCard);
-    if (m_marioText) window.draw(*m_marioText);
-    if (m_marioStatsText) window.draw(*m_marioStatsText);
-
-    window.draw(m_luigiCard);
-    if (m_luigiText) window.draw(*m_luigiText);
-    if (m_luigiStatsText) window.draw(*m_luigiStatsText);
+    
+    m_marioCard.render(window);
+    m_luigiCard.render(window);
 
     if (m_confirmText) window.draw(*m_confirmText);
 }

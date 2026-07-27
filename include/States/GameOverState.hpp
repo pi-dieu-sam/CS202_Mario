@@ -2,6 +2,7 @@
 #define GAME_OVER_STATE_HPP
 
 #include "GameState.hpp"
+#include "UI/Button.hpp"
 #include <SFML/Graphics.hpp>
 #include <vector>
 #include <string>
@@ -24,7 +25,7 @@ private:
     sf::Font m_font;
     std::optional<sf::Text> m_titleText;
     std::optional<sf::Text> m_scoreText;
-    std::vector<sf::Text> m_optionsText;
+    std::vector<UI::Button> m_buttons;
     std::vector<std::string> m_options;
     int m_selectedIndex;
 
