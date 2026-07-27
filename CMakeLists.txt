@@ -27,5 +27,8 @@ file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS "src/*.cpp")
 # 2. Build the executable using all collected sources
 add_executable(MySFMLApp ${SOURCES})
 
-# 3. Link SFML
-target_link_libraries(MySFMLApp PRIVATE SFML::Graphics)
+# 3. Include directories
+target_include_directories(MySFMLApp PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+
+# 4. Link SFML
+target_link_libraries(MySFMLApp PRIVATE SFML::Graphics SFML::Audio)
