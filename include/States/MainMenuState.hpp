@@ -2,6 +2,7 @@
 #define MAIN_MENU_STATE_HPP
 
 #include "GameState.hpp"
+#include "UI/Button.hpp"
 #include <vector>
 #include <string>
 #include <optional>
@@ -20,7 +21,7 @@ public:
 private:
     sf::Font m_font;
     std::optional<sf::Text> m_titleText;
-    std::vector<sf::Text> m_menuTexts;
+    std::vector<UI::Button> m_buttons;
     std::vector<std::string> m_options;
     int m_selectedIndex;
 

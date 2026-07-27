@@ -2,6 +2,7 @@
 #define CHARACTER_SELECT_STATE_HPP
 
 #include "GameState.hpp"
+#include "UI/CardWidget.hpp"
 #include <SFML/Graphics.hpp>
 #include <vector>
 #include <string>
@@ -23,14 +24,10 @@ public:
 private:
     sf::Font m_font;
     std::optional<sf::Text> m_titleText;
-    std::optional<sf::Text> m_marioText;
-    std::optional<sf::Text> m_luigiText;
-    std::optional<sf::Text> m_marioStatsText;
-    std::optional<sf::Text> m_luigiStatsText;
     std::optional<sf::Text> m_confirmText;
 
-    sf::RectangleShape m_marioCard;
-    sf::RectangleShape m_luigiCard;
+    UI::CardWidget m_marioCard;
+    UI::CardWidget m_luigiCard;
 
     int m_selectedIndex; // 0: Mario, 1: Luigi
     static std::string s_selectedCharacter;

@@ -25,11 +25,11 @@ void PauseState::init() {
     m_titleText->setFillColor(sf::Color::Yellow);
     m_titleText->setPosition({260.0f, 150.0f});
 
-    m_optionsText.clear();
+    m_buttons.clear();
     for (size_t i = 0; i < m_options.size(); ++i) {
-        m_optionsText.emplace_back(m_font, m_options[i], 24);
-        m_optionsText.back().setPosition({300.0f, 260.0f + static_cast<float>(i) * 50.0f});
-        m_optionsText.back().setFillColor(i == 0 ? sf::Color::Yellow : sf::Color::White);
+        m_buttons.emplace_back(m_options[i], sf::Vector2f{300.0f, 260.0f + static_cast<float>(i) * 50.0f}, 24);
+        m_buttons.back().init(m_font);
+        m_buttons.back().setSelected(i == 0);
     }
 }
 
@@ -56,14 +56,8 @@ void PauseState::handleInput(const sf::Event& event) {
 }
 
 void PauseState::updateSelection() {
-    for (size_t i = 0; i < m_optionsText.size(); ++i) {
-        if (static_cast<int>(i) == m_selectedIndex) {
-            m_optionsText[i].setFillColor(sf::Color::Yellow);
-            m_optionsText[i].setStyle(sf::Text::Bold);
-        } else {
-            m_optionsText[i].setFillColor(sf::Color::White);
-            m_optionsText[i].setStyle(sf::Text::Regular);
-        }
+    for (size_t i = 0; i < m_buttons.size(); ++i) {
+        m_buttons[i].setSelected(static_cast<int>(i) == m_selectedIndex);
     }
 }
 
@@ -84,7 +78,7 @@ void PauseState::update(float dt) {
 void PauseState::render(sf::RenderWindow& window) {
     window.draw(m_overlay);
     if (m_titleText) window.draw(*m_titleText);
-    for (const auto& text : m_optionsText) {
-        window.draw(text);
+    for (auto& btn : m_buttons) {
+        btn.render(window);
     }
 }

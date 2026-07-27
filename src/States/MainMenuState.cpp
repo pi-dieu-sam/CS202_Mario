@@ -31,11 +31,11 @@ void MainMenuState::init() {
     m_titleText->setFillColor(sf::Color::Yellow);
     m_titleText->setPosition({180.0f, 60.0f});
 
-    m_menuTexts.clear();
+    m_buttons.clear();
     for (size_t i = 0; i < m_options.size(); ++i) {
-        m_menuTexts.emplace_back(m_font, m_options[i], 24);
-        m_menuTexts.back().setPosition({250.0f, 180.0f + static_cast<float>(i) * 50.0f});
-        m_menuTexts.back().setFillColor(i == 0 ? sf::Color::Yellow : sf::Color::White);
+        m_buttons.emplace_back(m_options[i], sf::Vector2f{250.0f, 180.0f + static_cast<float>(i) * 50.0f}, 24);
+        m_buttons.back().init(m_font);
+        m_buttons.back().setSelected(i == 0);
     }
 }
 
@@ -59,14 +59,8 @@ void MainMenuState::handleInput(const sf::Event& event) {
 }
 
 void MainMenuState::updateSelection() {
-    for (size_t i = 0; i < m_menuTexts.size(); ++i) {
-        if (static_cast<int>(i) == m_selectedIndex) {
-            m_menuTexts[i].setFillColor(sf::Color::Yellow);
-            m_menuTexts[i].setStyle(sf::Text::Bold);
-        } else {
-            m_menuTexts[i].setFillColor(sf::Color::White);
-            m_menuTexts[i].setStyle(sf::Text::Regular);
-        }
+    for (size_t i = 0; i < m_buttons.size(); ++i) {
+        m_buttons[i].setSelected(static_cast<int>(i) == m_selectedIndex);
     }
 }
 
@@ -95,7 +89,7 @@ void MainMenuState::processSelection() {
             SoundManager::getInstance().toggleSoundMute();
             SoundManager::getInstance().toggleMusicMute();
             m_options[4] = SoundManager::getInstance().isSoundMuted() ? "5. TOGGLE AUDIO (OFF)" : "5. TOGGLE AUDIO (ON)";
-            m_menuTexts[4].setString(m_options[4]);
+            m_buttons[4].setLabel(m_options[4]);
             break;
         case 5: // Quit
             m_stateManager.getEngine().getWindow().close();
@@ -109,7 +103,7 @@ void MainMenuState::update(float dt) {
 
 void MainMenuState::render(sf::RenderWindow& window) {
     if (m_titleText) window.draw(*m_titleText);
-    for (const auto& text : m_menuTexts) {
-        window.draw(text);
+    for (auto& btn : m_buttons) {
+        btn.render(window);
     }
 }

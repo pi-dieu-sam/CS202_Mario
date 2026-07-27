@@ -24,16 +24,8 @@ PlayingState::~PlayingState() = default;
 
 void PlayingState::init() {
     std::cout << "[PlayingState] Started Level " << m_levelIndex << " with Character: " << m_characterName << std::endl;
-
-    if (!m_font.openFromFile("assets/fonts/arial.ttf")) {
-        std::cerr << "[PlayingState] Warning: font missing." << std::endl;
-    }
-
-    m_hudText.emplace(m_font, "", 20);
-    m_hudText->setFillColor(sf::Color::White);
-    m_hudText->setPosition({20.0f, 15.0f});
-
-    updateHUD();
+    m_hud.init("assets/fonts/arial.ttf");
+    m_hud.update(m_characterName, m_levelIndex, m_score, m_coins, m_lives, m_levelTime);
 }
 
 void PlayingState::handleInput(const sf::Event& event) {
@@ -72,7 +64,7 @@ void PlayingState::update(float dt) {
         m_level->update(dt);
     }
 
-    updateHUD();
+    m_hud.update(m_characterName, m_levelIndex, m_score, m_coins, m_lives, m_levelTime);
 }
 
 void PlayingState::playerDied() {
@@ -115,17 +107,6 @@ void PlayingState::saveCurrentProgress() {
     SaveSystem::getInstance().saveGame(save);
 }
 
-void PlayingState::updateHUD() {
-    if (!m_hudText) return;
-    std::string hudString = "MARIO  " + m_characterName + 
-                            "   WORLD 1-" + std::to_string(m_levelIndex) + 
-                            "   SCORE " + std::to_string(m_score) + 
-                            "   COINS x" + std::to_string(m_coins) + 
-                            "   LIVES x" + std::to_string(m_lives) + 
-                            "   TIME " + std::to_string(static_cast<int>(m_levelTime));
-    m_hudText->setString(hudString);
-}
-
 void PlayingState::render(sf::RenderWindow& window) {
     if (m_camera) {
         window.setView(m_camera->getView());
@@ -139,10 +120,6 @@ void PlayingState::render(sf::RenderWindow& window) {
         m_player->render(window);
     }
 
-    // Draw HUD in default UI view
-    sf::View defaultView = window.getDefaultView();
-    window.setView(defaultView);
-    if (m_hudText) {
-        window.draw(*m_hudText);
-    }
+    // Render HUD component
+    m_hud.render(window);
 }

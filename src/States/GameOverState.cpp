@@ -29,11 +29,11 @@ void GameOverState::init() {
     m_scoreText->setFillColor(sf::Color::White);
     m_scoreText->setPosition({290.0f, 230.0f});
 
-    m_optionsText.clear();
+    m_buttons.clear();
     for (size_t i = 0; i < m_options.size(); ++i) {
-        m_optionsText.emplace_back(m_font, m_options[i], 24);
-        m_optionsText.back().setPosition({310.0f, 330.0f + static_cast<float>(i) * 50.0f});
-        m_optionsText.back().setFillColor(i == 0 ? sf::Color::Yellow : sf::Color::White);
+        m_buttons.emplace_back(m_options[i], sf::Vector2f{310.0f, 330.0f + static_cast<float>(i) * 50.0f}, 24);
+        m_buttons.back().init(m_font);
+        m_buttons.back().setSelected(i == 0);
     }
 }
 
@@ -57,14 +57,8 @@ void GameOverState::handleInput(const sf::Event& event) {
 }
 
 void GameOverState::updateSelection() {
-    for (size_t i = 0; i < m_optionsText.size(); ++i) {
-        if (static_cast<int>(i) == m_selectedIndex) {
-            m_optionsText[i].setFillColor(sf::Color::Yellow);
-            m_optionsText[i].setStyle(sf::Text::Bold);
-        } else {
-            m_optionsText[i].setFillColor(sf::Color::White);
-            m_optionsText[i].setStyle(sf::Text::Regular);
-        }
+    for (size_t i = 0; i < m_buttons.size(); ++i) {
+        m_buttons[i].setSelected(static_cast<int>(i) == m_selectedIndex);
     }
 }
 
@@ -83,7 +77,7 @@ void GameOverState::update(float dt) {
 void GameOverState::render(sf::RenderWindow& window) {
     if (m_titleText) window.draw(*m_titleText);
     if (m_scoreText) window.draw(*m_scoreText);
-    for (const auto& text : m_optionsText) {
-        window.draw(text);
+    for (auto& btn : m_buttons) {
+        btn.render(window);
     }
 }
