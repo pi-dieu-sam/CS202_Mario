@@ -24,6 +24,19 @@ std::unique_ptr<Player> EntityFactory::createPlayer(const std::string& character
 	return std::make_unique<Player>(characterName, x, y);
 }
 
+std::unique_ptr<Enemy> EntityFactory::createEnemy(const std::string& enemyType, float x, float y) {
+	const std::string type = normalizeType(enemyType);
+	if (type == "koopa") {
+		return std::make_unique<Enemy>("Koopa", x, y);
+	}
+	if (type == "goomba" || enemyType.empty()) {
+		return std::make_unique<Enemy>("Goomba", x, y);
+	}
+
+	return std::make_unique<Enemy>(enemyType, x, y);
+}
+
+
 std::unique_ptr<Item> EntityFactory::createItem(const std::string& itemType, float x, float y) {
 	const std::string type = normalizeType(itemType);
 	if (type == "mushroom") {
