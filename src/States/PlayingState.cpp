@@ -1,125 +1,177 @@
 #include "States/PlayingState.hpp"
-#include "States/GameStateManager.hpp"
 #include "States/PauseState.hpp"
 #include "States/GameOverState.hpp"
-#include "Core/InputHandler.hpp"
-#include "Core/SoundManager.hpp"
-#include "Core/SaveSystem.hpp"
+#include "States/MenuState.hpp"
+#include "Core/Game.hpp"
+#include "Core/Command.hpp"
+#include "Level/Level.hpp"
+#include "Entities/Player.hpp"
+#include "Entities/Fireball.hpp"
+#include "States/StateManager.hpp"
+#include "Physics/PhysicsConstants.hpp"
+#include "Observers/EventManager.hpp"
+#include "UI/HUD.hpp"
 #include <iostream>
+#include <sstream>
 
-PlayingState::PlayingState(GameStateManager& stateManager, int levelIndex, const std::string& characterName)
-    : GameState(stateManager),
-      m_levelIndex(levelIndex),
-      m_characterName(characterName),
-      m_score(0),
-      m_coins(0),
-      m_lives(3),
-      m_levelTime(400.0f),
-      m_player(std::make_unique<Player>(characterName)),
-      m_level(std::make_unique<Level>(levelIndex)),
-      m_camera(std::make_unique<Camera>()),
-      m_inputHandler(std::make_unique<InputHandler>()) {}
+PlayingState::PlayingState() : m_hud(std::make_unique<HUD>()) {}
+PlayingState::~PlayingState() {}
 
-PlayingState::~PlayingState() = default;
+void PlayingState::onEnter() {
+    Game& game = Game::getInstance();
+    loadLevel(game.getCurrentLevel());
+    m_levelTimer = LEVEL_TIME;
+    m_levelComplete = false;
 
-void PlayingState::init() {
-    std::cout << "[PlayingState] Started Level " << m_levelIndex << " with Character: " << m_characterName << std::endl;
-    m_hud.init("assets/fonts/arial.ttf");
-    m_hud.update(m_characterName, m_levelIndex, m_score, m_coins, m_lives, m_levelTime);
+    m_hud->init();
+    m_hud->setCharacterName(game.getSelectedCharacter());
+    m_hud->setLevel(game.getCurrentLevel());
+    m_hud->setLives(game.getLives());
+    m_hud->setScore(game.getScore());
+    m_hud->setCoins(game.getCoins());
+
+    // Subscribe to events for HUD updates
+    EventManager::getInstance().subscribe(EventType::CoinCollected, [this](const GameEvent& e) {
+        Game::getInstance().addCoin();
+        m_hud->setCoins(Game::getInstance().getCoins());
+        m_hud->setScore(Game::getInstance().getScore());
+    });
+
+    EventManager::getInstance().subscribe(EventType::EnemyDefeated, [this](const GameEvent& e) {
+        Game::getInstance().addScore(e.intData);
+        m_hud->setScore(Game::getInstance().getScore());
+    });
+
+    EventManager::getInstance().subscribe(EventType::PlayerDied, [this](const GameEvent& e) {
+        onPlayerDeath();
+    });
 }
 
-void PlayingState::handleInput(const sf::Event& event) {
-    if (const auto* keyPressed = event.getIf<sf::Event::KeyPressed>()) {
-        if (keyPressed->code == sf::Keyboard::Key::P || keyPressed->code == sf::Keyboard::Key::Escape) {
-            m_stateManager.pushState(std::make_unique<PauseState>(m_stateManager));
+void PlayingState::onExit() {
+    EventManager::getInstance().clearAll();
+}
+
+void PlayingState::handleEvent(const sf::Event& event) {
+    if (event.type == sf::Event::KeyPressed) {
+        if (event.key.code == sf::Keyboard::Escape) {
+            Game::getInstance().getStateManager().pushState(
+                std::make_unique<PauseState>());
+            return;
         }
 
-        Command* cmd = m_inputHandler->handleEventInput(keyPressed->code);
-        if (cmd && m_player) {
-            cmd->execute(*m_player);
+        // Handle one-shot commands (jump, fire)
+        if (m_player && !m_player->isDead()) {
+            Command* cmd = m_input.handleEvent(event);
+            if (cmd) {
+                cmd->execute(*m_player, FIXED_DT);
+            }
         }
     }
 }
 
 void PlayingState::update(float dt) {
-    m_levelTime -= dt;
-    if (m_levelTime <= 0.0f) {
-        playerDied();
-        return;
+    if (!m_level || !m_player || m_levelComplete) return;
+
+    // Reset sprint each frame (only active while key held)
+    m_player->setSprinting(false);
+
+    // Handle held-key commands
+    auto commands = m_input.handleInput();
+    for (auto* cmd : commands) {
+        cmd->execute(*m_player, dt);
     }
 
-    Command* continuousCmd = m_inputHandler->handleRealtimeInput();
-    if (continuousCmd && m_player) {
-        continuousCmd->execute(*m_player);
+    // Handle fireball spawning
+    if (m_player->wantsToShoot()) {
+        m_player->clearShootFlag();
+        int dir = m_player->isFacingRight() ? 1 : -1;
+        auto fb = std::make_unique<Fireball>(
+            m_player->getPosition().x + (dir > 0 ? 20.0f : -20.0f),
+            m_player->getPosition().y + 8.0f,
+            dir
+        );
+        m_level->addFireball(std::move(fb));
     }
 
-    if (m_player) {
-        m_player->update(dt);
-        if (m_camera) {
-            m_camera->update(m_player->getPosition(), m_level ? m_level->getWidth() : 3200.0f);
-        }
+    // Update level (entities + collisions)
+    m_level->update(dt);
+
+    // Update camera
+    m_camera.update(m_player->getPosition());
+
+    // Timer
+    m_levelTimer -= dt;
+    m_hud->setTime(m_levelTimer);
+    if (m_levelTimer <= 0.0f) {
+        m_player->die();
     }
 
-    if (m_level) {
-        m_level->update(dt);
-    }
+    // Check level completion
+    checkLevelComplete();
 
-    m_hud.update(m_characterName, m_levelIndex, m_score, m_coins, m_lives, m_levelTime);
-}
-
-void PlayingState::playerDied() {
-    m_lives--;
-    SoundManager::getInstance().playSound("die");
-
-    if (m_lives <= 0) {
-        m_stateManager.changeState(std::make_unique<GameOverState>(m_stateManager, false, m_score));
-    } else {
-        restartLevel();
-    }
-}
-
-void PlayingState::restartLevel() {
-    m_levelTime = 400.0f;
-    if (m_player) {
-        m_player->setPosition({100.0f, 400.0f});
-    }
-    std::cout << "[PlayingState] Restarting Level " << m_levelIndex << " (Remaining Lives: " << m_lives << ")" << std::endl;
-}
-
-void PlayingState::loadNextLevel() {
-    m_levelIndex++;
-    if (m_levelIndex > 3) {
-        m_stateManager.changeState(std::make_unique<GameOverState>(m_stateManager, true, m_score));
-    } else {
-        m_levelTime = 400.0f;
-        std::cout << "[PlayingState] Loaded Next Level " << m_levelIndex << std::endl;
-    }
-}
-
-void PlayingState::saveCurrentProgress() {
-    SaveData save;
-    save.currentLevel = m_levelIndex;
-    save.characterName = m_characterName;
-    save.score = m_score;
-    save.coins = m_coins;
-    save.lives = m_lives;
-
-    SaveSystem::getInstance().saveGame(save);
+    // Update HUD
+    m_hud->setScore(Game::getInstance().getScore());
+    m_hud->setLives(Game::getInstance().getLives());
+    m_hud->update(dt);
 }
 
 void PlayingState::render(sf::RenderWindow& window) {
-    if (m_camera) {
-        window.setView(m_camera->getView());
-    }
+    // Apply camera for world rendering
+    m_camera.applyTo(window);
 
     if (m_level) {
-        m_level->render(window);
+        m_level->render(window, m_camera.getView().getCenter().x);
     }
 
-    if (m_player) {
-        m_player->render(window);
+    // Reset view for HUD (screen-space)
+    window.setView(window.getDefaultView());
+    m_hud->render(window);
+}
+
+void PlayingState::loadLevel(int levelNumber) {
+    m_level = std::make_unique<Level>();
+
+    std::string filename = "assets/levels/level" + std::to_string(levelNumber) + ".txt";
+    std::string charName = Game::getInstance().getSelectedCharacter();
+
+    LevelTheme theme = LevelTheme::Castle;
+    if (levelNumber == 1) theme = LevelTheme::Overworld;
+    else if (levelNumber == 2) theme = LevelTheme::Underground;
+
+    if (!m_level->loadFromFile(filename, charName, theme)) {
+        std::cerr << "[PlayingState] Failed to load level: " << filename << std::endl;
+        return;
     }
 
-    // Render HUD component
-    m_hud.render(window);
+    m_player = m_level->getPlayer();
+    m_camera.setLevelBounds(m_level->getWidth(), m_level->getHeight());
+}
+
+void PlayingState::checkLevelComplete() {
+    if (m_level && m_level->isComplete()) {
+        m_levelComplete = true;
+        Game& game = Game::getInstance();
+        int nextLevel = game.getCurrentLevel() + 1;
+
+        if (nextLevel > TOTAL_LEVELS) {
+            // Game won! Go to game over with win message
+            game.getStateManager().changeState(std::make_unique<GameOverState>());
+        } else {
+            game.setCurrentLevel(nextLevel);
+            game.getStateManager().changeState(std::make_unique<PlayingState>());
+        }
+    }
+}
+
+void PlayingState::onPlayerDeath() {
+    Game& game = Game::getInstance();
+    game.loseLife();
+    m_hud->setLives(game.getLives());
+
+    if (game.getLives() <= 0) {
+        game.getStateManager().changeState(std::make_unique<GameOverState>());
+    } else {
+        // Restart current level
+        game.getStateManager().changeState(std::make_unique<PlayingState>());
+    }
 }
