@@ -1,33 +1,22 @@
-#ifndef PAUSE_STATE_HPP
-#define PAUSE_STATE_HPP
-
+#pragma once
 #include "GameState.hpp"
-#include "UI/Button.hpp"
 #include <SFML/Graphics.hpp>
-#include <vector>
-#include <string>
-#include <optional>
 
+/// PauseState — overlay drawn on top of PlayingState.
+/// Shows "Resume" and "Quit to Menu" options.
 class PauseState : public GameState {
 public:
-    explicit PauseState(GameStateManager& stateManager);
-    ~PauseState() override = default;
+    PauseState();
 
-    void init() override;
-    void handleInput(const sf::Event& event) override;
+    void onEnter() override;
+    void onExit() override;
+    void handleEvent(const sf::Event& event) override;
     void update(float dt) override;
     void render(sf::RenderWindow& window) override;
 
 private:
-    sf::Font m_font;
-    std::optional<sf::Text> m_titleText;
-    std::vector<UI::Button> m_buttons;
-    std::vector<std::string> m_options;
-    sf::RectangleShape m_overlay;
-    int m_selectedIndex;
-
-    void updateSelection();
-    void processSelection();
+    sf::RectangleShape m_overlay;  // semi-transparent dark overlay
+    sf::Text           m_title;
+    sf::Text           m_options[2]; // Resume, Quit
+    int                m_selected = 0;
 };
-
-#endif // PAUSE_STATE_HPP
