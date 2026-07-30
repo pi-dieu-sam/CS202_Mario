@@ -1,25 +1,38 @@
-#ifndef ENTITY_FACTORY_HPP
-#define ENTITY_FACTORY_HPP
-
-#include "Entities/Player.hpp"
-#include "Entities/Enemy.hpp"
-#include "Entities/Item.hpp"
-#include "World/Level.hpp"
+#pragma once
+#include "../Level/LevelTheme.hpp"
 #include <memory>
-#include <string>
+#include <SFML/Graphics.hpp>
 
-/**
- * @brief Factory for creating game entities and levels.
- */
-class EntityFactory {
-public:
-	EntityFactory() = delete;
-	~EntityFactory() = delete;
+// Forward declarations
+class Enemy;
+class Item;
+class Tile;
+class Block;
+class Player;
 
-	static std::unique_ptr<Player> createPlayer(const std::string& characterName, float x = 100.0f, float y = 400.0f);
-	static std::unique_ptr<Enemy> createEnemy(const std::string& enemyType, float x = 0.0f, float y = 0.0f);
-	static std::unique_ptr<Item> createItem(const std::string& itemType, float x = 0.0f, float y = 0.0f);
-	static std::unique_ptr<Level> createLevel(int levelIndex = 1);
+/// Enemy types for factory creation.
+enum class EnemyType {
+    Goomba,
+    Koopa,
+    PiranhaPlant
 };
 
-#endif // ENTITY_FACTORY_HPP
+/// Item types for factory creation.
+enum class ItemType {
+    Coin,
+    Mushroom,
+    FireFlower,
+    Star
+};
+
+/// EntityFactory — Factory pattern.
+/// Creates game entities dynamically based on type enums,
+/// used by LevelLoader to populate levels from data files.
+class EntityFactory {
+public:
+    static std::unique_ptr<Enemy> createEnemy(EnemyType type, sf::Vector2f pos, LevelTheme theme);
+    static std::unique_ptr<Item>  createItem(ItemType type, sf::Vector2f pos, LevelTheme theme);
+    static std::unique_ptr<Tile>  createTile(char tileChar, float x, float y, LevelTheme theme);
+    static std::unique_ptr<Block> createBlock(char blockChar, float x, float y, LevelTheme theme);
+    static std::unique_ptr<Player> createPlayer(const std::string& characterName, sf::Vector2f pos);
+};
