@@ -1,59 +1,87 @@
-#ifndef PLAYER_HPP
-#define PLAYER_HPP
+#pragma once
+#include "Character.hpp"
+#include "../Graphics/SpriteRegistry.hpp"
 
-#include <SFML/Graphics.hpp>
-#include <string>
-
-/**
- * @brief Base Player character class.
- */
-class Player {
-public:
-    Player(const std::string& name = "Mario", float x = 100.0f, float y = 400.0f)
-        : m_name(name), m_position({x, y}), m_velocity({0.0f, 0.0f}), m_isGrounded(true) {
-        m_shape.setSize({30.0f, 48.0f});
-        m_shape.setPosition(m_position);
-        m_shape.setFillColor(name == "Luigi" ? sf::Color::Green : sf::Color::Red);
-    }
-
-    virtual ~Player() = default;
-
-    virtual void moveLeft() { m_velocity.x = -200.0f; }
-    virtual void moveRight() { m_velocity.x = 200.0f; }
-    virtual void jump() { if (m_isGrounded) { m_velocity.y = -450.0f; m_isGrounded = false; } }
-    virtual void duck() {}
-    virtual void shoot() {}
-    virtual void stopMoving() { m_velocity.x = 0.0f; }
-
-    virtual void update(float dt) {
-        // Gravity
-        m_velocity.y += 980.0f * dt;
-        m_position += m_velocity * dt;
-
-        // Ground floor check
-        if (m_position.y >= 450.0f) {
-            m_position.y = 450.0f;
-            m_velocity.y = 0.0f;
-            m_isGrounded = true;
-        }
-
-        m_shape.setPosition(m_position);
-    }
-
-    virtual void render(sf::RenderWindow& window) {
-        window.draw(m_shape);
-    }
-
-    sf::Vector2f getPosition() const { return m_position; }
-    void setPosition(const sf::Vector2f& pos) { m_position = pos; m_shape.setPosition(pos); }
-    const std::string& getName() const { return m_name; }
-
-protected:
-    std::string m_name;
-    sf::Vector2f m_position;
-    sf::Vector2f m_velocity;
-    bool m_isGrounded;
-    sf::RectangleShape m_shape;
+/// Power-up state for the player character.
+enum class PowerUpState {
+  Small, // Default — dies on hit
+  Big,   // Mushroom — can break bricks, shrinks on hit
+  Fire   // FireFlower — can shoot fireballs
 };
 
-#endif // PLAYER_HPP
+/// Which character's sprite art to use (Mario/Luigi occupy separate
+/// regions of the shared "Playable Characters" spritesheet).
+enum class CharacterId {
+  Mario,
+  Luigi
+};
+
+/// Player — base class for player-controlled characters (Mario, Luigi).
+/// Adds lives, score, power-up system, and invincibility after damage.
+class Player : public Character {
+public:
+  Player();
+  virtual ~Player() = default;
+
+  void update(float dt) override;
+  void draw(sf::RenderWindow &window) override;
+  sf::FloatRect getBounds() const override;
+
+  // ── Power-ups ──
+  void applyPowerUp(PowerUpState state);
+  PowerUpState getPowerUpState() const;
+  void growBig();
+  void shrink();
+  void enableFire();
+
+  // ── Shooting ──
+  void shoot();
+  bool wantsToShoot() const;
+  void clearShootFlag();
+
+  // ── Sprinting ──
+  void setSprinting(bool sprinting);
+  bool isSprinting() const;
+
+  // ── Override damage to handle power-up states ──
+  void takeDamage(int amount = 1) override;
+  void die() override;
+
+  // ── Score & lives ──
+  int getScore() const;
+  void addScore(int points);
+  int getLives() const;
+  void setLives(int lives);
+  void loseLife();
+
+  // ── Invincibility (star or post-damage) ──
+  bool isInvincible() const;
+  void setInvincibleTimer(float seconds);
+
+  // ── Star power ──
+  bool hasStarPower() const;
+  void setStarPower(float duration);
+
+protected:
+  PowerUpState m_powerUp = PowerUpState::Small;
+  int m_lives = 3;
+  int m_score = 0;
+  bool m_sprinting = false;
+  bool m_wantsToShoot = false;
+
+  // Invincibility after damage
+  float m_invincibleTimer = 0.0f;
+  bool m_invincible = false;
+
+  // Star power
+  float m_starTimer = 0.0f;
+  bool m_starPower = false;
+
+  // Blinking effect during invincibility
+  float m_blinkTimer = 0.0f;
+  bool m_visible = true;
+
+  // ── Sprite selection ──
+  CharacterId m_characterId = CharacterId::Mario;
+  SpriteRegistry::PlayerAnim m_currentAnim = SpriteRegistry::PlayerAnim::Idle;
+};

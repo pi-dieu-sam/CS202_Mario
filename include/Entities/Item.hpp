@@ -1,44 +1,48 @@
-#ifndef ITEM_HPP
-#define ITEM_HPP
-
-#include <SFML/Graphics.hpp>
+#pragma once
+#include "GameObject.hpp"
+#include "../Level/LevelTheme.hpp"
 #include <string>
 
-/**
- * @brief Minimal base item class for factory-created items.
- */
-class Item {
+// Forward declaration
+class Player;
+
+/// Item — Abstract base class for collectible items.
+/// Each item defines its own activate() behavior on the player.
+class Item : public GameObject {
 public:
-	Item(const std::string& itemType = "Coin", float x = 0.0f, float y = 0.0f)
-		: m_itemType(itemType), m_position({x, y}), m_collected(false) {
-		m_shape.setSize({24.0f, 24.0f});
-		m_shape.setPosition(m_position);
-		m_shape.setFillColor(itemType == "Mushroom" ? sf::Color::Red : sf::Color::Yellow);
-	}
+    Item();
+    virtual ~Item() = default;
 
-	virtual ~Item() = default;
+    void update(float dt) override;
+    void draw(sf::RenderWindow& window) override;
+    sf::FloatRect getBounds() const override;
 
-	virtual void update(float dt) {
-		(void)dt;
-	}
+    /// Apply this item's effect to the player.
+    virtual void activate(Player& player) = 0;
 
-	virtual void render(sf::RenderWindow& window) {
-		if (!m_collected) {
-			window.draw(m_shape);
-		}
-	}
+    /// Mark as collected (triggers observer event and deactivates).
+    void collect(Player& player);
 
-	const std::string& getType() const { return m_itemType; }
-	bool isCollected() const { return m_collected; }
-	void collect() { m_collected = true; }
-	sf::Vector2f getPosition() const { return m_position; }
-	void setPosition(const sf::Vector2f& position) { m_position = position; m_shape.setPosition(position); }
+    /// Is this item currently moving (e.g., mushroom pops out of block)?
+    bool isMoving() const;
+
+    /// Which environment palette this item's sprite should use, set by
+    /// EntityFactory/Block right after construction (theme isn't known
+    /// inside the zero-arg subclass constructors).
+    void setTheme(LevelTheme theme);
 
 protected:
-	std::string m_itemType;
-	sf::Vector2f m_position;
-	bool m_collected;
-	sf::RectangleShape m_shape;
-};
+    /// Subclasses override to (re)apply their themed texture rect once
+    /// m_theme is known (can't be done in the constructor).
+    virtual void refreshSprite() {}
 
-#endif // ITEM_HPP
+    sf::Sprite m_sprite;
+    std::string m_texturePath;
+    bool       m_moving   = false;
+    bool       m_collected = false;
+    LevelTheme m_theme = LevelTheme::Overworld;
+
+    // Animation
+    float m_animTimer = 0.0f;
+    int   m_animFrame = 0;
+};

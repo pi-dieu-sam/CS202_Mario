@@ -1,41 +1,40 @@
-#ifndef ENEMY_HPP
-#define ENEMY_HPP
+#pragma once
+#include "../AI/AIStrategy.hpp"
+#include "../Level/LevelTheme.hpp"
+#include "Character.hpp"
+#include <memory>
 
-#include <SFML/Graphics.hpp>
-#include <string>
-
-/**
- * @brief Minimal base enemy class for factory-created enemies.
- */
-class Enemy {
+/// Enemy — Abstract base class for all enemy characters.
+/// Uses the Strategy pattern for AI behavior.
+class Enemy : public Character {
 public:
-	Enemy(const std::string& enemyType = "Goomba", float x = 0.0f, float y = 0.0f)
-		: m_enemyType(enemyType), m_position({x, y}), m_velocity({-80.0f, 0.0f}) {
-		m_shape.setSize({28.0f, 28.0f});
-		m_shape.setPosition(m_position);
-		m_shape.setFillColor(enemyType == "Koopa" ? sf::Color::Green : sf::Color(150, 75, 0));
-	}
+  Enemy();
+  virtual ~Enemy() = default;
 
-	virtual ~Enemy() = default;
+  void update(float dt) override;
+  void draw(sf::RenderWindow &window) override;
+  sf::FloatRect getBounds() const override;
 
-	virtual void update(float dt) {
-		m_position += m_velocity * dt;
-		m_shape.setPosition(m_position);
-	}
+  /// Called when the player stomps on this enemy from above.
+  virtual void onStomped();
 
-	virtual void render(sf::RenderWindow& window) {
-		window.draw(m_shape);
-	}
+  /// Set the AI strategy (Strategy pattern).
+  void setStrategy(std::unique_ptr<AIStrategy> strategy);
 
-	const std::string& getType() const { return m_enemyType; }
-	sf::Vector2f getPosition() const { return m_position; }
-	void setPosition(const sf::Vector2f& position) { m_position = position; m_shape.setPosition(position); }
+  /// Forward the player's current position to this enemy's AI strategy.
+  /// No-op if there's no strategy, or if it doesn't use the position
+  /// (e.g. PatrolStrategy).
+  void updatePlayerPosition(const sf::Vector2f& playerPos);
+
+  /// Points awarded when this enemy is defeated.
+  int getScoreValue() const;
+
+  /// Which environment palette this enemy's sprite should use, set by
+  /// EntityFactory right after construction (level-load time).
+  void setTheme(LevelTheme theme);
 
 protected:
-	std::string m_enemyType;
-	sf::Vector2f m_position;
-	sf::Vector2f m_velocity;
-	sf::RectangleShape m_shape;
+  std::unique_ptr<AIStrategy> m_strategy;
+  int m_scoreValue = 200;
+  LevelTheme m_theme = LevelTheme::Overworld;
 };
-
-#endif // ENEMY_HPP
