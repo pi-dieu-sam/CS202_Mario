@@ -1,29 +1,34 @@
-#ifndef HUD_HPP
-#define HUD_HPP
-
+#pragma once
 #include <SFML/Graphics.hpp>
-#include <string>
-#include <optional>
 
-namespace UI {
-
-/**
- * @brief Class managing all head-up display elements during gameplay.
- */
+/// HUD — Heads-Up Display showing score, coins, lives, level, and timer.
+/// Subscribes to EventManager to receive score/coin/life updates.
 class HUD {
 public:
     HUD();
-    ~HUD() = default;
 
-    bool init(const std::string& fontPath = "assets/fonts/arial.ttf");
-    void update(const std::string& characterName, int levelIndex, int score, int coins, int lives, float levelTime);
+    /// Initialize fonts and text layout.
+    void init();
+
+    /// Update timer and any animated elements.
+    void update(float dt);
+
+    /// Render the HUD (always drawn in screen space, not world space).
     void render(sf::RenderWindow& window);
 
+    /// Setters for HUD data.
+    void setScore(int score);
+    void setCoins(int coins);
+    void setLives(int lives);
+    void setLevel(int level);
+    void setTime(float time);
+    void setCharacterName(const std::string& name);
+
 private:
-    sf::Font m_font;
-    std::optional<sf::Text> m_hudText;
+    sf::Text m_scoreText;
+    sf::Text m_coinText;
+    sf::Text m_livesText;
+    sf::Text m_levelText;
+    sf::Text m_timeText;
+    sf::Text m_characterText;
 };
-
-} // namespace UI
-
-#endif // HUD_HPP

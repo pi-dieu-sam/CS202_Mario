@@ -1,83 +1,129 @@
 #include "States/GameOverState.hpp"
-#include "States/GameStateManager.hpp"
+#include "States/MenuState.hpp"
 #include "States/PlayingState.hpp"
-#include "States/MainMenuState.hpp"
-#include "Core/SoundManager.hpp"
-#include <iostream>
+#include "Core/Game.hpp"
+#include "Core/AssetManager.hpp"
+#include "States/StateManager.hpp"
+#include "Physics/PhysicsConstants.hpp"
 
-GameOverState::GameOverState(GameStateManager& stateManager, bool isVictory, int finalScore)
-    : GameState(stateManager), m_isVictory(isVictory), m_finalScore(finalScore), m_selectedIndex(0) {
-    m_options = {
-        "RETRY LEVEL",
-        "MAIN MENU"
-    };
-}
+GameOverState::GameOverState() {}
 
-void GameOverState::init() {
-    if (!m_font.openFromFile("assets/fonts/arial.ttf")) {
-        std::cerr << "[GameOverState] Warning: font missing." << std::endl;
+void GameOverState::onEnter() {
+    sf::Font& font = AssetManager::getInstance().getFont("assets/fonts/mario_font.ttf");
+
+    m_background.setSize(sf::Vector2f(WINDOW_WIDTH, WINDOW_HEIGHT));
+    m_background.setFillColor(sf::Color(20, 20, 20));
+
+    m_title.setFont(font);
+    m_title.setString("GAME OVER");
+    m_title.setCharacterSize(52);
+    m_title.setFillColor(sf::Color::Red);
+    auto tb = m_title.getLocalBounds();
+    m_title.setOrigin(tb.width / 2.0f, tb.height / 2.0f);
+    m_title.setPosition(WINDOW_WIDTH / 2.0f, 150.0f);
+
+    m_scoreText.setFont(font);
+    m_scoreText.setString("SCORE: " + std::to_string(Game::getInstance().getScore()));
+    m_scoreText.setCharacterSize(28);
+    m_scoreText.setFillColor(sf::Color::White);
+    auto sb = m_scoreText.getLocalBounds();
+    m_scoreText.setOrigin(sb.width / 2.0f, sb.height / 2.0f);
+    m_scoreText.setPosition(WINDOW_WIDTH / 2.0f, 250.0f);
+
+    std::string labels[] = {"RETRY", "MAIN MENU"};
+    for (int i = 0; i < 2; i++) {
+        m_options[i].setFont(font);
+        m_options[i].setString(labels[i]);
+        m_options[i].setCharacterSize(24);
+        auto ob = m_options[i].getLocalBounds();
+        m_options[i].setOrigin(ob.width / 2.0f, ob.height / 2.0f);
+        m_options[i].setPosition(WINDOW_WIDTH / 2.0f, 350.0f + i * 60.0f);
+        m_options[i].setFillColor(i == 0 ? sf::Color::Yellow : sf::Color::White);
     }
 
-    std::string titleStr = m_isVictory ? "STAGE CLEAR! VICTORY!" : "GAME OVER";
-    sf::Color titleColor = m_isVictory ? sf::Color::Green : sf::Color::Red;
-
-    m_titleText.emplace(m_font, titleStr, 42);
-    m_titleText->setFillColor(titleColor);
-    m_titleText->setPosition({220.0f, 150.0f});
-
-    m_scoreText.emplace(m_font, "FINAL SCORE: " + std::to_string(m_finalScore), 26);
-    m_scoreText->setFillColor(sf::Color::White);
-    m_scoreText->setPosition({290.0f, 230.0f});
-
-    m_buttons.clear();
-    for (size_t i = 0; i < m_options.size(); ++i) {
-        m_buttons.emplace_back(m_options[i], sf::Vector2f{310.0f, 330.0f + static_cast<float>(i) * 50.0f}, 24);
-        m_buttons.back().init(m_font);
-        m_buttons.back().setSelected(i == 0);
-    }
+    m_selected = 0;
 }
 
-void GameOverState::handleInput(const sf::Event& event) {
-    if (const auto* keyPressed = event.getIf<sf::Event::KeyPressed>()) {
-        if (keyPressed->code == sf::Keyboard::Key::Up || keyPressed->code == sf::Keyboard::Key::W) {
-            m_selectedIndex = (m_selectedIndex - 1 + static_cast<int>(m_options.size())) % m_options.size();
-            updateSelection();
-            SoundManager::getInstance().playSound("select");
+void GameOverState::onExit() {}
+
+void GameOverState::handleEvent(const sf::Event& event) {
+    sf::RenderWindow& window = Game::getInstance().getWindow();
+
+    if (event.type == sf::Event::MouseMoved) {
+        sf::Vector2f mousePos = window.mapPixelToCoords({event.mouseMove.x, event.mouseMove.y});
+        for (int i = 0; i < 2; i++) {
+            if (m_options[i].getGlobalBounds().contains(mousePos)) {
+                if (m_selected != i) {
+                    m_selected = i;
+                    for (int j = 0; j < 2; j++)
+                        m_options[j].setFillColor(j == m_selected ? sf::Color::Yellow : sf::Color::White);
+                }
+                break;
+            }
         }
-        else if (keyPressed->code == sf::Keyboard::Key::Down || keyPressed->code == sf::Keyboard::Key::S) {
-            m_selectedIndex = (m_selectedIndex + 1) % m_options.size();
-            updateSelection();
-            SoundManager::getInstance().playSound("select");
+        return;
+    }
+
+    if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left) {
+        sf::Vector2f mousePos = window.mapPixelToCoords({event.mouseButton.x, event.mouseButton.y});
+        for (int i = 0; i < 2; i++) {
+            if (m_options[i].getGlobalBounds().contains(mousePos)) {
+                m_selected = i;
+                if (m_selected == 0) {
+                    Game::getInstance().resetGameData();
+                    Game::getInstance().getStateManager().changeState(
+                        std::make_unique<PlayingState>());
+                } else {
+                    Game::getInstance().getStateManager().changeState(
+                        std::make_unique<MenuState>());
+                }
+                return;
+            }
         }
-        else if (keyPressed->code == sf::Keyboard::Key::Enter || keyPressed->code == sf::Keyboard::Key::Space) {
-            processSelection();
-            SoundManager::getInstance().playSound("confirm");
+    }
+
+    if (event.type == sf::Event::KeyPressed) {
+        switch (event.key.code) {
+            case sf::Keyboard::Up:
+            case sf::Keyboard::W:
+                m_selected = (m_selected - 1 + 2) % 2;
+                for (int i = 0; i < 2; i++)
+                    m_options[i].setFillColor(i == m_selected ? sf::Color::Yellow : sf::Color::White);
+                break;
+
+            case sf::Keyboard::Down:
+            case sf::Keyboard::S:
+                m_selected = (m_selected + 1) % 2;
+                for (int i = 0; i < 2; i++)
+                    m_options[i].setFillColor(i == m_selected ? sf::Color::Yellow : sf::Color::White);
+                break;
+
+            case sf::Keyboard::Return:
+            case sf::Keyboard::Space:
+                if (m_selected == 0) {
+                    Game::getInstance().resetGameData();
+                    Game::getInstance().getStateManager().changeState(
+                        std::make_unique<PlayingState>());
+                } else {
+                    Game::getInstance().getStateManager().changeState(
+                        std::make_unique<MenuState>());
+                }
+                break;
+
+            default:
+                break;
         }
     }
 }
 
-void GameOverState::updateSelection() {
-    for (size_t i = 0; i < m_buttons.size(); ++i) {
-        m_buttons[i].setSelected(static_cast<int>(i) == m_selectedIndex);
-    }
-}
-
-void GameOverState::processSelection() {
-    if (m_selectedIndex == 0) {
-        m_stateManager.changeState(std::make_unique<PlayingState>(m_stateManager, 1, "Mario"));
-    } else {
-        m_stateManager.changeState(std::make_unique<MainMenuState>(m_stateManager));
-    }
-}
-
-void GameOverState::update(float dt) {
-    (void)dt;
-}
+void GameOverState::update(float dt) {}
 
 void GameOverState::render(sf::RenderWindow& window) {
-    if (m_titleText) window.draw(*m_titleText);
-    if (m_scoreText) window.draw(*m_scoreText);
-    for (auto& btn : m_buttons) {
-        btn.render(window);
+    window.setView(window.getDefaultView());
+    window.draw(m_background);
+    window.draw(m_title);
+    window.draw(m_scoreText);
+    for (int i = 0; i < 2; i++) {
+        window.draw(m_options[i]);
     }
 }

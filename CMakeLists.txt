@@ -1,34 +1,59 @@
-cmake_minimum_required(VERSION 3.14)
-project(MySFMLApp CXX)
+cmake_minimum_required(VERSION 3.21)
+project(SuperMario LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
-# Include the FetchContent module
+# --- Fetch SFML 2.6 ---
 include(FetchContent)
-
-# Declare SFML repository and target version
 FetchContent_Declare(
     SFML
     GIT_REPOSITORY https://github.com/SFML/SFML.git
-    GIT_TAG        3.0.0
+    GIT_TAG        2.6.x
+    GIT_SHALLOW    TRUE
 )
-
-set(SFML_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
-set(SFML_BUILD_DOCS OFF CACHE BOOL "" FORCE)
-
 FetchContent_MakeAvailable(SFML)
 
-# -------------------------------------------------------------
-# 1. Automatically find all .cpp files in src/ (and subfolders)
-# -------------------------------------------------------------
+# --- Collect source files ---
 file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS "src/*.cpp")
 
-# 2. Build the executable using all collected sources
-add_executable(MySFMLApp ${SOURCES})
+# --- Executable ---
+add_executable(${PROJECT_NAME} ${SOURCES})
 
-# 3. Include directories
-target_include_directories(MySFMLApp PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_include_directories(${PROJECT_NAME} PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
 
-# 4. Link SFML
-target_link_libraries(MySFMLApp PRIVATE SFML::Graphics SFML::Audio)
+target_link_libraries(${PROJECT_NAME} PRIVATE
+    sfml-graphics
+    sfml-window
+    sfml-system
+    sfml-audio
+)
+
+# --- Copy assets to build directory ---
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_CURRENT_SOURCE_DIR}/assets
+        $<TARGET_FILE_DIR:${PROJECT_NAME}>/assets
+)
+
+# --- Windows: copy SFML DLLs & OpenAL ---
+if(WIN32)
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            $<TARGET_FILE:sfml-graphics>
+            $<TARGET_FILE:sfml-window>
+            $<TARGET_FILE:sfml-system>
+            $<TARGET_FILE:sfml-audio>
+            $<TARGET_FILE_DIR:${PROJECT_NAME}>
+    )
+    if(EXISTS "${sfml_SOURCE_DIR}/extlibs/bin/x64/openal32.dll")
+        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "${sfml_SOURCE_DIR}/extlibs/bin/x64/openal32.dll"
+                $<TARGET_FILE_DIR:${PROJECT_NAME}>
+        )
+    endif()
+endif()
