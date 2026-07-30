@@ -2,6 +2,7 @@
 #define ENTITY_FACTORY_HPP
 
 #include "Entities/Player.hpp"
+#include "Entities/Item.hpp"
 #include "World/Level.hpp"
 #include <memory>
 #include <string>
@@ -15,6 +16,7 @@ public:
 	~EntityFactory() = delete;
 
 	static std::unique_ptr<Player> createPlayer(const std::string& characterName, float x = 100.0f, float y = 400.0f);
+	static std::unique_ptr<Item> createItem(const std::string& itemType, float x = 0.0f, float y = 0.0f);
 	static std::unique_ptr<Level> createLevel(int levelIndex = 1);
 };
 
