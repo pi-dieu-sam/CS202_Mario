@@ -1,36 +1,22 @@
-#ifndef GAME_OVER_STATE_HPP
-#define GAME_OVER_STATE_HPP
-
+#pragma once
 #include "GameState.hpp"
-#include "UI/Button.hpp"
 #include <SFML/Graphics.hpp>
-#include <vector>
-#include <string>
-#include <optional>
 
+/// GameOverState — shown when the player runs out of lives.
 class GameOverState : public GameState {
 public:
-    GameOverState(GameStateManager& stateManager, bool isVictory, int finalScore);
-    ~GameOverState() override = default;
+    GameOverState();
 
-    void init() override;
-    void handleInput(const sf::Event& event) override;
+    void onEnter() override;
+    void onExit() override;
+    void handleEvent(const sf::Event& event) override;
     void update(float dt) override;
     void render(sf::RenderWindow& window) override;
 
 private:
-    bool m_isVictory;
-    int m_finalScore;
-
-    sf::Font m_font;
-    std::optional<sf::Text> m_titleText;
-    std::optional<sf::Text> m_scoreText;
-    std::vector<UI::Button> m_buttons;
-    std::vector<std::string> m_options;
-    int m_selectedIndex;
-
-    void updateSelection();
-    void processSelection();
+    sf::RectangleShape m_background;
+    sf::Text           m_title;
+    sf::Text           m_scoreText;
+    sf::Text           m_options[2]; // Retry, Main Menu
+    int                m_selected = 0;
 };
-
-#endif // GAME_OVER_STATE_HPP
