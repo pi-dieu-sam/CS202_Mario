@@ -1,7 +1,6 @@
-#include "Core/Engine.hpp"
+#include "Core/Game.hpp"
 
 int main() {
-    Engine engine(800, 600, "Super Mario Bros - CS202 OOP Project");
-    engine.run();
+    Game::getInstance().run();
     return 0;
 }
