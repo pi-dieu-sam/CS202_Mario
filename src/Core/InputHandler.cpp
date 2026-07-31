@@ -1,35 +1,46 @@
 #include "Core/InputHandler.hpp"
+#include "Core/Command.hpp"
+#include "Entities/Player.hpp"
 
-InputHandler::InputHandler() 
-    : m_btnLeft(std::make_unique<MoveLeftCommand>()),
-      m_btnRight(std::make_unique<MoveRightCommand>()),
-      m_btnJump(std::make_unique<JumpCommand>()),
-      m_btnDuck(std::make_unique<DuckCommand>()),
-      m_btnShoot(std::make_unique<ShootCommand>()),
-      m_btnStop(std::make_unique<StopMoveCommand>()) {}
-
-Command* InputHandler::handleRealtimeInput() {
-    if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::A) || 
-        sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Left)) {
-        return m_btnLeft.get();
-    }
-    if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::D) || 
-        sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Right)) {
-        return m_btnRight.get();
-    }
-    if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::S) || 
-        sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Down)) {
-        return m_btnDuck.get();
-    }
-    return m_btnStop.get();
+InputHandler::InputHandler() {
+    setDefaultBindings();
 }
 
-Command* InputHandler::handleEventInput(sf::Keyboard::Key key) {
-    if (key == sf::Keyboard::Key::Space || key == sf::Keyboard::Key::W || key == sf::Keyboard::Key::Up || key == sf::Keyboard::Key::Z) {
-        return m_btnJump.get();
+void InputHandler::setDefaultBindings() {
+    // Held keys — polled every frame
+    m_keyBindings[sf::Keyboard::Left]   = std::make_unique<MoveLeftCommand>();
+    m_keyBindings[sf::Keyboard::Right]  = std::make_unique<MoveRightCommand>();
+    m_keyBindings[sf::Keyboard::A]      = std::make_unique<MoveLeftCommand>();
+    m_keyBindings[sf::Keyboard::D]      = std::make_unique<MoveRightCommand>();
+    m_keyBindings[sf::Keyboard::LShift] = std::make_unique<SprintCommand>();
+
+    // Press keys — triggered once on key down
+    m_pressBindings[sf::Keyboard::Space] = std::make_unique<JumpCommand>();
+    m_pressBindings[sf::Keyboard::Up]    = std::make_unique<JumpCommand>();
+    m_pressBindings[sf::Keyboard::W]     = std::make_unique<JumpCommand>();
+    m_pressBindings[sf::Keyboard::X]     = std::make_unique<FireCommand>();
+}
+
+void InputHandler::bindKey(sf::Keyboard::Key key, std::unique_ptr<Command> command) {
+    m_keyBindings[key] = std::move(command);
+}
+
+std::vector<Command*> InputHandler::handleInput() {
+    std::vector<Command*> commands;
+    for (auto& [key, command] : m_keyBindings) {
+        if (sf::Keyboard::isKeyPressed(key)) {
+            commands.push_back(command.get());
+        }
     }
-    if (key == sf::Keyboard::Key::LShift || key == sf::Keyboard::Key::RShift || key == sf::Keyboard::Key::X) {
-        return m_btnShoot.get();
+    return commands;
+}
+
+Command* InputHandler::handleEvent(const sf::Event& event) {
+    if (event.type == sf::Event::KeyPressed) {
+        auto it = m_pressBindings.find(event.key.code);
+        if (it != m_pressBindings.end()) {
+            return it->second.get();
+        }
     }
     return nullptr;
 }
