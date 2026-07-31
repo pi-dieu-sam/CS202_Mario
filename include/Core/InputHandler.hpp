@@ -1,35 +1,33 @@
-#ifndef INPUT_HANDLER_HPP
-#define INPUT_HANDLER_HPP
-
-#include "Command.hpp"
-#include <SFML/Window/Keyboard.hpp>
+#pragma once
+#include <SFML/Graphics.hpp>
 #include <memory>
+#include <vector>
+#include <unordered_map>
 
-/**
- * @brief Translates user keyboard and controller inputs into executable Commands.
- */
+// Forward declarations
+class Player;
+class Command;
+
+/// InputHandler — Command pattern.
+/// Maps keyboard keys to Command objects and returns a list
+/// of commands to execute each frame.
 class InputHandler {
 public:
     InputHandler();
-    ~InputHandler() = default;
 
-    /**
-     * @brief Poll continuous key states and return command to execute.
-     */
-    Command* handleRealtimeInput();
+    /// Set default key bindings.
+    void setDefaultBindings();
 
-    /**
-     * @brief Handle discrete key press events (e.g., single jump trigger or shoot).
-     */
-    Command* handleEventInput(sf::Keyboard::Key key);
+    /// Rebind a key to a command.
+    void bindKey(sf::Keyboard::Key key, std::unique_ptr<Command> command);
+
+    /// Poll held keys and return commands to execute this frame.
+    std::vector<Command*> handleInput();
+
+    /// Handle a single SFML key-press event (for one-shot actions like jump).
+    Command* handleEvent(const sf::Event& event);
 
 private:
-    std::unique_ptr<Command> m_btnLeft;
-    std::unique_ptr<Command> m_btnRight;
-    std::unique_ptr<Command> m_btnJump;
-    std::unique_ptr<Command> m_btnDuck;
-    std::unique_ptr<Command> m_btnShoot;
-    std::unique_ptr<Command> m_btnStop;
+    std::unordered_map<sf::Keyboard::Key, std::unique_ptr<Command>> m_keyBindings;
+    std::unordered_map<sf::Keyboard::Key, std::unique_ptr<Command>> m_pressBindings;
 };
-
-#endif // INPUT_HANDLER_HPP
