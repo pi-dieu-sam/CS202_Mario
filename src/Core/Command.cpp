@@ -1,29 +1,22 @@
 #include "Core/Command.hpp"
-#include <iostream>
+#include "Entities/Player.hpp"
 
-// Note: Concrete Player implementation details will interact with Player object when fully instantiated.
-// Forward implementation stubs ensuring commands function cleanly.
-
-void MoveLeftCommand::execute(Player& player) {
-    // Triggers player leftward acceleration
+void MoveLeftCommand::execute(Player& player, float dt) {
+    player.moveLeft(dt);
 }
 
-void MoveRightCommand::execute(Player& player) {
-    // Triggers player rightward acceleration
+void MoveRightCommand::execute(Player& player, float dt) {
+    player.moveRight(dt);
 }
 
-void JumpCommand::execute(Player& player) {
-    // Triggers player jump impulse
+void JumpCommand::execute(Player& player, float dt) {
+    player.jump();
 }
 
-void DuckCommand::execute(Player& player) {
-    // Triggers player crouching state
+void SprintCommand::execute(Player& player, float dt) {
+    player.setSprinting(true);
 }
 
-void ShootCommand::execute(Player& player) {
-    // Triggers fireball shooting if player has Fire Flower state
-}
-
-void StopMoveCommand::execute(Player& player) {
-    // Resets horizontal acceleration
+void FireCommand::execute(Player& player, float dt) {
+    player.shoot();
 }
