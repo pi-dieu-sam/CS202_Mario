@@ -58,8 +58,7 @@ void MenuState::onEnter() {
     // Ground strip: single sprite stretched to exactly span the window width.
     {
         float groundTop = WINDOW_HEIGHT - GROUND_HEIGHT;
-        sf::Texture& tex = AssetManager::getInstance().getTexture(TITLE_SHEET_PATH);
-        m_groundSprite.setTexture(tex);
+        m_groundSprite.setTexture(titleSheet);
         m_groundSprite.setTextureRect(GROUND_RECT);
         m_groundSprite.setOrigin(0.0f, 0.0f);
         m_groundSprite.setScale(WINDOW_WIDTH / static_cast<float>(GROUND_RECT.width),
