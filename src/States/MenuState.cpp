@@ -15,11 +15,14 @@ const std::string TITLE_SHEET_PATH =
     "assets/textures/NES - Super Mario Bros. - Miscellaneous - Title Screen, "
     "HUD and Miscellaneous.png";
 
-// Pixel-sampled crop rects within TITLE_SHEET_PATH.
-const sf::IntRect TITLE_CARD_RECT(39, 223, 178, 90);
-const sf::IntRect HILL_RECT(0, 364, 72, 37);
-const sf::IntRect BUSH_RECT(150, 378, 86, 23);
-const sf::IntRect GROUND_RECT(0, 399, 256, 33);
+// Pixel-sampled crop rects within TITLE_SHEET_PATH. Each is inset 1-2px
+// from its raw color-detected bounding box to cut off the anti-aliased
+// fringe pixels the source sheet has at every sprite boundary — left in,
+// those blend to a visible cyan/green sliver once scaled up 2-3x.
+const sf::IntRect TITLE_CARD_RECT(40, 224, 176, 88);
+const sf::IntRect HILL_RECT(0, 364, 80, 37);
+const sf::IntRect BUSH_RECT(183, 383, 65, 18);
+const sf::IntRect GROUND_RECT(0, 401, 256, 30);
 
 // Sky color baked into the crops above — the menu background matches it
 // exactly so the sprites blend in with no visible seam.
@@ -38,7 +41,7 @@ constexpr float HILL_HEIGHT   = 100.0f;
 constexpr float BUSH_CENTER_X = 660.0f;
 constexpr float BUSH_HEIGHT   = 50.0f;
 
-constexpr float MARIO_CENTER_X = HILL_CENTER_X;
+constexpr float MARIO_CENTER_X = HILL_CENTER_X + 150.0f;
 constexpr float MARIO_HEIGHT   = 50.0f;
 } // namespace
 
@@ -78,11 +81,13 @@ void MenuState::onEnter() {
         SpriteRegistry::applyFrame(m_bushSprite, titleSheet, BUSH_RECT, box);
     }
 
-    // Small Mario, standing on the hill's peak.
+    // Small Mario, standing partway up the hill's slope (not balanced right
+    // on the peak tip — matches how he's placed on the reference screen).
     {
         float groundTop = WINDOW_HEIGHT - GROUND_HEIGHT;
         float hillTop = groundTop - HILL_HEIGHT;
-        sf::FloatRect box(MARIO_CENTER_X, hillTop - MARIO_HEIGHT, 0.0f, MARIO_HEIGHT);
+        float marioFeetY = hillTop + HILL_HEIGHT * 0.35f + 65.0f;
+        sf::FloatRect box(MARIO_CENTER_X, marioFeetY - MARIO_HEIGHT, 0.0f, MARIO_HEIGHT);
         SpriteRegistry::applyFrame(m_marioSprite, "assets/textures/SMB_Smallmario.png", box);
     }
 
@@ -120,7 +125,8 @@ void MenuState::onEnter() {
 
     // Copyright line under the title card.
     m_copyrightText.setFont(font);
-    m_copyrightText.setString("©1985 NINTENDO");
+    // mario_font.ttf has no "©" glyph (renders as a tofu box) — use "(C)" instead.
+    m_copyrightText.setString("(C)1985 NINTENDO");
     m_copyrightText.setCharacterSize(14);
     m_copyrightText.setFillColor(sf::Color(255, 206, 197));
     {
@@ -130,7 +136,7 @@ void MenuState::onEnter() {
     }
 
     // "TOP- 000000" flavor text, decorative (no high-score system exists).
-    setupHudText(m_topScoreText, "TOP- 000000", 330.0f, 452.0f, 18);
+    setupHudText(m_topScoreText, "TOP-000000", 330.0f, 452.0f, 18);
 
     // Menu options.
     std::string labels[] = {"NEW GAME", "LOAD GAME", "EXIT"};
