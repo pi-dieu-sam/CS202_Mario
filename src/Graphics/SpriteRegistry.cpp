@@ -268,7 +268,11 @@ const std::string &SpriteRegistry::coinPath(LevelTheme theme, int /*frame*/) {
   return paths[themeIndex(theme)];
 }
 
-int SpriteRegistry::coinFrameCount() { return 1; }
+int SpriteRegistry::coinFrameCount() {
+  // Return the actual decoded GIF frame count so the entity can cycle.
+  // All three theme coin GIFs have the same number of frames — use Overworld.
+  return AssetManager::getInstance().getGifFrameCount("assets/textures/SMBCoin.gif");
+}
 
 const std::string &SpriteRegistry::mushroomPath(LevelTheme /*theme*/) {
   // No per-theme mushroom recolor in the pack — reused across themes, same
@@ -287,14 +291,18 @@ const std::string &SpriteRegistry::starPath(LevelTheme /*theme*/, int /*frame*/)
   return p;
 }
 
-int SpriteRegistry::starFrameCount() { return 1; }
+int SpriteRegistry::starFrameCount() {
+  return AssetManager::getInstance().getGifFrameCount("assets/textures/Starman.gif");
+}
 
 const std::string &SpriteRegistry::fireballPath(int /*frame*/) {
   static const std::string p = "assets/textures/SMBFireBall.gif";
   return p;
 }
 
-int SpriteRegistry::fireballFrameCount() { return 1; }
+int SpriteRegistry::fireballFrameCount() {
+  return AssetManager::getInstance().getGifFrameCount("assets/textures/SMBFireBall.gif");
+}
 
 void SpriteRegistry::applyFrame(sf::Sprite &sprite, const std::string &path,
                                  const sf::FloatRect &box, bool flip) {
@@ -319,4 +327,22 @@ void SpriteRegistry::applyFrame(sf::Sprite &sprite, sf::Texture &texture,
   sprite.setOrigin(cropRect.width / 2.0f, static_cast<float>(cropRect.height));
   sprite.setScale(flip ? -scale : scale, scale);
   sprite.setPosition(box.left + box.width / 2.0f, box.top + box.height);
+}
+
+void SpriteRegistry::applyGifFrame(sf::Sprite &sprite,
+                                    const std::string &gifPath, int frame,
+                                    const sf::FloatRect &box, bool flip) {
+  const auto &frames = AssetManager::getInstance().getGifFrames(gifPath);
+  if (frames.empty()) return;
+
+  // Clamp frame index defensively (frame count can change on first load).
+  const sf::Texture &tex = frames[static_cast<size_t>(frame) % frames.size()];
+  sf::Vector2u size = tex.getSize();
+
+  // Cast away const to pass to setTexture — sf::Sprite takes non-const ref
+  // but never modifies the texture; this is an SFML API limitation.
+  applyFrame(sprite, const_cast<sf::Texture &>(tex),
+             sf::IntRect(0, 0, static_cast<int>(size.x),
+                         static_cast<int>(size.y)),
+             box, flip);
 }

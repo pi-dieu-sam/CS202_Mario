@@ -4,7 +4,8 @@
 #include "Observers/EventManager.hpp"
 
 FireFlower::FireFlower() {
-    m_type = ObjectType::FireFlower;
+    m_type  = ObjectType::FireFlower;
+    m_isGif = true;  // Fire_Flower_SMB.gif has multiple blossom frames
     refreshSprite();
 }
 

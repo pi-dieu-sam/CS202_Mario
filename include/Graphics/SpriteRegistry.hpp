@@ -69,4 +69,11 @@ public:
   static void applyFrame(sf::Sprite &sprite, sf::Texture &texture,
                           const sf::IntRect &cropRect, const sf::FloatRect &box,
                           bool flip = false);
+
+  /// Apply a specific GIF animation frame: fetches frame `frame` of the GIF
+  /// at `gifPath` from AssetManager's GIF cache and applies it identically
+  /// to the single-frame applyFrame overload above.
+  static void applyGifFrame(sf::Sprite &sprite, const std::string &gifPath,
+                             int frame, const sf::FloatRect &box,
+                             bool flip = false);
 };

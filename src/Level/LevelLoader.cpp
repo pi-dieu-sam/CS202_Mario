@@ -53,8 +53,15 @@ LevelLoader::LevelData LevelLoader::loadLevel(const std::string& filename, Level
         if (static_cast<int>(l.size()) > cols) cols = static_cast<int>(l.size());
     }
 
+    // Align level rows to the bottom of the window (19 tile rows tall).
+    // VGLC maps are 14 rows tall; adding a rowOffset of (19 - 14 = 5) rows
+    // grounds the level flush to the bottom of the screen (Y = 576), leaving
+    // top rows 0..4 as open sky for jumping, camera, and cloud scenery.
+    const int targetRows = static_cast<int>(WINDOW_HEIGHT / TILE_SIZE); // 19 rows
+    const int rowOffset = (targetRows > rows) ? (targetRows - rows) : 0;
+
     data.width  = cols * TILE_SIZE;
-    data.height = rows * TILE_SIZE;
+    data.height = std::max(rows + rowOffset, targetRows) * TILE_SIZE;
 
     bool foundSpawn = false;
 
@@ -62,7 +69,7 @@ LevelLoader::LevelData LevelLoader::loadLevel(const std::string& filename, Level
         for (int col = 0; col < static_cast<int>(lines[row].size()); col++) {
             char c = lines[row][col];
             float x = col * TILE_SIZE;
-            float y = row * TILE_SIZE;
+            float y = (row + rowOffset) * TILE_SIZE;
 
             switch (c) {
                 case '-': // Empty
@@ -129,10 +136,7 @@ LevelLoader::LevelData LevelLoader::loadLevel(const std::string& filename, Level
         }
     }
 
-    // VGLC has no concept of a spawn point or a flagpole. If the file didn't
-    // include the '@'/'f' extension chars, place them programmatically: a
-    // couple tiles in from the left edge / a few tiles in from the right
-    // edge, one row above the first solid ground found there.
+    // Auto-place spawn point and flagpole on ground level if not explicitly provided
     int groundRow = rows - 1;
     auto rowAt = [&](int r, int c) -> char {
         if (r < 0 || r >= rows || c < 0 || c >= static_cast<int>(lines[r].size()))
@@ -142,16 +146,11 @@ LevelLoader::LevelData LevelLoader::loadLevel(const std::string& filename, Level
 
     if (!foundSpawn) {
         for (int col = 2; col < cols; col++) {
-            // Player::getBounds() keeps a 2-tile-tall box with feet fixed at
-            // m_position.y + TILE_SIZE*2 (so growing Small->Big extends
-            // upward, not downward) -- spawn needs 2 clear rows above ground,
-            // and the box's top-left goes 2 rows above the surface, not 1,
-            // or the player's feet land a tile below ground level.
             if (isSolidChar(rowAt(groundRow, col)) &&
                 !isSolidChar(rowAt(groundRow - 1, col)) &&
                 !isSolidChar(rowAt(groundRow - 2, col))) {
                 data.playerSpawn = {static_cast<float>(col) * TILE_SIZE,
-                                     static_cast<float>(groundRow - 2) * TILE_SIZE};
+                                     static_cast<float>(groundRow - 2 + rowOffset) * TILE_SIZE};
                 break;
             }
         }
@@ -163,7 +162,7 @@ LevelLoader::LevelData LevelLoader::loadLevel(const std::string& filename, Level
             if (isSolidChar(rowAt(groundRow, col)) && !isSolidChar(rowAt(groundRow - 1, col))) {
                 data.flagpole = std::make_unique<Flagpole>(
                     static_cast<float>(col) * TILE_SIZE,
-                    static_cast<float>(groundRow - 1) * TILE_SIZE);
+                    static_cast<float>(groundRow - 1 + rowOffset) * TILE_SIZE);
                 break;
             }
         }

@@ -4,6 +4,7 @@
 #include "States/MenuState.hpp"
 #include "Core/Game.hpp"
 #include "Core/Command.hpp"
+#include "Core/SoundManager.hpp"
 #include "Level/Level.hpp"
 #include "Entities/Player.hpp"
 #include "Entities/Fireball.hpp"
@@ -30,8 +31,13 @@ void PlayingState::onEnter() {
     m_hud->setScore(progress.getScore());
     m_hud->setCoins(progress.getCoins());
 
-    // Subscribe to events for HUD updates
+    // Start/continue selected background music track (does not restart if already playing)
+    SoundManager& snd = SoundManager::getInstance();
+    snd.selectTrack(snd.getCurrentTrackIndex());
+
+    // Subscribe to events for HUD updates and sound effects
     m_coinSub = ScopedEventSubscription(EventType::CoinCollected, [this](const GameEvent& e) {
+        SoundManager::getInstance().playSound(SoundID::Coin);
         PlayerProgress& progress = Game::getInstance().getProgress();
         progress.addCoin();
         m_hud->setCoins(progress.getCoins());
@@ -39,12 +45,15 @@ void PlayingState::onEnter() {
     });
 
     m_enemyDefeatedSub = ScopedEventSubscription(EventType::EnemyDefeated, [this](const GameEvent& e) {
+        SoundManager::getInstance().playSound(SoundID::Stomp);
         PlayerProgress& progress = Game::getInstance().getProgress();
         progress.addScore(e.intData);
         m_hud->setScore(progress.getScore());
     });
 
     m_playerDiedSub = ScopedEventSubscription(EventType::PlayerDied, [this](const GameEvent& e) {
+        SoundManager::getInstance().stopMusic();
+        SoundManager::getInstance().playSound(SoundID::PlayerDeath);
         onPlayerDeath();
     });
 }
@@ -53,11 +62,18 @@ void PlayingState::onExit() {
     m_coinSub.reset();
     m_enemyDefeatedSub.reset();
     m_playerDiedSub.reset();
+    SoundManager::getInstance().stopMusic();
+}
+
+void PlayingState::onResume() {
+    SoundManager::getInstance().resumeMusic();
 }
 
 void PlayingState::handleEvent(const sf::Event& event) {
     if (event.type == sf::Event::KeyPressed) {
         if (event.key.code == sf::Keyboard::Escape) {
+            SoundManager::getInstance().playSound(SoundID::Pause);
+            SoundManager::getInstance().pauseMusic();
             Game::getInstance().getStateManager().pushState(
                 std::make_unique<PauseState>());
             return;
@@ -158,8 +174,12 @@ void PlayingState::checkLevelComplete() {
         Game& game = Game::getInstance();
         int nextLevel = game.getProgress().getCurrentLevel() + 1;
 
+        SoundManager::getInstance().stopMusic();
+        SoundManager::getInstance().playSound(SoundID::LevelComplete);
+
         if (nextLevel > TOTAL_LEVELS) {
             // Game won! Go to game over with win message
+            SoundManager::getInstance().playSound(SoundID::GameOver);
             game.getStateManager().changeState(std::make_unique<GameOverState>());
         } else {
             game.getProgress().setCurrentLevel(nextLevel);
