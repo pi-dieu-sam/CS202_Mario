@@ -1,5 +1,4 @@
 #include "Entities/Goomba.hpp"
-#include "AI/PatrolStrategy.hpp"
 #include "Graphics/SpriteRegistry.hpp"
 #include "Physics/PhysicsConstants.hpp"
 
@@ -7,7 +6,7 @@ Goomba::Goomba() {
   m_speed = 60.0f;
   m_scoreValue = 100;
   m_velocity.x = -m_speed; // Start walking left
-  setStrategy(std::make_unique<PatrolStrategy>());
+  // AI strategy is assigned by EntityFactory right after construction.
 
   setAnimFrameCount(2, 0.3f);
 }

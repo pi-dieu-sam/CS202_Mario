@@ -23,7 +23,7 @@ void GameOverState::onEnter() {
     m_title.setPosition(WINDOW_WIDTH / 2.0f, 150.0f);
 
     m_scoreText.setFont(font);
-    m_scoreText.setString("SCORE: " + std::to_string(Game::getInstance().getScore()));
+    m_scoreText.setString("SCORE: " + std::to_string(Game::getInstance().getProgress().getScore()));
     m_scoreText.setCharacterSize(28);
     m_scoreText.setFillColor(sf::Color::White);
     auto sb = m_scoreText.getLocalBounds();
@@ -70,7 +70,7 @@ void GameOverState::handleEvent(const sf::Event& event) {
             if (m_options[i].getGlobalBounds().contains(mousePos)) {
                 m_selected = i;
                 if (m_selected == 0) {
-                    Game::getInstance().resetGameData();
+                    Game::getInstance().getProgress().resetGameData();
                     Game::getInstance().getStateManager().changeState(
                         std::make_unique<PlayingState>());
                 } else {
@@ -101,7 +101,7 @@ void GameOverState::handleEvent(const sf::Event& event) {
             case sf::Keyboard::Return:
             case sf::Keyboard::Space:
                 if (m_selected == 0) {
-                    Game::getInstance().resetGameData();
+                    Game::getInstance().getProgress().resetGameData();
                     Game::getInstance().getStateManager().changeState(
                         std::make_unique<PlayingState>());
                 } else {
