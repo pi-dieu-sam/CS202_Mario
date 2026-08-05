@@ -147,6 +147,8 @@ void Background::render(sf::RenderWindow &window, float cameraCenterX) {
     if (startX > left) startX -= texW;
 
     sf::Sprite sprite(elem.texture);
+    // Soften/dim background scenery so foreground character, blocks, and enemies stand out clearly
+    sprite.setColor(sf::Color(150, 150, 165, 200));
 
     float x = startX;
     while (x < left + static_cast<float>(WINDOW_WIDTH)) {
