@@ -71,7 +71,7 @@ void Game::update(float dt) {
 }
 
 void Game::render() {
-    m_window.clear(sf::Color(107, 140, 255)); // Sky blue
+    m_window.clear(sf::Color::Black);
     m_stateManager->render(m_window);
     m_window.display();
 }

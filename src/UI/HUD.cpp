@@ -38,12 +38,6 @@ void HUD::update(float dt) {
 }
 
 void HUD::render(sf::RenderWindow& window) {
-    // Draw a semi-transparent bar behind HUD
-    sf::RectangleShape bar;
-    bar.setSize(sf::Vector2f(WINDOW_WIDTH, 55.0f));
-    bar.setFillColor(sf::Color(0, 0, 0, 120));
-    window.draw(bar);
-
     window.draw(m_characterText);
     window.draw(m_scoreText);
     window.draw(m_coinText);
