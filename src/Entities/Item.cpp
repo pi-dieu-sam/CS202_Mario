@@ -26,7 +26,11 @@ void Item::update(float dt) {
 void Item::draw(sf::RenderWindow &window) {
   if (!m_active)
     return;
-  SpriteRegistry::applyFrame(m_sprite, m_texturePath, getBounds());
+  if (m_isGif) {
+    SpriteRegistry::applyGifFrame(m_sprite, m_texturePath, m_animFrame, getBounds());
+  } else {
+    SpriteRegistry::applyFrame(m_sprite, m_texturePath, getBounds());
+  }
   window.draw(m_sprite);
 }
 

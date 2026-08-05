@@ -6,6 +6,7 @@
 
 Star::Star() {
     m_type   = ObjectType::Star;
+    m_isGif  = true;  // Starman.gif has multiple sparkle frames
     m_moving = true;
     m_velocity.x = 100.0f;
     m_velocity.y = m_bounceVelocity;

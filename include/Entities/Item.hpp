@@ -42,7 +42,13 @@ protected:
     bool       m_collected = false;
     LevelTheme m_theme = LevelTheme::Overworld;
 
+    /// Set to true by subclasses whose texture is an animated .gif — draw()
+    /// will then call applyGifFrame(m_texturePath, m_animFrame) instead of
+    /// applyFrame(m_texturePath).
+    bool m_isGif = false;
+
     // Animation
     float m_animTimer = 0.0f;
     int   m_animFrame = 0;
 };
+
