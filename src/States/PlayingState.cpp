@@ -18,37 +18,41 @@ PlayingState::PlayingState() : m_hud(std::make_unique<HUD>()) {}
 PlayingState::~PlayingState() {}
 
 void PlayingState::onEnter() {
-    Game& game = Game::getInstance();
-    loadLevel(game.getCurrentLevel());
+    PlayerProgress& progress = Game::getInstance().getProgress();
+    loadLevel(progress.getCurrentLevel());
     m_levelTimer = LEVEL_TIME;
     m_levelComplete = false;
 
     m_hud->init();
-    m_hud->setCharacterName(game.getSelectedCharacter());
-    m_hud->setLevel(game.getCurrentLevel());
-    m_hud->setLives(game.getLives());
-    m_hud->setScore(game.getScore());
-    m_hud->setCoins(game.getCoins());
+    m_hud->setCharacterName(progress.getSelectedCharacter());
+    m_hud->setLevel(progress.getCurrentLevel());
+    m_hud->setLives(progress.getLives());
+    m_hud->setScore(progress.getScore());
+    m_hud->setCoins(progress.getCoins());
 
     // Subscribe to events for HUD updates
-    EventManager::getInstance().subscribe(EventType::CoinCollected, [this](const GameEvent& e) {
-        Game::getInstance().addCoin();
-        m_hud->setCoins(Game::getInstance().getCoins());
-        m_hud->setScore(Game::getInstance().getScore());
+    m_coinSub = ScopedEventSubscription(EventType::CoinCollected, [this](const GameEvent& e) {
+        PlayerProgress& progress = Game::getInstance().getProgress();
+        progress.addCoin();
+        m_hud->setCoins(progress.getCoins());
+        m_hud->setScore(progress.getScore());
     });
 
-    EventManager::getInstance().subscribe(EventType::EnemyDefeated, [this](const GameEvent& e) {
-        Game::getInstance().addScore(e.intData);
-        m_hud->setScore(Game::getInstance().getScore());
+    m_enemyDefeatedSub = ScopedEventSubscription(EventType::EnemyDefeated, [this](const GameEvent& e) {
+        PlayerProgress& progress = Game::getInstance().getProgress();
+        progress.addScore(e.intData);
+        m_hud->setScore(progress.getScore());
     });
 
-    EventManager::getInstance().subscribe(EventType::PlayerDied, [this](const GameEvent& e) {
+    m_playerDiedSub = ScopedEventSubscription(EventType::PlayerDied, [this](const GameEvent& e) {
         onPlayerDeath();
     });
 }
 
 void PlayingState::onExit() {
-    EventManager::getInstance().clearAll();
+    m_coinSub.reset();
+    m_enemyDefeatedSub.reset();
+    m_playerDiedSub.reset();
 }
 
 void PlayingState::handleEvent(const sf::Event& event) {
@@ -110,8 +114,9 @@ void PlayingState::update(float dt) {
     checkLevelComplete();
 
     // Update HUD
-    m_hud->setScore(Game::getInstance().getScore());
-    m_hud->setLives(Game::getInstance().getLives());
+    PlayerProgress& progress = Game::getInstance().getProgress();
+    m_hud->setScore(progress.getScore());
+    m_hud->setLives(progress.getLives());
     m_hud->update(dt);
 }
 
@@ -132,7 +137,7 @@ void PlayingState::loadLevel(int levelNumber) {
     m_level = std::make_unique<Level>();
 
     std::string filename = "assets/levels/level" + std::to_string(levelNumber) + ".txt";
-    std::string charName = Game::getInstance().getSelectedCharacter();
+    std::string charName = Game::getInstance().getProgress().getSelectedCharacter();
 
     LevelTheme theme = LevelTheme::Castle;
     if (levelNumber == 1) theme = LevelTheme::Overworld;
@@ -151,13 +156,13 @@ void PlayingState::checkLevelComplete() {
     if (m_level && m_level->isComplete()) {
         m_levelComplete = true;
         Game& game = Game::getInstance();
-        int nextLevel = game.getCurrentLevel() + 1;
+        int nextLevel = game.getProgress().getCurrentLevel() + 1;
 
         if (nextLevel > TOTAL_LEVELS) {
             // Game won! Go to game over with win message
             game.getStateManager().changeState(std::make_unique<GameOverState>());
         } else {
-            game.setCurrentLevel(nextLevel);
+            game.getProgress().setCurrentLevel(nextLevel);
             game.getStateManager().changeState(std::make_unique<PlayingState>());
         }
     }
@@ -165,10 +170,10 @@ void PlayingState::checkLevelComplete() {
 
 void PlayingState::onPlayerDeath() {
     Game& game = Game::getInstance();
-    game.loseLife();
-    m_hud->setLives(game.getLives());
+    game.getProgress().loseLife();
+    m_hud->setLives(game.getProgress().getLives());
 
-    if (game.getLives() <= 0) {
+    if (game.getProgress().getLives() <= 0) {
         game.getStateManager().changeState(std::make_unique<GameOverState>());
     } else {
         // Restart current level

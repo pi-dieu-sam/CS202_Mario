@@ -11,7 +11,6 @@
 #include "Entities/Mario.hpp"
 #include "Entities/Luigi.hpp"
 #include "AI/PatrolStrategy.hpp"
-#include "AI/ChaseStrategy.hpp"
 
 std::unique_ptr<Enemy> EntityFactory::createEnemy(EnemyType type, sf::Vector2f pos, LevelTheme theme) {
     std::unique_ptr<Enemy> enemy;
@@ -19,12 +18,16 @@ std::unique_ptr<Enemy> EntityFactory::createEnemy(EnemyType type, sf::Vector2f p
     switch (type) {
         case EnemyType::Goomba:
             enemy = std::make_unique<Goomba>();
+            enemy->setStrategy(std::make_unique<PatrolStrategy>());
             break;
         case EnemyType::Koopa:
             enemy = std::make_unique<Koopa>();
+            enemy->setStrategy(std::make_unique<PatrolStrategy>());
             break;
         case EnemyType::PiranhaPlant:
             enemy = std::make_unique<PiranhaPlant>();
+            // No AI strategy: emerge/retract motion is driven directly by
+            // PiranhaPlant::update(), not the Strategy pattern.
             break;
     }
 

@@ -186,7 +186,7 @@ void MenuState::handleEvent(const sf::Event& event) {
 
                 switch (m_selectedOption) {
                     case 0: // New Game
-                        Game::getInstance().resetGameData();
+                        Game::getInstance().getProgress().resetGameData();
                         Game::getInstance().getStateManager().changeState(
                             std::make_unique<CharacterSelectState>());
                         break;
@@ -223,7 +223,7 @@ void MenuState::handleEvent(const sf::Event& event) {
             case sf::Keyboard::Space:
                 switch (m_selectedOption) {
                     case 0: // New Game
-                        Game::getInstance().resetGameData();
+                        Game::getInstance().getProgress().resetGameData();
                         Game::getInstance().getStateManager().changeState(
                             std::make_unique<CharacterSelectState>());
                         break;

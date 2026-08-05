@@ -11,12 +11,12 @@ bool SaveManager::saveGame(const std::string& filename) {
         return false;
     }
 
-    Game& game = Game::getInstance();
-    file << "level="     << game.getCurrentLevel()       << "\n";
-    file << "score="     << game.getScore()              << "\n";
-    file << "lives="     << game.getLives()               << "\n";
-    file << "coins="     << game.getCoins()              << "\n";
-    file << "character=" << game.getSelectedCharacter()  << "\n";
+    PlayerProgress& progress = Game::getInstance().getProgress();
+    file << "level="     << progress.getCurrentLevel()       << "\n";
+    file << "score="     << progress.getScore()              << "\n";
+    file << "lives="     << progress.getLives()               << "\n";
+    file << "coins="     << progress.getCoins()              << "\n";
+    file << "character=" << progress.getSelectedCharacter()  << "\n";
 
     file.close();
     std::cout << "[SaveManager] Game saved to " << filename << std::endl;
@@ -30,7 +30,7 @@ bool SaveManager::loadGame(const std::string& filename) {
         return false;
     }
 
-    Game& game = Game::getInstance();
+    PlayerProgress& progress = Game::getInstance().getProgress();
     std::string line;
 
     while (std::getline(file, line)) {
@@ -40,11 +40,11 @@ bool SaveManager::loadGame(const std::string& filename) {
         std::string key   = line.substr(0, eq);
         std::string value = line.substr(eq + 1);
 
-        if      (key == "level")     game.setCurrentLevel(std::stoi(value));
-        else if (key == "score")     game.setScore(std::stoi(value));
-        else if (key == "lives")     game.setLives(std::stoi(value));
-        else if (key == "coins")     game.setCoins(std::stoi(value));
-        else if (key == "character") game.setSelectedCharacter(value);
+        if      (key == "level")     progress.setCurrentLevel(std::stoi(value));
+        else if (key == "score")     progress.setScore(std::stoi(value));
+        else if (key == "lives")     progress.setLives(std::stoi(value));
+        else if (key == "coins")     progress.setCoins(std::stoi(value));
+        else if (key == "character") progress.setSelectedCharacter(value);
     }
 
     file.close();

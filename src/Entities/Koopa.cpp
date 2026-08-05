@@ -7,7 +7,9 @@ Koopa::Koopa() {
   m_speed = 60.0f;
   m_scoreValue = 200;
   m_velocity.x = -m_speed;
-  setStrategy(std::make_unique<PatrolStrategy>());
+  // Initial AI strategy is assigned by EntityFactory right after
+  // construction; PatrolStrategy is re-applied below when the shell
+  // recovers from its stunned state at runtime.
 
   setAnimFrameCount(2, 0.3f);
 }
