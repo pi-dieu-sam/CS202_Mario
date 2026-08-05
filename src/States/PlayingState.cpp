@@ -31,8 +31,9 @@ void PlayingState::onEnter() {
     m_hud->setScore(progress.getScore());
     m_hud->setCoins(progress.getCoins());
 
-    // Start background music
-    SoundManager::getInstance().playMusic("assets/audio/theme.wav", true);
+    // Start/continue selected background music track (does not restart if already playing)
+    SoundManager& snd = SoundManager::getInstance();
+    snd.selectTrack(snd.getCurrentTrackIndex());
 
     // Subscribe to events for HUD updates and sound effects
     m_coinSub = ScopedEventSubscription(EventType::CoinCollected, [this](const GameEvent& e) {

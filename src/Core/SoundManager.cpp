@@ -11,7 +11,7 @@ SoundManager& SoundManager::getInstance() {
 SoundManager::SoundManager() {
     m_soundPool.resize(SOUND_POOL_SIZE);
 
-    // Pre-register all sound effects
+    // Pre-register sound effects
     registerSound(SoundID::Jump,          "assets/audio/jump.wav");
     registerSound(SoundID::Coin,          "assets/audio/coin.wav");
     registerSound(SoundID::PowerUp,       "assets/audio/powerup.wav");
@@ -25,11 +25,12 @@ SoundManager::SoundManager() {
     registerSound(SoundID::OneUp,         "assets/audio/one_up.wav");
     registerSound(SoundID::Pause,         "assets/audio/pause.wav");
 
-    // Track list for selector
+    // Track list — "Hide - Dorian Concept" set as DEFAULT INDEX 0
     m_musicTracks = {
-        {"Menu Theme",      "assets/audio/menu_theme.wav"},
-        {"Overworld Theme", "assets/audio/theme.wav"},
-        {"Underground Theme", "assets/audio/underground_theme.wav"}
+        {"Hide - Dorian Concept", "assets/audio/hide_dorian_concept.wav"},
+        {"Menu Theme",            "assets/audio/menu_theme.wav"},
+        {"Overworld Theme",       "assets/audio/theme.wav"},
+        {"Underground Theme",     "assets/audio/underground_theme.wav"}
     };
     m_currentTrackIdx = 0;
 }
@@ -155,5 +156,8 @@ void SoundManager::prevTrack() {
 void SoundManager::selectTrack(size_t index) {
     if (index >= m_musicTracks.size()) return;
     m_currentTrackIdx = index;
-    playMusic(m_musicTracks[m_currentTrackIdx].second, true);
+    const std::string& targetFile = m_musicTracks[m_currentTrackIdx].second;
+    if (m_currentMusicFile != targetFile || m_music.getStatus() != sf::Music::Status::Playing) {
+        playMusic(targetFile, true);
+    }
 }
