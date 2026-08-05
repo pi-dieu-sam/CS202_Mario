@@ -26,14 +26,12 @@ bool Background::loadStrip(SceneryElement &elem,
       sf::Color px = strip.getPixel(x, y);
 
       if (isCloudsSheet) {
-        // Keep ONLY pure white cloud fill or pure black outlines
         bool isWhite = (px.r > 220 && px.g > 220 && px.b > 220);
         bool isBlack = (px.r < 30  && px.g < 30  && px.b < 30);
         if (!isWhite && !isBlack) {
           strip.setPixel(x, y, sf::Color::Transparent);
         }
       } else {
-        // Mask out blue sheet background, header bars, and border artifacts
         bool isBlueSky = (px.b > 180) || (px.b > px.r + 30 && px.b > px.g + 30) ||
                          (px.r == 136 && px.g == 134 && px.b == 255) ||
                          (px.r == 108 && px.g == 106 && px.b == 255) ||
@@ -107,49 +105,19 @@ void Background::load(LevelTheme theme, float levelWidth) {
   }
 
   case LevelTheme::Overworld:
-  default:
-    // Authentic NES Overworld sky blue gradient
-    m_topColor    = sf::Color(92, 148, 252);
-    m_bottomColor = sf::Color(92, 148, 252);
-    break;
-  }
+  default: {
+    // Dreamlike Adventure & Romance Fantasy World background for Level 1
+    m_topColor    = sf::Color(255, 160, 140); // Golden sunset peach
+    m_bottomColor = sf::Color(255, 200, 150); // Warm sunset amber
 
-  // ── Overworld Scenery Elements (Level 1) ──────────────────────────────────
-
-  // 1. Upper Sky Clouds (Background 3)
-  {
-    SceneryElement clouds;
-    if (loadStrip(clouds,
-                  "assets/textures/NES - Super Mario Bros. - Backgrounds - Background 3 (Clouds).png",
-                  sf::IntRect(0, 40, 734, 42))) {
-      clouds.worldY   = 55.0f;    // Upper sky
-      clouds.parallax = 0.35f;
-      m_elements.push_back(std::move(clouds));
+    SceneryElement romanceFantasyBg;
+    if (romanceFantasyBg.texture.loadFromFile("assets/textures/romance_fantasy_bg.png")) {
+      romanceFantasyBg.worldY   = 0.0f;  // Spans full window height
+      romanceFantasyBg.parallax = 0.35f; // Dreamlike slow parallax drift
+      m_elements.push_back(std::move(romanceFantasyBg));
     }
+    return;
   }
-
-  // 2. Green Hills (Background 1: positioned nicely at worldY = 499px, flush on ground line)
-  {
-    SceneryElement hills;
-    if (loadStrip(hills,
-                  "assets/textures/NES - Super Mario Bros. - Backgrounds - Background 1 (Mountains).png",
-                  sf::IntRect(0, 170, 734, 45))) {
-      hills.worldY   = groundTopY - 45.0f; // 499px (Flush on ground)
-      hills.parallax = 0.55f;
-      m_elements.push_back(std::move(hills));
-    }
-  }
-
-  // 3. Green Bushes / Trees (Background 2: slightly offset horizontally and positioned at worldY = 499px)
-  {
-    SceneryElement bushes;
-    if (loadStrip(bushes,
-                  "assets/textures/NES - Super Mario Bros. - Backgrounds - Background 2 (Trees).png",
-                  sf::IntRect(0, 170, 734, 45))) {
-      bushes.worldY   = groundTopY - 45.0f; // 499px (Flush on ground)
-      bushes.parallax = 0.75f;
-      m_elements.push_back(std::move(bushes));
-    }
   }
 }
 
