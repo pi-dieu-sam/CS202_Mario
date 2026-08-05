@@ -1,4 +1,5 @@
 #include "Entities/Block.hpp"
+#include "Core/SoundManager.hpp"
 #include "Entities/Coin.hpp"
 #include "Entities/FireFlower.hpp"
 #include "Entities/Mushroom.hpp"
@@ -104,9 +105,12 @@ std::unique_ptr<Item> Block::hit(bool playerIsBig) {
   } else if (m_blockType == BlockType::Brick) {
     if (playerIsBig) {
       // Break the brick
+      SoundManager::getInstance().playSound(SoundID::BlockBreak);
       m_active = false;
+    } else {
+      // Small player just bumps it
+      SoundManager::getInstance().playSound(SoundID::BlockBump);
     }
-    // Small player just bumps it
   }
 
   return nullptr;
