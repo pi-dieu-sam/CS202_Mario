@@ -3,6 +3,7 @@
 #include <unordered_map>
 #include <string>
 #include <vector>
+#include <utility>
 
 /// Sound IDs for quick access to pre-registered sound effects.
 enum class SoundID {
@@ -22,7 +23,7 @@ enum class SoundID {
 
 /// SoundManager — Singleton pattern.
 /// Manages sound effect playback with a pool of sf::Sound objects,
-/// and background music via sf::Music.
+/// background music streaming, volume controls, mute toggling, and track selection.
 class SoundManager {
 public:
     static SoundManager& getInstance();
@@ -46,12 +47,28 @@ public:
     void pauseMusic();
     void resumeMusic();
 
+    /// Mute controls
+    void toggleMute();
+    bool isMuted() const;
+
     /// Volume control (0–100).
+    void setMasterVolume(float percent);
+    float getMasterVolume() const;
+
     void setSoundVolume(float volume);
     void setMusicVolume(float volume);
 
+    /// Track selection
+    const std::vector<std::pair<std::string, std::string>>& getMusicTracks() const;
+    size_t getCurrentTrackIndex() const;
+    std::string getCurrentTrackName() const;
+    void nextTrack();
+    void prevTrack();
+    void selectTrack(size_t index);
+
 private:
     SoundManager();
+    void applyVolumes();
 
     static constexpr int SOUND_POOL_SIZE = 16;
 
@@ -60,6 +77,12 @@ private:
     int                                      m_nextSound = 0;
 
     sf::Music m_music;
-    float     m_soundVolume = 70.0f;
-    float     m_musicVolume = 50.0f;
+    std::string m_currentMusicFile;
+    bool      m_muted = false;
+    float     m_masterVolume = 70.0f; // 0..100
+    float     m_soundVolume  = 70.0f;
+    float     m_musicVolume  = 50.0f;
+
+    std::vector<std::pair<std::string, std::string>> m_musicTracks; // {Display Name, File Path}
+    size_t m_currentTrackIdx = 0;
 };
