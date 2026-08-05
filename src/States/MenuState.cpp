@@ -4,6 +4,7 @@
 #include "Core/Game.hpp"
 #include "Core/AssetManager.hpp"
 #include "Core/SaveManager.hpp"
+#include "Core/SoundManager.hpp"
 #include "States/StateManager.hpp"
 #include "Physics/PhysicsConstants.hpp"
 #include "Graphics/SpriteRegistry.hpp"
@@ -48,6 +49,7 @@ constexpr float MARIO_HEIGHT   = 50.0f;
 MenuState::MenuState() {}
 
 void MenuState::onEnter() {
+    SoundManager::getInstance().playMusic("assets/audio/menu_theme.wav", true);
     sf::Font& font = AssetManager::getInstance().getFont("assets/fonts/mario_font.ttf");
     sf::Texture& titleSheet = AssetManager::getInstance().getTexture(TITLE_SHEET_PATH);
 

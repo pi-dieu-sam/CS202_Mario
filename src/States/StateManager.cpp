@@ -31,6 +31,9 @@ void StateManager::processPending() {
                 if (!m_states.empty()) {
                     m_states.back()->onExit();
                     m_states.pop_back();
+                    if (!m_states.empty()) {
+                        m_states.back()->onResume();
+                    }
                 }
                 break;
 

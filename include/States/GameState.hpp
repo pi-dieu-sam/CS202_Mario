@@ -13,6 +13,9 @@ public:
     /// Called when this state is removed.
     virtual void onExit() = 0;
 
+    /// Called when a stacked state on top of this state is popped.
+    virtual void onResume() {}
+
     /// Handle SFML events (key presses, window close, etc.).
     virtual void handleEvent(const sf::Event& event) = 0;
 

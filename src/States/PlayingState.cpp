@@ -64,6 +64,10 @@ void PlayingState::onExit() {
     SoundManager::getInstance().stopMusic();
 }
 
+void PlayingState::onResume() {
+    SoundManager::getInstance().resumeMusic();
+}
+
 void PlayingState::handleEvent(const sf::Event& event) {
     if (event.type == sf::Event::KeyPressed) {
         if (event.key.code == sf::Keyboard::Escape) {
