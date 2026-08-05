@@ -144,7 +144,7 @@ void LevelSelectState::handleEvent(const sf::Event &event) {
     for (int i = 0; i < 3; i++) {
       if (m_levelBoxes[i].getGlobalBounds().contains(mousePos)) {
         m_selected = i;
-        Game::getInstance().setCurrentLevel(m_selected + 1);
+        Game::getInstance().getProgress().setCurrentLevel(m_selected + 1);
         Game::getInstance().getStateManager().changeState(
             std::make_unique<PlayingState>());
         return;
@@ -169,7 +169,7 @@ void LevelSelectState::handleEvent(const sf::Event &event) {
 
     case sf::Keyboard::Return:
     case sf::Keyboard::Space:
-      Game::getInstance().setCurrentLevel(m_selected + 1);
+      Game::getInstance().getProgress().setCurrentLevel(m_selected + 1);
       Game::getInstance().getStateManager().changeState(
           std::make_unique<PlayingState>());
       break;

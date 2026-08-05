@@ -2,6 +2,7 @@
 #include "GameState.hpp"
 #include "../Core/InputHandler.hpp"
 #include "../Core/Camera.hpp"
+#include "../Observers/EventManager.hpp"
 #include <memory>
 
 // Forward declarations
@@ -32,6 +33,10 @@ private:
     std::unique_ptr<HUD>    m_hud;
     InputHandler            m_input;
     Camera                  m_camera;
+
+    ScopedEventSubscription m_coinSub;
+    ScopedEventSubscription m_enemyDefeatedSub;
+    ScopedEventSubscription m_playerDiedSub;
 
     float m_levelTimer = 0.0f;
     bool  m_levelComplete = false;

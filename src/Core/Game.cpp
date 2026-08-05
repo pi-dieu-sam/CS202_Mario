@@ -84,43 +84,6 @@ StateManager& Game::getStateManager() {
     return *m_stateManager;
 }
 
-// ── Score ──
-int Game::getScore() const { return m_score; }
-void Game::addScore(int points) { m_score += points; }
-void Game::setScore(int score) { m_score = score; }
-
-// ── Lives ──
-int Game::getLives() const { return m_lives; }
-void Game::setLives(int lives) { m_lives = lives; }
-void Game::loseLife() {
-    m_lives--;
-    if (m_lives < 0) m_lives = 0;
-}
-
-// ── Level ──
-int Game::getCurrentLevel() const { return m_currentLevel; }
-void Game::setCurrentLevel(int level) { m_currentLevel = level; }
-
-// ── Coins ──
-int Game::getCoins() const { return m_coins; }
-void Game::addCoin() {
-    m_coins++;
-    addScore(COIN_SCORE);
-    // Every 100 coins = extra life
-    if (m_coins % 100 == 0) {
-        m_lives++;
-    }
-}
-void Game::setCoins(int coins) { m_coins = coins; }
-
-// ── Character ──
-const std::string& Game::getSelectedCharacter() const { return m_selectedChar; }
-void Game::setSelectedCharacter(const std::string& name) { m_selectedChar = name; }
-
-// ── Reset ──
-void Game::resetGameData() {
-    m_score        = 0;
-    m_lives        = STARTING_LIVES;
-    m_coins        = 0;
-    m_currentLevel = 1;
+PlayerProgress& Game::getProgress() {
+    return m_progress;
 }

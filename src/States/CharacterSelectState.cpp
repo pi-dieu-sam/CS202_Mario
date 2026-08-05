@@ -99,7 +99,7 @@ void CharacterSelectState::handleEvent(const sf::Event& event) {
             if (m_charBoxes[i].getGlobalBounds().contains(mousePos)) {
                 m_selected = i;
                 std::string charName = (m_selected == 0) ? "Mario" : "Luigi";
-                Game::getInstance().setSelectedCharacter(charName);
+                Game::getInstance().getProgress().setSelectedCharacter(charName);
                 Game::getInstance().getStateManager().changeState(
                     std::make_unique<LevelSelectState>());
                 return;
@@ -126,7 +126,7 @@ void CharacterSelectState::handleEvent(const sf::Event& event) {
             case sf::Keyboard::Return:
             case sf::Keyboard::Space: {
                 std::string charName = (m_selected == 0) ? "Mario" : "Luigi";
-                Game::getInstance().setSelectedCharacter(charName);
+                Game::getInstance().getProgress().setSelectedCharacter(charName);
                 Game::getInstance().getStateManager().changeState(
                     std::make_unique<LevelSelectState>());
                 break;
