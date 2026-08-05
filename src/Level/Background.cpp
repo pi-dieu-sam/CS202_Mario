@@ -86,15 +86,15 @@ void Background::load(LevelTheme theme, float levelWidth) {
 
   case LevelTheme::Overworld:
   default: {
-    // Level 1: Gaming Fantasy World background
-    m_topColor    = sf::Color(12, 16, 38);
-    m_bottomColor = sf::Color(28, 12, 48);
+    // Level 1: Dystopian Fantasy World background
+    m_topColor    = sf::Color(35, 18, 40);
+    m_bottomColor = sf::Color(65, 30, 20);
 
-    SceneryElement gamingFantasyBg;
-    if (gamingFantasyBg.texture.loadFromFile("assets/textures/gaming_fantasy_bg.png")) {
-      gamingFantasyBg.worldY   = 0.0f;  // Spans full window height
-      gamingFantasyBg.parallax = 0.35f; // Cyber arcade slow parallax drift
-      m_elements.push_back(std::move(gamingFantasyBg));
+    SceneryElement dystopianFantasyBg;
+    if (dystopianFantasyBg.texture.loadFromFile("assets/textures/dystopian_fantasy_bg.png")) {
+      dystopianFantasyBg.worldY   = 0.0f;  // Spans full window height
+      dystopianFantasyBg.parallax = 0.35f; // Atmospheric slow parallax drift
+      m_elements.push_back(std::move(dystopianFantasyBg));
     }
     return;
   }

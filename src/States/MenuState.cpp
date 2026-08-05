@@ -49,7 +49,7 @@ constexpr float MARIO_HEIGHT   = 50.0f;
 MenuState::MenuState() {}
 
 void MenuState::onEnter() {
-    SoundManager::getInstance().playMusic("assets/audio/menu_theme.wav", true);
+    SoundManager::getInstance().playMusic("assets/audio/hide_dorian_concept.wav", true);
     sf::Font& font = AssetManager::getInstance().getFont("assets/fonts/mario_font.ttf");
     sf::Texture& titleSheet = AssetManager::getInstance().getTexture(TITLE_SHEET_PATH);
 
