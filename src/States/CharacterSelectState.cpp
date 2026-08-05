@@ -21,11 +21,11 @@ void CharacterSelectState::onEnter() {
 
     m_title.setFont(font);
     m_title.setString("SELECT CHARACTER");
-    m_title.setCharacterSize(32);
+    m_title.setCharacterSize(30);
     m_title.setFillColor(sf::Color::White);
     auto tb = m_title.getLocalBounds();
-    m_title.setOrigin(tb.width / 2.0f, tb.height / 2.0f);
-    m_title.setPosition(WINDOW_WIDTH / 2.0f, 45.0f);
+    m_title.setOrigin(tb.left + tb.width / 2.0f, tb.top + tb.height / 2.0f);
+    m_title.setPosition(WINDOW_WIDTH / 2.0f, 40.0f);
 
     // ── Character Cards (Mario vs Luigi) ──────────────────────────────────
     float boxW = 240.0f, boxH = 260.0f;
@@ -44,111 +44,119 @@ void CharacterSelectState::onEnter() {
 
     for (int i = 0; i < 2; i++) {
         m_charBoxes[i].setSize(sf::Vector2f(boxW, boxH));
-        m_charBoxes[i].setPosition(startX + i * (boxW + gap), 95.0f);
+        m_charBoxes[i].setPosition(startX + i * (boxW + gap), 85.0f);
         m_charBoxes[i].setFillColor(boxColors[i]);
         m_charBoxes[i].setOutlineThickness(3.0f);
         m_charBoxes[i].setOutlineColor(sf::Color::Transparent);
 
         m_charNames[i].setFont(font);
         m_charNames[i].setString(names[i]);
-        m_charNames[i].setCharacterSize(26);
+        m_charNames[i].setCharacterSize(24);
         m_charNames[i].setFillColor(sf::Color::White);
         auto nb = m_charNames[i].getLocalBounds();
-        m_charNames[i].setOrigin(nb.width / 2.0f, 0.0f);
-        m_charNames[i].setPosition(startX + i * (boxW + gap) + boxW / 2.0f, 110.0f);
+        m_charNames[i].setOrigin(nb.left + nb.width / 2.0f, nb.top);
+        m_charNames[i].setPosition(startX + i * (boxW + gap) + boxW / 2.0f, 100.0f);
 
         m_charStats[i].setFont(font);
         m_charStats[i].setString(stats[i]);
-        m_charStats[i].setCharacterSize(15);
+        m_charStats[i].setCharacterSize(14);
         m_charStats[i].setFillColor(sf::Color(220, 220, 220));
-        m_charStats[i].setPosition(startX + i * (boxW + gap) + 20.0f, 250.0f);
+        m_charStats[i].setPosition(startX + i * (boxW + gap) + 20.0f, 235.0f);
 
         float centerX = startX + i * (boxW + gap) + boxW / 2.0f;
         CharacterId charId = (i == 0) ? CharacterId::Mario : CharacterId::Luigi;
         std::string path = SpriteRegistry::playerPath(
             charId, PowerUpState::Big, SpriteRegistry::PlayerAnim::Idle, 0);
         SpriteRegistry::applyFrame(m_charSprites[i], path,
-                                    sf::FloatRect(centerX, 130.0f, 0.0f, 100.0f));
+                                    sf::FloatRect(centerX, 120.0f, 0.0f, 95.0f));
     }
 
     m_selected = 0;
     m_charBoxes[0].setOutlineColor(sf::Color::Yellow);
 
     // ── Audio Control Panel Layout ──────────────────────────────────────────
-    float panelY = 380.0f;
-    float panelW = 720.0f;
-    float panelH = 180.0f;
+    float panelY = 370.0f;
+    float panelW = 730.0f;
+    float panelH = 195.0f;
     float panelX = (WINDOW_WIDTH - panelW) / 2.0f;
 
     m_audioPanel.setSize(sf::Vector2f(panelW, panelH));
     m_audioPanel.setPosition(panelX, panelY);
-    m_audioPanel.setFillColor(sf::Color(20, 20, 40, 230));
+    m_audioPanel.setFillColor(sf::Color(20, 20, 40, 235));
     m_audioPanel.setOutlineThickness(2.0f);
     m_audioPanel.setOutlineColor(sf::Color(100, 100, 180));
 
     m_panelTitle.setFont(font);
     m_panelTitle.setString("AUDIO SETTINGS & MUSIC SELECTOR");
-    m_panelTitle.setCharacterSize(18);
+    m_panelTitle.setCharacterSize(16);
     m_panelTitle.setFillColor(sf::Color(255, 220, 100));
-    m_panelTitle.setPosition(panelX + 20.0f, panelY + 15.0f);
+    auto ptb = m_panelTitle.getLocalBounds();
+    m_panelTitle.setOrigin(ptb.left + ptb.width / 2.0f, ptb.top);
+    m_panelTitle.setPosition(WINDOW_WIDTH / 2.0f, panelY + 15.0f);
 
-    // Mute Button
-    m_muteBtn.setSize(sf::Vector2f(160.0f, 36.0f));
-    m_muteBtn.setPosition(panelX + 20.0f, panelY + 50.0f);
+    float btnY = panelY + 55.0f;
+    float btnH = 42.0f;
+
+    // 1. Mute Button Box
+    m_muteBtn.setSize(sf::Vector2f(165.0f, btnH));
+    m_muteBtn.setPosition(panelX + 25.0f, btnY);
     m_muteBtn.setOutlineThickness(2.0f);
 
     m_muteText.setFont(font);
-    m_muteText.setCharacterSize(14);
-    m_muteText.setPosition(panelX + 30.0f, panelY + 58.0f);
+    m_muteText.setCharacterSize(12);
 
-    // Volume Control Buttons & Text
-    m_volMinusBtn.setSize(sf::Vector2f(40.0f, 36.0f));
-    m_volMinusBtn.setPosition(panelX + 200.0f, panelY + 50.0f);
-    m_volMinusBtn.setFillColor(sf::Color(60, 60, 90));
+    // 2. Volume Control Buttons & Text
+    m_volMinusBtn.setSize(sf::Vector2f(38.0f, btnH));
+    m_volMinusBtn.setPosition(panelX + 205.0f, btnY);
+    m_volMinusBtn.setFillColor(sf::Color(60, 60, 95));
     m_volMinusBtn.setOutlineThickness(2.0f);
     m_volMinusBtn.setOutlineColor(sf::Color::White);
 
     m_volMinusText.setFont(font);
     m_volMinusText.setString("-");
-    m_volMinusText.setCharacterSize(20);
+    m_volMinusText.setCharacterSize(18);
     m_volMinusText.setFillColor(sf::Color::White);
-    m_volMinusText.setPosition(panelX + 214.0f, panelY + 54.0f);
+    auto b1 = m_volMinusText.getLocalBounds();
+    m_volMinusText.setOrigin(b1.left + b1.width / 2.0f, b1.top + b1.height / 2.0f);
+    m_volMinusText.setPosition(panelX + 205.0f + 19.0f, btnY + btnH / 2.0f);
 
     m_volText.setFont(font);
-    m_volText.setCharacterSize(14);
+    m_volText.setCharacterSize(12);
     m_volText.setFillColor(sf::Color::White);
-    m_volText.setPosition(panelX + 252.0f, panelY + 58.0f);
 
-    m_volPlusBtn.setSize(sf::Vector2f(40.0f, 36.0f));
-    m_volPlusBtn.setPosition(panelX + 370.0f, panelY + 50.0f);
-    m_volPlusBtn.setFillColor(sf::Color(60, 60, 90));
+    m_volPlusBtn.setSize(sf::Vector2f(38.0f, btnH));
+    m_volPlusBtn.setPosition(panelX + 360.0f, btnY);
+    m_volPlusBtn.setFillColor(sf::Color(60, 60, 95));
     m_volPlusBtn.setOutlineThickness(2.0f);
     m_volPlusBtn.setOutlineColor(sf::Color::White);
 
     m_volPlusText.setFont(font);
     m_volPlusText.setString("+");
-    m_volPlusText.setCharacterSize(20);
+    m_volPlusText.setCharacterSize(18);
     m_volPlusText.setFillColor(sf::Color::White);
-    m_volPlusText.setPosition(panelX + 382.0f, panelY + 54.0f);
+    auto b2 = m_volPlusText.getLocalBounds();
+    m_volPlusText.setOrigin(b2.left + b2.width / 2.0f, b2.top + b2.height / 2.0f);
+    m_volPlusText.setPosition(panelX + 360.0f + 19.0f, btnY + btnH / 2.0f);
 
-    // Music Selector Button
-    m_trackBtn.setSize(sf::Vector2f(280.0f, 36.0f));
-    m_trackBtn.setPosition(panelX + 425.0f, panelY + 50.0f);
-    m_trackBtn.setFillColor(sf::Color(40, 80, 140));
+    // 3. Music Selector Button Box
+    m_trackBtn.setSize(sf::Vector2f(285.0f, btnH));
+    m_trackBtn.setPosition(panelX + 415.0f, btnY);
+    m_trackBtn.setFillColor(sf::Color(25, 75, 135));
     m_trackBtn.setOutlineThickness(2.0f);
     m_trackBtn.setOutlineColor(sf::Color::Cyan);
 
     m_trackText.setFont(font);
-    m_trackText.setCharacterSize(13);
+    m_trackText.setCharacterSize(11);
     m_trackText.setFillColor(sf::Color::Cyan);
-    m_trackText.setPosition(panelX + 435.0f, panelY + 58.0f);
 
-    // Help Text
+    // 4. Help Text (Compact shortcuts display)
     m_helpText.setFont(font);
-    m_helpText.setString("Shortcuts: [M] Mute | [-/+] Vol | [N] Next Track | [A/D] Select Hero");
-    m_helpText.setCharacterSize(12);
-    m_helpText.setFillColor(sf::Color(180, 180, 200));
-    m_helpText.setPosition(panelX + 20.0f, panelY + 145.0f);
+    m_helpText.setString("[M] Mute  |  [-/+] Vol  |  [N] Music  |  [A/D] Hero");
+    m_helpText.setCharacterSize(10);
+    m_helpText.setFillColor(sf::Color(180, 180, 210));
+    auto hb = m_helpText.getLocalBounds();
+    m_helpText.setOrigin(hb.left + hb.width / 2.0f, hb.top + hb.height / 2.0f);
+    m_helpText.setPosition(WINDOW_WIDTH / 2.0f, panelY + 162.0f);
 
     updateAudioUI();
 }
@@ -168,10 +176,26 @@ void CharacterSelectState::updateAudioUI() {
         m_muteText.setFillColor(sf::Color::White);
     }
 
+    // Center Mute text inside m_muteBtn box
+    auto mb = m_muteText.getLocalBounds();
+    m_muteText.setOrigin(mb.left + mb.width / 2.0f, mb.top + mb.height / 2.0f);
+    m_muteText.setPosition(m_muteBtn.getPosition().x + m_muteBtn.getSize().x / 2.0f,
+                           m_muteBtn.getPosition().y + m_muteBtn.getSize().y / 2.0f);
+
+    // Center Volume text between minus and plus buttons
     int volPct = static_cast<int>(snd.getMasterVolume());
     m_volText.setString("VOL: " + std::to_string(volPct) + "%");
+    auto vb = m_volText.getLocalBounds();
+    m_volText.setOrigin(vb.left + vb.width / 2.0f, vb.top + vb.height / 2.0f);
+    float volMidX = (m_volMinusBtn.getPosition().x + m_volMinusBtn.getSize().x + m_volPlusBtn.getPosition().x) / 2.0f;
+    m_volText.setPosition(volMidX, m_volMinusBtn.getPosition().y + m_volMinusBtn.getSize().y / 2.0f);
 
-    m_trackText.setString("MUSIC: < " + snd.getCurrentTrackName() + " >");
+    // Center Track text inside m_trackBtn box
+    m_trackText.setString("< " + snd.getCurrentTrackName() + " >");
+    auto tb = m_trackText.getLocalBounds();
+    m_trackText.setOrigin(tb.left + tb.width / 2.0f, tb.top + tb.height / 2.0f);
+    m_trackText.setPosition(m_trackBtn.getPosition().x + m_trackBtn.getSize().x / 2.0f,
+                           m_trackBtn.getPosition().y + m_trackBtn.getSize().y / 2.0f);
 }
 
 void CharacterSelectState::onExit() {}
