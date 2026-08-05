@@ -55,11 +55,9 @@ bool Background::loadStrip(SceneryElement &elem,
 void Background::load(LevelTheme theme, float levelWidth) {
   m_elements.clear();
 
-  const float groundTopY = static_cast<float>(WINDOW_HEIGHT) - 2.0f * TILE_SIZE; // 544px
-
   switch (theme) {
   case LevelTheme::Underground: {
-    // Atmospheric Dark Fantasy World background for Level 2
+    // Level 2: Dark Fantasy World background
     m_topColor    = sf::Color(20, 10, 35);
     m_bottomColor = sf::Color(8, 4, 16);
 
@@ -73,48 +71,30 @@ void Background::load(LevelTheme theme, float levelWidth) {
   }
 
   case LevelTheme::Castle: {
-    // Rich NES Castle fortress gradient (dark charcoal to deep crimson glow)
-    m_topColor    = sf::Color(15, 2, 2);
-    m_bottomColor = sf::Color(55, 12, 12);
-
-    // Create upper castle battlements & window arch scenery banner (Y = 30..130px)
-    sf::Image castleBanner;
-    castleBanner.create(512, 100, sf::Color::Transparent);
-
-    sf::Image castleBrick;
-    if (castleBrick.loadFromFile("assets/textures/SMB_Castle_Brick_Block.png")) {
-      for (int x = 0; x < 512; x += 16) {
-        castleBanner.copy(castleBrick, x, 0); // Top rim
-      }
-      // Add fortress window arch pillars
-      for (int x = 48; x < 460; x += 112) {
-        for (int y = 16; y < 80; y += 16) {
-          castleBanner.copy(castleBrick, x, y);
-          castleBanner.copy(castleBrick, x + 16, y);
-        }
-      }
-    }
-
-    SceneryElement castleBattlements;
-    if (castleBattlements.texture.loadFromImage(castleBanner)) {
-      castleBattlements.worldY   = 35.0f; // Upper sky region
-      castleBattlements.parallax = 0.4f;
-      m_elements.push_back(std::move(castleBattlements));
-    }
-    return;
-  }
-
-  case LevelTheme::Overworld:
-  default: {
-    // Dreamlike Adventure & Romance Fantasy World background for Level 1
-    m_topColor    = sf::Color(255, 160, 140); // Golden sunset peach
-    m_bottomColor = sf::Color(255, 200, 150); // Warm sunset amber
+    // Level 3: Romance Fantasy World background
+    m_topColor    = sf::Color(255, 160, 140);
+    m_bottomColor = sf::Color(255, 200, 150);
 
     SceneryElement romanceFantasyBg;
     if (romanceFantasyBg.texture.loadFromFile("assets/textures/romance_fantasy_bg.png")) {
       romanceFantasyBg.worldY   = 0.0f;  // Spans full window height
       romanceFantasyBg.parallax = 0.35f; // Dreamlike slow parallax drift
       m_elements.push_back(std::move(romanceFantasyBg));
+    }
+    return;
+  }
+
+  case LevelTheme::Overworld:
+  default: {
+    // Level 1: Gaming Fantasy World background
+    m_topColor    = sf::Color(12, 16, 38);
+    m_bottomColor = sf::Color(28, 12, 48);
+
+    SceneryElement gamingFantasyBg;
+    if (gamingFantasyBg.texture.loadFromFile("assets/textures/gaming_fantasy_bg.png")) {
+      gamingFantasyBg.worldY   = 0.0f;  // Spans full window height
+      gamingFantasyBg.parallax = 0.35f; // Cyber arcade slow parallax drift
+      m_elements.push_back(std::move(gamingFantasyBg));
     }
     return;
   }
