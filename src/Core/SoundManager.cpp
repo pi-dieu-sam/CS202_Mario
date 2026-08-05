@@ -9,6 +9,21 @@ SoundManager& SoundManager::getInstance() {
 
 SoundManager::SoundManager() {
     m_soundPool.resize(SOUND_POOL_SIZE);
+
+    // Pre-register all sound effects so call sites only need playSound(id).
+    // Files are in assets/audio/ — gracefully skipped if missing.
+    registerSound(SoundID::Jump,          "assets/audio/jump.wav");
+    registerSound(SoundID::Coin,          "assets/audio/coin.wav");
+    registerSound(SoundID::PowerUp,       "assets/audio/powerup.wav");
+    registerSound(SoundID::Stomp,         "assets/audio/stomp.wav");
+    registerSound(SoundID::Fireball,      "assets/audio/fireball.wav");
+    registerSound(SoundID::PlayerDeath,   "assets/audio/player_death.wav");
+    registerSound(SoundID::LevelComplete, "assets/audio/level_complete.wav");
+    registerSound(SoundID::GameOver,      "assets/audio/game_over.wav");
+    registerSound(SoundID::BlockBreak,    "assets/audio/block_break.wav");
+    registerSound(SoundID::BlockBump,     "assets/audio/block_bump.wav");
+    registerSound(SoundID::OneUp,         "assets/audio/one_up.wav");
+    registerSound(SoundID::Pause,         "assets/audio/pause.wav");
 }
 
 void SoundManager::registerSound(SoundID id, const std::string& filename) {
