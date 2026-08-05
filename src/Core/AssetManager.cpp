@@ -1,21 +1,15 @@
 #include "Core/AssetManager.hpp"
-// SFML 2.6 internally uses stb_image and already compiles STB_IMAGE_IMPLEMENTATION
-// in its own ImageLoader.cpp. Including stb_image.h with our own implementation
-// would cause duplicate symbol linker errors.
-//
-// Instead we manually forward-declare the one GIF function we need, letting
-// the linker resolve it from SFML's already-compiled object (sfml-graphics).
-extern "C" {
-  typedef unsigned char stbi_uc;
-  stbi_uc* stbi_load_gif_from_memory(
-      const stbi_uc* buffer, int len,
-      int** delays, int* x, int* y, int* z,
-      int* comp, int req_comp);
-  void stbi_image_free(void* retval_from_stbi_load);
-}
 #include <iostream>
 #include <fstream>
 #include <vector>
+
+// Forward declaration of STBGif wrapper functions defined in stb_image_impl.cpp
+namespace STBGif {
+unsigned char* loadGifFromMemory(const unsigned char* buffer, int len,
+                                 int** delays, int* x, int* y, int* z,
+                                 int* comp, int req_comp);
+void freeGifData(void* ptr);
+}
 
 AssetManager &AssetManager::getInstance() {
   static AssetManager instance;
@@ -74,7 +68,7 @@ const std::vector<sf::Texture>& AssetManager::getGifFrames(const std::string& fi
 
   std::vector<sf::Texture>& frames = m_gifFrames[filename];
 
-  // ── Try stb_image GIF loader ────────────────────────────────────────────
+  // ── Try STBGif loader ──────────────────────────────────────────────────
   // Read the raw file bytes first.
   std::ifstream file(filename, std::ios::binary | std::ios::ate);
   bool gifDecoded = false;
@@ -87,9 +81,9 @@ const std::vector<sf::Texture>& AssetManager::getGifFrames(const std::string& fi
       int* delays = nullptr;
       int frameCount = 0, w = 0, h = 0, comp = 0;
 
-      // stbi_load_gif_from_memory returns all frames tightly packed:
+      // STBGif::loadGifFromMemory returns all frames tightly packed:
       // frameCount × w × h × 4 bytes (RGBA).
-      unsigned char* gifData = stbi_load_gif_from_memory(
+      unsigned char* gifData = STBGif::loadGifFromMemory(
           fileData.data(), static_cast<int>(fileData.size()),
           &delays, &w, &h, &frameCount, &comp, 4);
 
@@ -107,9 +101,9 @@ const std::vector<sf::Texture>& AssetManager::getGifFrames(const std::string& fi
           }
         }
         gifDecoded = true;
-        stbi_image_free(gifData);
+        STBGif::freeGifData(gifData);
       }
-      if (delays) stbi_image_free(delays);
+      if (delays) STBGif::freeGifData(delays);
     }
   }
 

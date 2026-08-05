@@ -1,10 +1,26 @@
-// SFML 2.6 already compiles stb_image internally (ImageLoader.cpp).
-// We do NOT define STB_IMAGE_IMPLEMENTATION here — that would create
-// multiply-defined symbol linker errors.  Instead we just forward-declare
-// the one GIF-specific function we need and let the linker satisfy it from
-// SFML's object files.  All other stbi_* symbols are also available the same
-// way (they are already linked in via sfml-graphics).
-//
-// Note: stb_image.h is still included in AssetManager.cpp but with
-// STBI_NO_IMPLEMENTATION defined to suppress the definitions — only the
-// extern "C" declarations (the function prototypes) are needed here.
+// Single translation unit for stb_image GIF decoding.
+// Uses STB_IMAGE_STATIC so all STB functions are file-local (static), preventing
+// any symbol collisions with SFML in static library builds, while providing
+// a clean C++ wrapper API (STBGif) for AssetManager across all platforms and CI builds.
+
+#define STB_IMAGE_IMPLEMENTATION
+#define STB_IMAGE_STATIC
+#define STBI_ONLY_GIF
+#define STBI_NO_STDIO
+#define STBI_NO_FAILURE_STRINGS
+
+#include "stb_image.h"
+
+namespace STBGif {
+
+unsigned char* loadGifFromMemory(const unsigned char* buffer, int len,
+                                 int** delays, int* x, int* y, int* z,
+                                 int* comp, int req_comp) {
+    return stbi_load_gif_from_memory(buffer, len, delays, x, y, z, comp, req_comp);
+}
+
+void freeGifData(void* ptr) {
+    stbi_image_free(ptr);
+}
+
+} // namespace STBGif
