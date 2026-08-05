@@ -7,6 +7,7 @@
 
 Coin::Coin() {
     m_type = ObjectType::Coin;
+    m_isGif = true;  // SMBCoin.gif has multiple shimmer frames
     refreshSprite();
 }
 
