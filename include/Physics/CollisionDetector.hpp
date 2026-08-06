@@ -23,4 +23,13 @@ public:
 
     /// Resolve player-tile collision (push player out of tile).
     static void resolveCollision(GameObject& movable, const GameObject& solid, const CollisionResult& result);
+
+    /// Given the horizontal velocity an object had going INTO a Left/Right wall
+    /// collision (captured by the caller BEFORE calling resolveCollision(), since
+    /// resolveCollision() zeroes it), compute what it should be immediately after.
+    /// incomingVx != 0: mirror bounce, -incomingVx.
+    /// incomingVx == 0: deterministic push away from the wall, derived from
+    /// `side` alone (never from any AI strategy's own default direction), at
+    /// |fallbackSpeed|.
+    static float reflectHorizontalVelocity(float incomingVx, Side side, float fallbackSpeed);
 };
