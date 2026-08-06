@@ -88,3 +88,13 @@ void CollisionDetector::resolveCollision(
     movable.setPosition(pos);
     movable.setVelocity(vel);
 }
+
+float CollisionDetector::reflectHorizontalVelocity(float incomingVx, Side side, float fallbackSpeed) {
+    if (incomingVx != 0.0f) {
+        return -incomingVx;
+    }
+    // Side::Right means the object's right edge hit a solid (wall to its
+    // right) -> push left. Side::Left is the mirror case.
+    float awayFromWall = (side == Side::Right) ? -1.0f : 1.0f;
+    return awayFromWall * std::abs(fallbackSpeed);
+}
