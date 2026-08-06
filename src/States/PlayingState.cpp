@@ -94,6 +94,7 @@ void PlayingState::update(float dt) {
 
     // Reset sprint each frame (only active while key held)
     m_player->setSprinting(false);
+    m_player->setJumpHeld(m_input.isJumpHeld());
 
     // Handle held-key commands
     auto commands = m_input.handleInput();

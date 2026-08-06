@@ -43,6 +43,10 @@ public:
   void setSprinting(bool sprinting);
   bool isSprinting() const;
 
+  // ── Jump input state ──
+  void setJumpHeld(bool held);
+  bool isJumpHeld() const;
+
   // ── Override damage to handle power-up states ──
   void takeDamage(int amount = 1) override;
   void die() override;
@@ -68,6 +72,7 @@ protected:
   int m_score = 0;
   bool m_sprinting = false;
   bool m_wantsToShoot = false;
+  bool m_jumpHeld = false;
 
   // Invincibility after damage
   float m_invincibleTimer = 0.0f;

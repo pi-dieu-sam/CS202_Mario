@@ -141,6 +141,10 @@ void Player::clearShootFlag() { m_wantsToShoot = false; }
 void Player::setSprinting(bool sprinting) { m_sprinting = sprinting; }
 bool Player::isSprinting() const { return m_sprinting; }
 
+// ── Jump input state ──
+void Player::setJumpHeld(bool held) { m_jumpHeld = held; }
+bool Player::isJumpHeld() const { return m_jumpHeld; }
+
 // ── Damage override ──
 void Player::takeDamage(int amount) {
   if (m_invincible || m_starPower)
