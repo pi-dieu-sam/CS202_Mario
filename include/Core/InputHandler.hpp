@@ -24,6 +24,9 @@ public:
     /// Poll held keys and return commands to execute this frame.
     std::vector<Command*> handleInput();
 
+    /// Check whether any jump key is currently held.
+    bool isJumpHeld() const;
+
     /// Handle a single SFML key-press event (for one-shot actions like jump).
     Command* handleEvent(const sf::Event& event);
 

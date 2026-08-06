@@ -189,7 +189,9 @@ void Level::handleCollisions() {
                  m_player->getVelocity().y > 0) {
         // Stomp from above
         enemy->onStomped();
-        m_player->setVelocity(m_player->getVelocity().x, -250.0f); // Bounce
+        const float bounceVelocity =
+            m_player->isJumpHeld() ? m_player->getJumpForce() : -250.0f;
+        m_player->setVelocity(m_player->getVelocity().x, bounceVelocity);
         EventManager::getInstance().publish(
             {EventType::EnemyDefeated, enemy->getScoreValue()});
       } else {
