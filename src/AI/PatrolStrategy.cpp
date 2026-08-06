@@ -6,8 +6,11 @@ void PatrolStrategy::execute(Enemy& enemy, float dt) {
     sf::Vector2f vel = enemy.getVelocity();
 
     if (vel.x == 0.0f) {
-        // Start moving left by default
+        // Fallback for an enemy that spawns with vel.x == 0; not relied upon
+        // for wall-bounce reversal. Start moving left by default.
         enemy.setVelocity(-enemy.getSpeed(), vel.y);
     }
-    // Direction reversal happens on collision with tiles (handled by CollisionDetector)
+    // Direction reversal on wall hits happens entirely in
+    // Level::handleCollisions() via CollisionDetector::reflectHorizontalVelocity()
+    // (see issue #23) — this strategy no longer participates in it.
 }
