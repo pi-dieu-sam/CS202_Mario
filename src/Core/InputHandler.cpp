@@ -35,6 +35,12 @@ std::vector<Command*> InputHandler::handleInput() {
     return commands;
 }
 
+bool InputHandler::isJumpHeld() const {
+    return sf::Keyboard::isKeyPressed(sf::Keyboard::Space) ||
+           sf::Keyboard::isKeyPressed(sf::Keyboard::Up) ||
+           sf::Keyboard::isKeyPressed(sf::Keyboard::W);
+}
+
 Command* InputHandler::handleEvent(const sf::Event& event) {
     if (event.type == sf::Event::KeyPressed) {
         auto it = m_pressBindings.find(event.key.code);
