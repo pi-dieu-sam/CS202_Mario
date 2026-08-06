@@ -230,15 +230,19 @@ void Level::handleCollisions() {
     for (auto &tile : m_tiles) {
       auto result = CollisionDetector::checkCollision(*enemy, *tile);
       if (result.collided) {
+        sf::Vector2f preVel = enemy->getVelocity(); // capture BEFORE resolve zeroes vel.x
         CollisionDetector::resolveCollision(*enemy, *tile, result);
         if (result.side == CollisionDetector::Side::Bottom) {
           enemy->setGrounded(true);
         }
         if (result.side == CollisionDetector::Side::Left ||
             result.side == CollisionDetector::Side::Right) {
-          // Reverse direction
-          sf::Vector2f vel = enemy->getVelocity();
-          enemy->setVelocity(-vel.x, vel.y);
+          // Reverse direction using the pre-collision velocity — resolveCollision()
+          // zeroes vel.x (needed for the player's wall-stop), so reading it after
+          // the call would always negate zero.
+          float newVx = CollisionDetector::reflectHorizontalVelocity(
+              preVel.x, result.side, enemy->getSpeed());
+          enemy->setVelocity(newVx, enemy->getVelocity().y);
         }
       }
     }
@@ -248,14 +252,16 @@ void Level::handleCollisions() {
         continue;
       auto result = CollisionDetector::checkCollision(*enemy, *block);
       if (result.collided) {
+        sf::Vector2f preVel = enemy->getVelocity();
         CollisionDetector::resolveCollision(*enemy, *block, result);
         if (result.side == CollisionDetector::Side::Bottom) {
           enemy->setGrounded(true);
         }
         if (result.side == CollisionDetector::Side::Left ||
             result.side == CollisionDetector::Side::Right) {
-          sf::Vector2f vel = enemy->getVelocity();
-          enemy->setVelocity(-vel.x, vel.y);
+          float newVx = CollisionDetector::reflectHorizontalVelocity(
+              preVel.x, result.side, enemy->getSpeed());
+          enemy->setVelocity(newVx, enemy->getVelocity().y);
         }
       }
     }
@@ -305,11 +311,13 @@ void Level::handleCollisions() {
     for (auto &tile : m_tiles) {
       auto result = CollisionDetector::checkCollision(*item, *tile);
       if (result.collided) {
+        sf::Vector2f preVel = item->getVelocity();
         CollisionDetector::resolveCollision(*item, *tile, result);
         if (result.side == CollisionDetector::Side::Left ||
             result.side == CollisionDetector::Side::Right) {
-          sf::Vector2f vel = item->getVelocity();
-          item->setVelocity(-vel.x, vel.y);
+          float newVx = CollisionDetector::reflectHorizontalVelocity(
+              preVel.x, result.side, 0.0f);
+          item->setVelocity(newVx, item->getVelocity().y);
         }
       }
     }
