@@ -32,6 +32,25 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     sfml-audio
 )
 
+# --- Standalone collision-resolution test executable ---
+option(BUILD_TESTS "Build the standalone collision test executable" ON)
+if(BUILD_TESTS)
+    set(TEST_SOURCES ${SOURCES})
+    list(REMOVE_ITEM TEST_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp")
+    add_executable(CollisionTests tests/CollisionResolutionTests.cpp ${TEST_SOURCES})
+    target_include_directories(CollisionTests PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
+    )
+    target_link_libraries(CollisionTests PRIVATE
+        sfml-graphics
+        sfml-window
+        sfml-system
+        sfml-audio
+    )
+    enable_testing()
+    add_test(NAME CollisionResolutionTests COMMAND CollisionTests)
+endif()
+
 # --- Copy assets to build directory ---
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
