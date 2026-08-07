@@ -23,34 +23,45 @@ CollisionDetector::CollisionResult CollisionDetector::checkCollision(
     float overlapTop    = (boundsA.top  + boundsA.height) - boundsB.top;
     float overlapBottom = (boundsB.top  + boundsB.height) - boundsA.top;
 
-    // Find the smallest overlap to determine collision side
-    float minOverlap = std::min({overlapLeft, overlapRight, overlapTop, overlapBottom});
+    // Of the two overlaps on each axis, only the one consistent with A's
+    // actual direction of travel is physically possible this frame -- e.g.
+    // while falling (vel.y > 0), "A's bottom hit B's top" (overlapTop) can
+    // happen, but "A's top hit B's bottom" (overlapBottom) cannot, so it
+    // must never win the axis choice just for having a smaller raw number.
+    // (vel == 0 falls back to the old either-side comparison, e.g. a
+    // stationary object being pushed into from outside.)
+    sf::Vector2f vel = a.getVelocity();
+    float verticalOverlap   = (vel.y > 0.0f)  ? overlapTop
+                             : (vel.y < 0.0f) ? overlapBottom
+                             : std::min(overlapTop, overlapBottom);
+    float horizontalOverlap = (vel.x > 0.0f)  ? overlapLeft
+                             : (vel.x < 0.0f) ? overlapRight
+                             : std::min(overlapLeft, overlapRight);
 
     // At a seam between two flush tiles (e.g. walking across flat ground),
-    // floating-point rounding can make a horizontal overlap come out
+    // floating-point rounding can make the horizontal overlap come out
     // marginally smaller than the vertical one, which would wrongly resolve
-    // a landing as a sideways push ("snagging"). Only trust a horizontal
+    // a landing as a sideways push ("snagging"). Only trust the horizontal
     // resolution when it's clearly smaller than the vertical alternative.
     const float VERTICAL_BIAS = 4.0f;
-    if (minOverlap == overlapLeft || minOverlap == overlapRight) {
-        float verticalMin = std::min(overlapTop, overlapBottom);
-        if (verticalMin <= minOverlap + VERTICAL_BIAS) {
-            minOverlap = verticalMin;
-        }
-    }
+    bool horizontalWins = horizontalOverlap < verticalOverlap - VERTICAL_BIAS;
 
-    if (minOverlap == overlapTop) {
-        result.side    = Side::Bottom; // A's bottom hit B's top
-        result.overlap = overlapTop;
-    } else if (minOverlap == overlapBottom) {
-        result.side    = Side::Top; // A's top hit B's bottom
-        result.overlap = overlapBottom;
-    } else if (minOverlap == overlapLeft) {
-        result.side    = Side::Right; // A's right hit B's left
-        result.overlap = overlapLeft;
+    if (horizontalWins) {
+        if (horizontalOverlap == overlapLeft) {
+            result.side    = Side::Right; // A's right hit B's left
+            result.overlap = overlapLeft;
+        } else {
+            result.side    = Side::Left; // A's left hit B's right
+            result.overlap = overlapRight;
+        }
     } else {
-        result.side    = Side::Left; // A's left hit B's right
-        result.overlap = overlapRight;
+        if (verticalOverlap == overlapTop) {
+            result.side    = Side::Bottom; // A's bottom hit B's top
+            result.overlap = overlapTop;
+        } else {
+            result.side    = Side::Top; // A's top hit B's bottom
+            result.overlap = overlapBottom;
+        }
     }
 
     return result;
