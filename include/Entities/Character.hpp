@@ -25,6 +25,12 @@ public:
     void applyGravity(float dt);
     virtual void applyFriction();
 
+    /// Horizontal speed moveLeft()/moveRight() should move at this frame.
+    /// Base implementation is just m_speed; Player overrides it to fold in
+    /// the sprint multiplier so sprinting only ever affects velocity while
+    /// there's active directional input (see Player::getEffectiveSpeed).
+    virtual float getEffectiveSpeed() const;
+
     // ── Ground state ──
     bool isGrounded() const;
     void setGrounded(bool grounded);
