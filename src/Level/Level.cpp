@@ -15,6 +15,7 @@ bool Level::loadFromFile(const std::string &filename,
   auto data = LevelLoader::loadLevel(filename, theme);
 
   m_tiles = std::move(data.tiles);
+  m_tileGrid.build(m_tiles);
   m_blocks = std::move(data.blocks);
   m_enemies = std::move(data.enemies);
   m_items = std::move(data.items);
@@ -143,7 +144,7 @@ void Level::handleCollisions() {
   m_player->setGrounded(false);
 
   // Player vs Tiles
-  for (auto &tile : m_tiles) {
+  for (Tile *tile : m_tileGrid.query(m_player->getBounds())) {
     auto result = CollisionDetector::checkCollision(*m_player, *tile);
     if (result.collided) {
       CollisionDetector::resolveCollision(*m_player, *tile, result);
@@ -227,7 +228,7 @@ void Level::handleCollisions() {
     if (!enemy->isActive() || enemy->isDead())
       continue;
     enemy->setGrounded(false);
-    for (auto &tile : m_tiles) {
+    for (Tile *tile : m_tileGrid.query(enemy->getBounds())) {
       auto result = CollisionDetector::checkCollision(*enemy, *tile);
       if (result.collided) {
         sf::Vector2f preVel = enemy->getVelocity(); // capture BEFORE resolve zeroes vel.x
@@ -273,7 +274,7 @@ void Level::handleCollisions() {
       continue;
 
     // Fireball vs Tiles
-    for (auto &tile : m_tiles) {
+    for (Tile *tile : m_tileGrid.query(fb->getBounds())) {
       auto result = CollisionDetector::checkCollision(*fb, *tile);
       if (result.collided) {
         if (result.side == CollisionDetector::Side::Bottom) {
@@ -308,7 +309,7 @@ void Level::handleCollisions() {
   for (auto &item : m_items) {
     if (!item->isActive() || !item->isMoving())
       continue;
-    for (auto &tile : m_tiles) {
+    for (Tile *tile : m_tileGrid.query(item->getBounds())) {
       auto result = CollisionDetector::checkCollision(*item, *tile);
       if (result.collided) {
         sf::Vector2f preVel = item->getVelocity();
