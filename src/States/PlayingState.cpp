@@ -63,6 +63,10 @@ void PlayingState::onEnter() {
         progress.addScore(e.intData);
         m_hud->setScore(progress.getScore());
     });
+
+    m_blockHitSub = ScopedEventSubscription(EventType::BlockHit, [this](const GameEvent& e) {
+        SoundManager::getInstance().playSound(SoundID::BlockBump);
+    });
 }
 
 void PlayingState::onExit() {
@@ -70,6 +74,7 @@ void PlayingState::onExit() {
     m_enemyDefeatedSub.reset();
     m_playerDiedSub.reset();
     m_powerUpSub.reset();
+    m_blockHitSub.reset();
     SoundManager::getInstance().stopMusic();
 }
 
