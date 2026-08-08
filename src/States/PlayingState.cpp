@@ -56,12 +56,30 @@ void PlayingState::onEnter() {
         SoundManager::getInstance().playSound(SoundID::PlayerDeath);
         onPlayerDeath();
     });
+
+    m_powerUpSub = ScopedEventSubscription(EventType::PowerUpCollected, [this](const GameEvent& e) {
+        SoundManager::getInstance().playSound(SoundID::PowerUp);
+        PlayerProgress& progress = Game::getInstance().getProgress();
+        progress.addScore(e.intData);
+        m_hud->setScore(progress.getScore());
+    });
+
+    m_blockHitSub = ScopedEventSubscription(EventType::BlockHit, [this](const GameEvent& e) {
+        SoundManager::getInstance().playSound(SoundID::BlockBump);
+    });
+
+    m_playerDamagedSub = ScopedEventSubscription(EventType::PlayerDamaged, [this](const GameEvent& e) {
+        SoundManager::getInstance().playSound(SoundID::BlockBump);
+    });
 }
 
 void PlayingState::onExit() {
     m_coinSub.reset();
     m_enemyDefeatedSub.reset();
     m_playerDiedSub.reset();
+    m_powerUpSub.reset();
+    m_blockHitSub.reset();
+    m_playerDamagedSub.reset();
     SoundManager::getInstance().stopMusic();
 }
 
