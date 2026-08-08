@@ -13,9 +13,7 @@ enum class EventType {
     PlayerDied,
     LevelCompleted,
     BlockHit,
-    PlayerDamaged,
-    ScoreChanged,
-    LivesChanged
+    PlayerDamaged
 };
 
 /// GameEvent — data payload for an event.
