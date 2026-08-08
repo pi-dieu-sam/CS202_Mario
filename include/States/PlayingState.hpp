@@ -38,6 +38,7 @@ private:
     ScopedEventSubscription m_coinSub;
     ScopedEventSubscription m_enemyDefeatedSub;
     ScopedEventSubscription m_playerDiedSub;
+    ScopedEventSubscription m_powerUpSub;
 
     float m_levelTimer = 0.0f;
     bool  m_levelComplete = false;
