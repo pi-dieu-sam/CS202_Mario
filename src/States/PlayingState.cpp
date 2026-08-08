@@ -67,6 +67,10 @@ void PlayingState::onEnter() {
     m_blockHitSub = ScopedEventSubscription(EventType::BlockHit, [this](const GameEvent& e) {
         SoundManager::getInstance().playSound(SoundID::BlockBump);
     });
+
+    m_playerDamagedSub = ScopedEventSubscription(EventType::PlayerDamaged, [this](const GameEvent& e) {
+        SoundManager::getInstance().playSound(SoundID::BlockBump);
+    });
 }
 
 void PlayingState::onExit() {
@@ -75,6 +79,7 @@ void PlayingState::onExit() {
     m_playerDiedSub.reset();
     m_powerUpSub.reset();
     m_blockHitSub.reset();
+    m_playerDamagedSub.reset();
     SoundManager::getInstance().stopMusic();
 }
 
