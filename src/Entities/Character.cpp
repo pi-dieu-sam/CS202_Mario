@@ -9,15 +9,17 @@ Character::Character() {
 
 void Character::moveLeft(float dt) {
     m_skidding = (m_facingRight && m_velocity.x > 10.0f);
-    m_velocity.x = -m_speed;
+    m_velocity.x = -getEffectiveSpeed();
     m_facingRight = false;
 }
 
 void Character::moveRight(float dt) {
     m_skidding = (!m_facingRight && m_velocity.x < -10.0f);
-    m_velocity.x = m_speed;
+    m_velocity.x = getEffectiveSpeed();
     m_facingRight = true;
 }
+
+float Character::getEffectiveSpeed() const { return m_speed; }
 
 void Character::jump() {
     if (m_grounded) {

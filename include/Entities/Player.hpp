@@ -26,6 +26,7 @@ public:
   void update(float dt) override;
   void draw(sf::RenderWindow &window) override;
   sf::FloatRect getBounds() const override;
+  float getEffectiveSpeed() const override;
 
   // ── Power-ups ──
   void applyPowerUp(PowerUpState state);
