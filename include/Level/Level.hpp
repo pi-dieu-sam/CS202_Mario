@@ -8,6 +8,7 @@
 #include "../Entities/Item.hpp"
 #include "../Entities/Player.hpp"
 #include "../Entities/Tile.hpp"
+#include <optional>
 #include <memory>
 #include <string>
 #include <vector>
@@ -21,7 +22,8 @@ public:
 
   /// Load level from a data file.
   bool loadFromFile(const std::string &filename,
-                    const std::string &characterName, LevelTheme theme);
+                    const std::string &characterName, LevelTheme theme,
+                    bool autoPlaceFlagpole = true);
 
   /// Update all entities.
   void update(float dt);
@@ -41,6 +43,12 @@ public:
 
   /// Add a spawned item (from blocks).
   void addItem(std::unique_ptr<Item> item);
+
+  /// Return the bounds of an enterable pipe under the player, if any.
+  std::optional<sf::FloatRect> getEnterablePipeBounds(const Player &player) const;
+
+  /// Return the bounds of a pipe currently touched by the player, if any.
+  std::optional<sf::FloatRect> getTouchedPipeBounds(const Player &player) const;
 
   /// Check if the level is complete.
   bool isComplete() const;

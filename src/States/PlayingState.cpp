@@ -12,6 +12,7 @@
 #include "Physics/PhysicsConstants.hpp"
 #include "Observers/EventManager.hpp"
 #include "UI/HUD.hpp"
+#include <algorithm>
 #include <iostream>
 #include <sstream>
 
@@ -71,6 +72,10 @@ void PlayingState::onEnter() {
     m_playerDamagedSub = ScopedEventSubscription(EventType::PlayerDamaged, [this](const GameEvent& e) {
         SoundManager::getInstance().playSound(SoundID::BlockBump);
     });
+
+    m_levelCompletedSub = ScopedEventSubscription(EventType::LevelCompleted, [this](const GameEvent& e) {
+        m_transitionBonusScore = e.intData;
+    });
 }
 
 void PlayingState::onExit() {
@@ -80,6 +85,7 @@ void PlayingState::onExit() {
     m_powerUpSub.reset();
     m_blockHitSub.reset();
     m_playerDamagedSub.reset();
+    m_levelCompletedSub.reset();
     SoundManager::getInstance().stopMusic();
 }
 
@@ -88,6 +94,10 @@ void PlayingState::onResume() {
 }
 
 void PlayingState::handleEvent(const sf::Event& event) {
+    if (m_transitionStage != LevelTransitionStage::Inactive) {
+        return;
+    }
+
     if (event.type == sf::Event::KeyPressed) {
         if (event.key.code == sf::Keyboard::Escape) {
             SoundManager::getInstance().playSound(SoundID::Pause);
@@ -95,6 +105,20 @@ void PlayingState::handleEvent(const sf::Event& event) {
             Game::getInstance().getStateManager().pushState(
                 std::make_unique<PauseState>());
             return;
+        }
+
+        if (m_level && m_player && !m_player->isDead()) {
+            if (event.key.code == sf::Keyboard::Down) {
+                if (m_inSecretRoom) {
+                    if (tryExitPipe()) {
+                        return;
+                    }
+                } else {
+                    if (tryEnterPipe()) {
+                        return;
+                    }
+                }
+            }
         }
 
         // Handle one-shot commands (jump, fire)
@@ -108,7 +132,18 @@ void PlayingState::handleEvent(const sf::Event& event) {
 }
 
 void PlayingState::update(float dt) {
-    if (!m_level || !m_player || m_levelComplete) return;
+    if (!m_level || !m_player) return;
+    if (m_levelComplete) return;
+
+    if (m_transitionStage != LevelTransitionStage::Inactive) {
+        if (m_transitionStage == LevelTransitionStage::FlagSlide ||
+            m_transitionStage == LevelTransitionStage::CastleEntry ||
+            m_transitionStage == LevelTransitionStage::ScoreCount) {
+            m_level->update(dt);
+        }
+        updateLevelTransition(dt);
+        return;
+    }
 
     // Reset sprint each frame (only active while key held)
     m_player->setSprinting(false);
@@ -134,6 +169,14 @@ void PlayingState::update(float dt) {
 
     // Update level (entities + collisions)
     m_level->update(dt);
+
+    // In secret rooms, touching the exit pipe auto-returns to the main map.
+    if (m_inSecretRoom && m_transitionStage == LevelTransitionStage::Inactive) {
+        if (m_level->getTouchedPipeBounds(*m_player)) {
+            startPipeTransition(false);
+            return;
+        }
+    }
 
     // Update camera
     m_camera.update(m_player->getPosition());
@@ -170,13 +213,13 @@ void PlayingState::render(sf::RenderWindow& window) {
 
 void PlayingState::loadLevel(int levelNumber) {
     m_level = std::make_unique<Level>();
+    m_mainLevelNumber = levelNumber;
+    m_inSecretRoom = false;
 
-    std::string filename = "assets/levels/level" + std::to_string(levelNumber) + ".txt";
+    std::string filename = getLevelPath(levelNumber, false);
     std::string charName = Game::getInstance().getProgress().getSelectedCharacter();
 
-    LevelTheme theme = LevelTheme::Castle;
-    if (levelNumber == 1) theme = LevelTheme::Overworld;
-    else if (levelNumber == 2) theme = LevelTheme::Underground;
+    LevelTheme theme = getLevelTheme(levelNumber, false);
 
     if (!m_level->loadFromFile(filename, charName, theme)) {
         std::cerr << "[PlayingState] Failed to load level: " << filename << std::endl;
@@ -188,23 +231,213 @@ void PlayingState::loadLevel(int levelNumber) {
 }
 
 void PlayingState::checkLevelComplete() {
-    if (m_level && m_level->isComplete()) {
-        m_levelComplete = true;
-        Game& game = Game::getInstance();
-        int nextLevel = game.getProgress().getCurrentLevel() + 1;
+    if (m_level && m_level->isComplete() &&
+        m_transitionStage == LevelTransitionStage::Inactive) {
+        startLevelTransition();
+    }
+}
 
-        SoundManager::getInstance().stopMusic();
-        SoundManager::getInstance().playSound(SoundID::LevelComplete);
+void PlayingState::startLevelTransition() {
+    m_transitionStage = LevelTransitionStage::FlagSlide;
+    m_transitionTimer = 0.0f;
+    m_transitionScoreTimer = 0.0f;
+    m_transitionDisplayScore = 0;
 
-        if (nextLevel > TOTAL_LEVELS) {
-            // Game won! Go to game over with win message
-            SoundManager::getInstance().playSound(SoundID::GameOver);
-            game.getStateManager().changeState(std::make_unique<GameOverState>());
-        } else {
-            game.getProgress().setCurrentLevel(nextLevel);
-            game.getStateManager().changeState(std::make_unique<PlayingState>());
+    if (m_player) {
+        m_player->setGrounded(false);
+        m_player->setVelocity(0.0f, 0.0f);
+    }
+
+    SoundManager::getInstance().stopMusic();
+    SoundManager::getInstance().playSound(SoundID::LevelComplete);
+}
+
+std::string PlayingState::getLevelPath(int levelNumber, bool secretRoom) const {
+    if (secretRoom) {
+        return "assets/levels/level" + std::to_string(levelNumber) + "_secret.txt";
+    }
+    return "assets/levels/level" + std::to_string(levelNumber) + ".txt";
+}
+
+LevelTheme PlayingState::getLevelTheme(int levelNumber, bool secretRoom) const {
+    if (secretRoom) {
+        return LevelTheme::Underground;
+    }
+    if (levelNumber == 1) return LevelTheme::Overworld;
+    if (levelNumber == 2) return LevelTheme::Underground;
+    return LevelTheme::Castle;
+}
+
+bool PlayingState::tryEnterPipe() {
+    if (!m_level || !m_player || !m_player->isGrounded() || m_inSecretRoom)
+        return false;
+
+    auto pipeBounds = m_level->getEnterablePipeBounds(*m_player);
+    if (!pipeBounds)
+        return false;
+
+    m_pipeReturnPosition = m_player->getPosition();
+    m_pipeReturnPowerUp = m_player->getPowerUpState();
+    startPipeTransition(true);
+    return true;
+}
+
+bool PlayingState::tryExitPipe() {
+    if (!m_level || !m_player || !m_player->isGrounded() || !m_inSecretRoom)
+        return false;
+
+    auto pipeBounds = m_level->getEnterablePipeBounds(*m_player);
+    if (!pipeBounds)
+        return false;
+
+    startPipeTransition(false);
+    return true;
+}
+
+void PlayingState::startPipeTransition(bool enteringSecret) {
+    m_transitionStage = enteringSecret ? LevelTransitionStage::PipeEnter
+                                       : LevelTransitionStage::PipeReturn;
+    m_transitionTimer = 0.0f;
+
+    if (m_player) {
+        m_player->setGrounded(false);
+        m_player->setVelocity(0.0f, 0.0f);
+    }
+}
+
+void PlayingState::updatePipeTransition(float dt) {
+    if (!m_level || !m_player) {
+        return;
+    }
+
+    const float pipeTravelSpeed = 120.0f;
+    sf::Vector2f pos = m_player->getPosition();
+
+    if (m_transitionStage == LevelTransitionStage::PipeEnter) {
+        pos.y += pipeTravelSpeed * dt;
+    } else if (m_transitionStage == LevelTransitionStage::PipeReturn) {
+        pos.y -= pipeTravelSpeed * dt;
+    }
+
+    m_player->setPosition(pos);
+    m_player->setVelocity(0.0f, 0.0f);
+
+    m_transitionTimer += dt;
+    if (m_transitionTimer < 0.45f) {
+        return;
+    }
+
+    const bool enteringSecret = m_transitionStage == LevelTransitionStage::PipeEnter;
+    const int levelNumber = m_mainLevelNumber;
+    const bool secretRoom = enteringSecret;
+    const std::string filename = getLevelPath(levelNumber, secretRoom);
+    const std::string charName = Game::getInstance().getProgress().getSelectedCharacter();
+    const LevelTheme theme = getLevelTheme(levelNumber, secretRoom);
+
+    m_level = std::make_unique<Level>();
+    if (!m_level->loadFromFile(filename, charName, theme, !secretRoom)) {
+        std::cerr << "[PlayingState] Failed to load pipe level: " << filename << std::endl;
+        m_transitionStage = LevelTransitionStage::Inactive;
+        return;
+    }
+
+    m_player = m_level->getPlayer();
+    m_camera.setLevelBounds(m_level->getWidth(), m_level->getHeight());
+
+    if (m_player) {
+        m_player->applyPowerUp(m_pipeReturnPowerUp);
+        if (!enteringSecret) {
+            m_player->setPosition(m_pipeReturnPosition);
+            m_player->setVelocity(0.0f, 0.0f);
+            m_player->setGrounded(false);
         }
     }
+
+    m_inSecretRoom = enteringSecret;
+    m_transitionStage = LevelTransitionStage::Inactive;
+    m_transitionTimer = 0.0f;
+}
+
+void PlayingState::updateLevelTransition(float dt) {
+    if (!m_level || !m_player) {
+        return;
+    }
+
+    if (m_transitionStage == LevelTransitionStage::PipeEnter ||
+        m_transitionStage == LevelTransitionStage::PipeReturn) {
+        updatePipeTransition(dt);
+        return;
+    }
+
+    switch (m_transitionStage) {
+    case LevelTransitionStage::FlagSlide: {
+        sf::Vector2f pos = m_player->getPosition();
+        pos.y += 220.0f * dt;
+        m_player->setPosition(pos);
+        m_player->setVelocity(0.0f, 0.0f);
+
+        m_transitionTimer += dt;
+        if (m_transitionTimer >= 1.0f) {
+            m_transitionStage = LevelTransitionStage::CastleEntry;
+            m_transitionTimer = 0.0f;
+        }
+        break;
+    }
+    case LevelTransitionStage::CastleEntry: {
+        sf::Vector2f pos = m_player->getPosition();
+        pos.x += 120.0f * dt;
+        pos.y -= 70.0f * dt;
+        m_player->setPosition(pos);
+        m_player->setVelocity(0.0f, 0.0f);
+
+        m_transitionTimer += dt;
+        if (m_transitionTimer >= 0.75f) {
+            m_player->setActive(false);
+            m_transitionStage = LevelTransitionStage::ScoreCount;
+            m_transitionTimer = 0.0f;
+        }
+        break;
+    }
+    case LevelTransitionStage::ScoreCount: {
+        m_transitionScoreTimer += dt;
+        if (m_transitionScoreTimer >= 0.08f) {
+            m_transitionScoreTimer = 0.0f;
+            if (m_transitionBonusScore > m_transitionDisplayScore) {
+                const int increment = std::max(100, m_transitionBonusScore / 10);
+                const int add = std::min(increment, m_transitionBonusScore - m_transitionDisplayScore);
+                m_transitionDisplayScore += add;
+
+                PlayerProgress& progress = Game::getInstance().getProgress();
+                progress.addScore(add);
+                m_hud->setScore(progress.getScore());
+                SoundManager::getInstance().playSound(SoundID::Coin);
+            } else {
+                m_transitionStage = LevelTransitionStage::Finished;
+            }
+        }
+        break;
+    }
+    case LevelTransitionStage::Finished:
+        finishLevelTransition();
+        break;
+    case LevelTransitionStage::Inactive:
+        break;
+    }
+}
+
+void PlayingState::finishLevelTransition() {
+    Game& game = Game::getInstance();
+    int nextLevel = game.getProgress().getCurrentLevel() + 1;
+
+    if (nextLevel > TOTAL_LEVELS) {
+        SoundManager::getInstance().playSound(SoundID::GameOver);
+        game.getStateManager().changeState(std::make_unique<GameOverState>());
+    } else {
+        game.getProgress().setCurrentLevel(nextLevel);
+        game.getStateManager().changeState(std::make_unique<PlayingState>());
+    }
+
+    m_levelComplete = true;
 }
 
 void PlayingState::onPlayerDeath() {

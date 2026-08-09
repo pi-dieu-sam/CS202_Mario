@@ -1,18 +1,22 @@
 #include "Level/Level.hpp"
 #include "AI/ChaseStrategy.hpp"
+#include "Entities/Koopa.hpp"
 #include "Factory/EntityFactory.hpp"
 #include "Level/LevelLoader.hpp"
 #include "Observers/EventManager.hpp"
 #include "Physics/CollisionDetector.hpp"
 #include "Physics/PhysicsConstants.hpp"
 #include <algorithm>
+#include <cmath>
+#include <optional>
 
 Level::Level() {}
 Level::~Level() {}
 
 bool Level::loadFromFile(const std::string &filename,
-                         const std::string &characterName, LevelTheme theme) {
-  auto data = LevelLoader::loadLevel(filename, theme);
+                         const std::string &characterName, LevelTheme theme,
+                         bool autoPlaceFlagpole) {
+  auto data = LevelLoader::loadLevel(filename, theme, autoPlaceFlagpole);
 
   m_tiles = std::move(data.tiles);
   m_blocks = std::move(data.blocks);
@@ -39,6 +43,12 @@ void Level::update(float dt) {
 
   // Update player
   m_player->update(dt);
+
+  // Use level height instead of a hardcoded world-space Y to decide abyss death.
+  if (!m_player->isDead() &&
+      m_player->getBounds().top > m_height + PLAYER_FALL_DEATH_MARGIN) {
+    m_player->die();
+  }
 
   // Update enemies
   for (auto &enemy : m_enemies) {
@@ -133,6 +143,93 @@ void Level::addItem(std::unique_ptr<Item> item) {
   m_items.push_back(std::move(item));
 }
 
+std::optional<sf::FloatRect>
+Level::getEnterablePipeBounds(const Player &player) const {
+  if (!player.isGrounded()) {
+    return std::nullopt;
+  }
+
+  const sf::FloatRect playerBounds = player.getBounds();
+  const sf::FloatRect feetProbe(playerBounds.left + 2.0f,
+                                playerBounds.top + playerBounds.height - 6.0f,
+                                playerBounds.width - 4.0f,
+                                8.0f);
+
+  auto hasPipePart = [&](float x, float y, TileType type) {
+    for (const auto &tile : m_tiles) {
+      if (tile->getTileType() != type)
+        continue;
+      const sf::FloatRect bounds = tile->getBounds();
+      if (std::abs(bounds.left - x) < 0.5f && std::abs(bounds.top - y) < 0.5f) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  for (const auto &tile : m_tiles) {
+    if (tile->getTileType() != TileType::PipeTopLeft)
+      continue;
+
+    const sf::FloatRect topLeft = tile->getBounds();
+    const float x = topLeft.left;
+    const float y = topLeft.top;
+
+    const bool hasTopRight = hasPipePart(x + TILE_SIZE, y, TileType::PipeTopRight);
+    const bool hasBodyLeft = hasPipePart(x, y + TILE_SIZE, TileType::PipeBodyLeft);
+    const bool hasBodyRight = hasPipePart(x + TILE_SIZE, y + TILE_SIZE, TileType::PipeBodyRight);
+
+    if (!hasTopRight || !hasBodyLeft || !hasBodyRight)
+      continue;
+
+    const sf::FloatRect pipeBounds(x, y, TILE_SIZE * 2.0f, TILE_SIZE * 2.0f);
+    if (feetProbe.intersects(pipeBounds)) {
+      return pipeBounds;
+    }
+  }
+
+  return std::nullopt;
+}
+
+std::optional<sf::FloatRect>
+Level::getTouchedPipeBounds(const Player &player) const {
+  const sf::FloatRect playerBounds = player.getBounds();
+
+  auto hasPipePart = [&](float x, float y, TileType type) {
+    for (const auto &tile : m_tiles) {
+      if (tile->getTileType() != type)
+        continue;
+      const sf::FloatRect bounds = tile->getBounds();
+      if (std::abs(bounds.left - x) < 0.5f && std::abs(bounds.top - y) < 0.5f) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  for (const auto &tile : m_tiles) {
+    if (tile->getTileType() != TileType::PipeTopLeft)
+      continue;
+
+    const sf::FloatRect topLeft = tile->getBounds();
+    const float x = topLeft.left;
+    const float y = topLeft.top;
+
+    const bool hasTopRight = hasPipePart(x + TILE_SIZE, y, TileType::PipeTopRight);
+    const bool hasBodyLeft = hasPipePart(x, y + TILE_SIZE, TileType::PipeBodyLeft);
+    const bool hasBodyRight = hasPipePart(x + TILE_SIZE, y + TILE_SIZE, TileType::PipeBodyRight);
+    if (!hasTopRight || !hasBodyLeft || !hasBodyRight)
+      continue;
+
+    const sf::FloatRect pipeBounds(x, y, TILE_SIZE * 2.0f, TILE_SIZE * 4.0f);
+    if (playerBounds.intersects(pipeBounds)) {
+      return sf::FloatRect(x, y, TILE_SIZE * 2.0f, TILE_SIZE * 2.0f);
+    }
+  }
+
+  return std::nullopt;
+}
+
 bool Level::isComplete() const { return m_flagpole && m_flagpole->isReached(); }
 
 void Level::handleCollisions() {
@@ -178,26 +275,47 @@ void Level::handleCollisions() {
   for (auto &enemy : m_enemies) {
     if (!enemy->isActive() || enemy->isDead())
       continue;
+
     auto result = CollisionDetector::checkCollision(*m_player, *enemy);
-    if (result.collided) {
-      if (m_player->hasStarPower()) {
-        // Star power kills enemies on contact
-        enemy->onStomped();
-        EventManager::getInstance().publish(
-            {EventType::EnemyDefeated, enemy->getScoreValue()});
-      } else if (result.side == CollisionDetector::Side::Bottom &&
-                 m_player->getVelocity().y > 0) {
-        // Stomp from above
-        enemy->onStomped();
-        const float bounceVelocity =
-            m_player->isJumpHeld() ? m_player->getJumpForce() : -250.0f;
-        m_player->setVelocity(m_player->getVelocity().x, bounceVelocity);
-        EventManager::getInstance().publish(
-            {EventType::EnemyDefeated, enemy->getScoreValue()});
-      } else {
-        // Side collision — player takes damage
-        m_player->takeDamage();
-      }
+    if (!result.collided)
+      continue;
+
+    if (m_player->hasStarPower()) {
+      // Star power kills enemies on contact
+      enemy->onStomped();
+      EventManager::getInstance().publish(
+          {EventType::EnemyDefeated, enemy->getScoreValue()});
+      continue;
+    }
+
+    const bool isStompingFromAbove =
+        result.side == CollisionDetector::Side::Bottom ||
+        (m_player->getVelocity().y > 0.0f &&
+         m_player->getPosition().y + m_player->getBounds().height <=
+             enemy->getPosition().y + enemy->getBounds().height);
+
+    if (isStompingFromAbove) {
+      // Stomp from above
+      enemy->onStomped();
+
+      const bool holdingJump =
+          sf::Keyboard::isKeyPressed(sf::Keyboard::Space) ||
+          sf::Keyboard::isKeyPressed(sf::Keyboard::Up) ||
+          sf::Keyboard::isKeyPressed(sf::Keyboard::W);
+      const float bounceVelocity = holdingJump ? -450.0f : -180.0f;
+
+      m_player->setGrounded(false);
+      m_player->setVelocity(0.0f, bounceVelocity);
+
+      // Apply an immediate upward nudge so the next update frame keeps the boost.
+      const sf::Vector2f playerPos = m_player->getPosition();
+      m_player->setPosition(playerPos.x, playerPos.y - 2.0f);
+
+      EventManager::getInstance().publish(
+          {EventType::EnemyDefeated, enemy->getScoreValue()});
+    } else {
+      // Side collision — player takes damage
+      m_player->takeDamage();
     }
   }
 
@@ -263,6 +381,46 @@ void Level::handleCollisions() {
               preVel.x, result.side, enemy->getSpeed());
           enemy->setVelocity(newVx, enemy->getVelocity().y);
         }
+      }
+    }
+  }
+
+  // Enemy vs Enemy
+  for (size_t i = 0; i < m_enemies.size(); ++i) {
+    auto &enemyA = m_enemies[i];
+    if (!enemyA || !enemyA->isActive() || enemyA->isDead())
+      continue;
+
+    for (size_t j = i + 1; j < m_enemies.size(); ++j) {
+      auto &enemyB = m_enemies[j];
+      if (!enemyB || !enemyB->isActive() || enemyB->isDead())
+        continue;
+
+      auto result = CollisionDetector::checkCollision(*enemyA, *enemyB);
+      if (!result.collided)
+        continue;
+
+      auto *koopaA = dynamic_cast<Koopa *>(enemyA.get());
+      auto *koopaB = dynamic_cast<Koopa *>(enemyB.get());
+      const bool aIsSlidingShell = koopaA && koopaA->getKoopaState() == KoopaState::Sliding;
+      const bool bIsSlidingShell = koopaB && koopaB->getKoopaState() == KoopaState::Sliding;
+
+      if (aIsSlidingShell || bIsSlidingShell) {
+        if (aIsSlidingShell) {
+          enemyB->onStomped();
+          EventManager::getInstance().publish(
+              {EventType::EnemyDefeated, enemyB->getScoreValue()});
+        }
+        if (bIsSlidingShell) {
+          enemyA->onStomped();
+          EventManager::getInstance().publish(
+              {EventType::EnemyDefeated, enemyA->getScoreValue()});
+        }
+      } else {
+        const sf::Vector2f velA = enemyA->getVelocity();
+        const sf::Vector2f velB = enemyB->getVelocity();
+        enemyA->setVelocity(-velA.x, velA.y);
+        enemyB->setVelocity(-velB.x, velB.y);
       }
     }
   }
