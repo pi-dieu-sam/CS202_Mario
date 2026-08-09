@@ -44,6 +44,12 @@ void Level::update(float dt) {
   // Update player
   m_player->update(dt);
 
+  // Use level height instead of a hardcoded world-space Y to decide abyss death.
+  if (!m_player->isDead() &&
+      m_player->getBounds().top > m_height + PLAYER_FALL_DEATH_MARGIN) {
+    m_player->die();
+  }
+
   // Update enemies
   for (auto &enemy : m_enemies) {
     if (!enemy->isActive())
