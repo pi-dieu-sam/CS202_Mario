@@ -178,26 +178,47 @@ void Level::handleCollisions() {
   for (auto &enemy : m_enemies) {
     if (!enemy->isActive() || enemy->isDead())
       continue;
+
     auto result = CollisionDetector::checkCollision(*m_player, *enemy);
-    if (result.collided) {
-      if (m_player->hasStarPower()) {
-        // Star power kills enemies on contact
-        enemy->onStomped();
-        EventManager::getInstance().publish(
-            {EventType::EnemyDefeated, enemy->getScoreValue()});
-      } else if (result.side == CollisionDetector::Side::Bottom &&
-                 m_player->getVelocity().y > 0) {
-        // Stomp from above
-        enemy->onStomped();
-        const float bounceVelocity =
-            m_player->isJumpHeld() ? m_player->getJumpForce() : -250.0f;
-        m_player->setVelocity(m_player->getVelocity().x, bounceVelocity);
-        EventManager::getInstance().publish(
-            {EventType::EnemyDefeated, enemy->getScoreValue()});
-      } else {
-        // Side collision — player takes damage
-        m_player->takeDamage();
-      }
+    if (!result.collided)
+      continue;
+
+    if (m_player->hasStarPower()) {
+      // Star power kills enemies on contact
+      enemy->onStomped();
+      EventManager::getInstance().publish(
+          {EventType::EnemyDefeated, enemy->getScoreValue()});
+      continue;
+    }
+
+    const bool isStompingFromAbove =
+        result.side == CollisionDetector::Side::Bottom ||
+        (m_player->getVelocity().y > 0.0f &&
+         m_player->getPosition().y + m_player->getBounds().height <=
+             enemy->getPosition().y + enemy->getBounds().height);
+
+    if (isStompingFromAbove) {
+      // Stomp from above
+      enemy->onStomped();
+
+      const bool holdingJump =
+          sf::Keyboard::isKeyPressed(sf::Keyboard::Space) ||
+          sf::Keyboard::isKeyPressed(sf::Keyboard::Up) ||
+          sf::Keyboard::isKeyPressed(sf::Keyboard::W);
+      const float bounceVelocity = holdingJump ? -450.0f : -180.0f;
+
+      m_player->setGrounded(false);
+      m_player->setVelocity(0.0f, bounceVelocity);
+
+      // Apply an immediate upward nudge so the next update frame keeps the boost.
+      const sf::Vector2f playerPos = m_player->getPosition();
+      m_player->setPosition(playerPos.x, playerPos.y - 2.0f);
+
+      EventManager::getInstance().publish(
+          {EventType::EnemyDefeated, enemy->getScoreValue()});
+    } else {
+      // Side collision — player takes damage
+      m_player->takeDamage();
     }
   }
 
