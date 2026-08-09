@@ -1,5 +1,6 @@
 #include "Level/Level.hpp"
 #include "AI/ChaseStrategy.hpp"
+#include "Entities/Koopa.hpp"
 #include "Factory/EntityFactory.hpp"
 #include "Level/LevelLoader.hpp"
 #include "Observers/EventManager.hpp"
@@ -284,6 +285,46 @@ void Level::handleCollisions() {
               preVel.x, result.side, enemy->getSpeed());
           enemy->setVelocity(newVx, enemy->getVelocity().y);
         }
+      }
+    }
+  }
+
+  // Enemy vs Enemy
+  for (size_t i = 0; i < m_enemies.size(); ++i) {
+    auto &enemyA = m_enemies[i];
+    if (!enemyA || !enemyA->isActive() || enemyA->isDead())
+      continue;
+
+    for (size_t j = i + 1; j < m_enemies.size(); ++j) {
+      auto &enemyB = m_enemies[j];
+      if (!enemyB || !enemyB->isActive() || enemyB->isDead())
+        continue;
+
+      auto result = CollisionDetector::checkCollision(*enemyA, *enemyB);
+      if (!result.collided)
+        continue;
+
+      auto *koopaA = dynamic_cast<Koopa *>(enemyA.get());
+      auto *koopaB = dynamic_cast<Koopa *>(enemyB.get());
+      const bool aIsSlidingShell = koopaA && koopaA->getKoopaState() == KoopaState::Sliding;
+      const bool bIsSlidingShell = koopaB && koopaB->getKoopaState() == KoopaState::Sliding;
+
+      if (aIsSlidingShell || bIsSlidingShell) {
+        if (aIsSlidingShell) {
+          enemyB->onStomped();
+          EventManager::getInstance().publish(
+              {EventType::EnemyDefeated, enemyB->getScoreValue()});
+        }
+        if (bIsSlidingShell) {
+          enemyA->onStomped();
+          EventManager::getInstance().publish(
+              {EventType::EnemyDefeated, enemyA->getScoreValue()});
+        }
+      } else {
+        const sf::Vector2f velA = enemyA->getVelocity();
+        const sf::Vector2f velB = enemyB->getVelocity();
+        enemyA->setVelocity(-velA.x, velA.y);
+        enemyB->setVelocity(-velB.x, velB.y);
       }
     }
   }
