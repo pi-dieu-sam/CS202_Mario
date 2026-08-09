@@ -49,5 +49,6 @@ public:
     };
 
     /// Parse a level file and return all entities.
-    static LevelData loadLevel(const std::string& filename, LevelTheme theme);
+    static LevelData loadLevel(const std::string& filename, LevelTheme theme,
+                               bool autoPlaceFlagpole = true);
 };
