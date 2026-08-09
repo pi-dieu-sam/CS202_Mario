@@ -12,6 +12,14 @@ class HUD;
 
 /// PlayingState — the main gameplay state.
 /// Loads and runs a level, handles input, physics, and rendering.
+enum class LevelTransitionStage {
+    Inactive,
+    FlagSlide,
+    CastleEntry,
+    ScoreCount,
+    Finished
+};
+
 class PlayingState : public GameState {
 public:
     PlayingState();
@@ -27,6 +35,9 @@ public:
 private:
     void loadLevel(int levelNumber);
     void checkLevelComplete();
+    void startLevelTransition();
+    void updateLevelTransition(float dt);
+    void finishLevelTransition();
     void onPlayerDeath();
 
     std::unique_ptr<Level>  m_level;
@@ -41,7 +52,13 @@ private:
     ScopedEventSubscription m_powerUpSub;
     ScopedEventSubscription m_blockHitSub;
     ScopedEventSubscription m_playerDamagedSub;
+    ScopedEventSubscription m_levelCompletedSub;
 
     float m_levelTimer = 0.0f;
     bool  m_levelComplete = false;
+    LevelTransitionStage m_transitionStage = LevelTransitionStage::Inactive;
+    float m_transitionTimer = 0.0f;
+    float m_transitionScoreTimer = 0.0f;
+    int m_transitionBonusScore = 0;
+    int m_transitionDisplayScore = 0;
 };

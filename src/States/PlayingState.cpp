@@ -12,6 +12,7 @@
 #include "Physics/PhysicsConstants.hpp"
 #include "Observers/EventManager.hpp"
 #include "UI/HUD.hpp"
+#include <algorithm>
 #include <iostream>
 #include <sstream>
 
@@ -71,6 +72,10 @@ void PlayingState::onEnter() {
     m_playerDamagedSub = ScopedEventSubscription(EventType::PlayerDamaged, [this](const GameEvent& e) {
         SoundManager::getInstance().playSound(SoundID::BlockBump);
     });
+
+    m_levelCompletedSub = ScopedEventSubscription(EventType::LevelCompleted, [this](const GameEvent& e) {
+        m_transitionBonusScore = e.intData;
+    });
 }
 
 void PlayingState::onExit() {
@@ -80,6 +85,7 @@ void PlayingState::onExit() {
     m_powerUpSub.reset();
     m_blockHitSub.reset();
     m_playerDamagedSub.reset();
+    m_levelCompletedSub.reset();
     SoundManager::getInstance().stopMusic();
 }
 
@@ -88,6 +94,10 @@ void PlayingState::onResume() {
 }
 
 void PlayingState::handleEvent(const sf::Event& event) {
+    if (m_transitionStage != LevelTransitionStage::Inactive) {
+        return;
+    }
+
     if (event.type == sf::Event::KeyPressed) {
         if (event.key.code == sf::Keyboard::Escape) {
             SoundManager::getInstance().playSound(SoundID::Pause);
@@ -108,7 +118,16 @@ void PlayingState::handleEvent(const sf::Event& event) {
 }
 
 void PlayingState::update(float dt) {
-    if (!m_level || !m_player || m_levelComplete) return;
+    if (!m_level || !m_player) return;
+    if (m_levelComplete) return;
+
+    if (m_transitionStage != LevelTransitionStage::Inactive) {
+        if (m_level) {
+            m_level->update(dt);
+        }
+        updateLevelTransition(dt);
+        return;
+    }
 
     // Reset sprint each frame (only active while key held)
     m_player->setSprinting(false);
@@ -188,23 +207,101 @@ void PlayingState::loadLevel(int levelNumber) {
 }
 
 void PlayingState::checkLevelComplete() {
-    if (m_level && m_level->isComplete()) {
-        m_levelComplete = true;
-        Game& game = Game::getInstance();
-        int nextLevel = game.getProgress().getCurrentLevel() + 1;
-
-        SoundManager::getInstance().stopMusic();
-        SoundManager::getInstance().playSound(SoundID::LevelComplete);
-
-        if (nextLevel > TOTAL_LEVELS) {
-            // Game won! Go to game over with win message
-            SoundManager::getInstance().playSound(SoundID::GameOver);
-            game.getStateManager().changeState(std::make_unique<GameOverState>());
-        } else {
-            game.getProgress().setCurrentLevel(nextLevel);
-            game.getStateManager().changeState(std::make_unique<PlayingState>());
-        }
+    if (m_level && m_level->isComplete() &&
+        m_transitionStage == LevelTransitionStage::Inactive) {
+        startLevelTransition();
     }
+}
+
+void PlayingState::startLevelTransition() {
+    m_transitionStage = LevelTransitionStage::FlagSlide;
+    m_transitionTimer = 0.0f;
+    m_transitionScoreTimer = 0.0f;
+    m_transitionDisplayScore = 0;
+
+    if (m_player) {
+        m_player->setGrounded(false);
+        m_player->setVelocity(0.0f, 0.0f);
+    }
+
+    SoundManager::getInstance().stopMusic();
+    SoundManager::getInstance().playSound(SoundID::LevelComplete);
+}
+
+void PlayingState::updateLevelTransition(float dt) {
+    if (!m_level || !m_player) {
+        return;
+    }
+
+    switch (m_transitionStage) {
+    case LevelTransitionStage::FlagSlide: {
+        sf::Vector2f pos = m_player->getPosition();
+        pos.y += 220.0f * dt;
+        m_player->setPosition(pos);
+        m_player->setVelocity(0.0f, 0.0f);
+
+        m_transitionTimer += dt;
+        if (m_transitionTimer >= 1.0f) {
+            m_transitionStage = LevelTransitionStage::CastleEntry;
+            m_transitionTimer = 0.0f;
+        }
+        break;
+    }
+    case LevelTransitionStage::CastleEntry: {
+        sf::Vector2f pos = m_player->getPosition();
+        pos.x += 120.0f * dt;
+        pos.y -= 70.0f * dt;
+        m_player->setPosition(pos);
+        m_player->setVelocity(0.0f, 0.0f);
+
+        m_transitionTimer += dt;
+        if (m_transitionTimer >= 0.75f) {
+            m_player->setActive(false);
+            m_transitionStage = LevelTransitionStage::ScoreCount;
+            m_transitionTimer = 0.0f;
+        }
+        break;
+    }
+    case LevelTransitionStage::ScoreCount: {
+        m_transitionScoreTimer += dt;
+        if (m_transitionScoreTimer >= 0.08f) {
+            m_transitionScoreTimer = 0.0f;
+            if (m_transitionBonusScore > m_transitionDisplayScore) {
+                const int increment = std::max(100, m_transitionBonusScore / 10);
+                const int add = std::min(increment, m_transitionBonusScore - m_transitionDisplayScore);
+                m_transitionDisplayScore += add;
+
+                PlayerProgress& progress = Game::getInstance().getProgress();
+                progress.addScore(add);
+                m_hud->setScore(progress.getScore());
+                SoundManager::getInstance().playSound(SoundID::Coin);
+            } else {
+                m_transitionStage = LevelTransitionStage::Finished;
+            }
+        }
+        break;
+    }
+    case LevelTransitionStage::Finished:
+        finishLevelTransition();
+        break;
+    case LevelTransitionStage::Inactive:
+        break;
+    }
+}
+
+void PlayingState::finishLevelTransition() {
+    Game& game = Game::getInstance();
+    int nextLevel = game.getProgress().getCurrentLevel() + 1;
+
+    if (nextLevel > TOTAL_LEVELS) {
+        SoundManager::getInstance().playSound(SoundID::GameOver);
+        game.getStateManager().changeState(std::make_unique<GameOverState>());
+    } else {
+        game.getProgress().setCurrentLevel(nextLevel);
+        game.getStateManager().changeState(std::make_unique<PlayingState>());
+    }
+
+    m_levelComplete = true;
 }
 
 void PlayingState::onPlayerDeath() {
