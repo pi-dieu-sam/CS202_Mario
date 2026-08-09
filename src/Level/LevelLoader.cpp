@@ -28,7 +28,9 @@ bool isSolidChar(char c) {
 
 } // namespace
 
-LevelLoader::LevelData LevelLoader::loadLevel(const std::string& filename, LevelTheme theme) {
+LevelLoader::LevelData LevelLoader::loadLevel(const std::string& filename,
+                                              LevelTheme theme,
+                                              bool autoPlaceFlagpole) {
     LevelData data;
 
     std::ifstream file(filename);
@@ -156,7 +158,7 @@ LevelLoader::LevelData LevelLoader::loadLevel(const std::string& filename, Level
         }
     }
 
-    if (!data.flagpole) {
+    if (autoPlaceFlagpole && !data.flagpole) {
         const int margin = 3;
         for (int col = cols - 1 - margin; col > 0; col--) {
             if (isSolidChar(rowAt(groundRow, col)) && !isSolidChar(rowAt(groundRow - 1, col))) {
