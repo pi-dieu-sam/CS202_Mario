@@ -10,7 +10,7 @@ constexpr float LUIGI_FRICTION = 0.93f;
 
 Luigi::Luigi() {
   m_speed = PLAYER_SPEED * 0.9f;   // Slightly slower than Mario
-  m_jumpForce = PLAYER_JUMP * 1.2f; // Higher jump (more negative = higher)
+  m_jumpForce = PLAYER_JUMP * 1.4f; // Higher jump (more negative = higher)
   m_health = 1;
   m_characterId = CharacterId::Luigi;
 }
