@@ -47,7 +47,7 @@ public:
   bool isComplete() const;
 
 private:
-  void handleCollisions();
+  void handleCollisions(float dt);
   void removeInactiveEntities();
 
   std::unique_ptr<Player> m_player;

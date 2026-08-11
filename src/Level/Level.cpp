@@ -75,7 +75,7 @@ void Level::update(float dt) {
     m_flagpole->update(dt);
 
   // Handle collisions
-  handleCollisions();
+  handleCollisions(dt);
 
   // Remove inactive entities
   removeInactiveEntities();
@@ -136,7 +136,7 @@ void Level::addItem(std::unique_ptr<Item> item) {
 
 bool Level::isComplete() const { return m_flagpole && m_flagpole->isReached(); }
 
-void Level::handleCollisions() {
+void Level::handleCollisions(float dt) {
   if (!m_player || m_player->isDead())
     return;
 
@@ -176,29 +176,56 @@ void Level::handleCollisions() {
   }
 
   // Player vs Enemies
+  Enemy *firstEnemyHit = nullptr;
+  CollisionDetector::CollisionResult firstEnemyResult;
+  float firstImpactTime = 2.0f;
   for (auto &enemy : m_enemies) {
     if (!enemy->isActive() || enemy->isDead())
       continue;
-    auto result = CollisionDetector::checkCollision(*m_player, *enemy);
-    if (result.collided) {
-      if (m_player->hasStarPower()) {
-        // Star power kills enemies on contact
-        enemy->onStomped();
-        EventManager::getInstance().publish(
-            {EventType::EnemyDefeated, enemy->getScoreValue()});
-      } else if (result.side == CollisionDetector::Side::Bottom &&
-                 m_player->getVelocity().y > 0) {
-        // Stomp from above
-        enemy->onStomped();
-        const float bounceVelocity =
-            m_player->isJumpHeld() ? m_player->getJumpForce() : -250.0f;
-        m_player->setVelocity(m_player->getVelocity().x, bounceVelocity);
-        EventManager::getInstance().publish(
-            {EventType::EnemyDefeated, enemy->getScoreValue()});
-      } else {
-        // Side collision — player takes damage
-        m_player->takeDamage();
-      }
+
+    // Prefer the time-of-impact result for a new player/enemy contact. A
+    // final-frame overlap can be deep enough to make a legitimate stomp look
+    // like a side collision, and can miss an enemy entirely at higher speed.
+    auto result = CollisionDetector::checkSweptCollision(*m_player, *enemy, dt);
+    if (!result.collided) {
+      result = CollisionDetector::checkCollision(*m_player, *enemy);
+    }
+    if (!result.collided)
+      continue;
+
+    if (m_player->hasStarPower()) {
+      // Star power kills every enemy it touches this frame.
+      enemy->onStomped();
+      EventManager::getInstance().publish(
+          {EventType::EnemyDefeated, enemy->getScoreValue()});
+      continue;
+    }
+
+    // Resolve only the first contact in the step. This makes a cluster
+    // deterministic and avoids evaluating later enemies after a stomp has
+    // already moved the player back to its impact point and reversed vy.
+    const float impactTime = result.swept ? result.timeOfImpact : 1.0f;
+    if (impactTime < firstImpactTime) {
+      firstEnemyHit = enemy.get();
+      firstEnemyResult = result;
+      firstImpactTime = impactTime;
+    }
+  }
+
+  if (firstEnemyHit) {
+    if (firstEnemyResult.side == CollisionDetector::Side::Bottom &&
+        m_player->getVelocity().y > 0) {
+      // Stomp from above
+      CollisionDetector::moveToImpact(*m_player, firstEnemyResult);
+      firstEnemyHit->onStomped();
+      const float bounceVelocity =
+          m_player->isJumpHeld() ? m_player->getJumpForce() : -250.0f;
+      m_player->setVelocity(m_player->getVelocity().x, bounceVelocity);
+      EventManager::getInstance().publish(
+          {EventType::EnemyDefeated, firstEnemyHit->getScoreValue()});
+    } else {
+      // Side collision — player takes damage
+      m_player->takeDamage();
     }
   }
 
