@@ -276,15 +276,24 @@ static void testAllLuigiSpriteStatesLoad() {
 
   for (PowerUpState power : powers) {
     for (SpriteRegistry::PlayerAnim animation : animations) {
-      const std::string& path = SpriteRegistry::playerPath(
-          CharacterId::Luigi, power, animation, 0);
-      CHECK(std::filesystem::exists(path),
-            "every modeled Luigi state has a registered asset file");
+      const int frameCount = SpriteRegistry::playerFrameCount(
+          CharacterId::Luigi, power, animation);
+      if (animation == SpriteRegistry::PlayerAnim::Walk) {
+        CHECK(frameCount == 2,
+              "Luigi walk animation exposes both movement frames");
+      }
 
-      sf::Image image;
-      CHECK(image.loadFromFile(path) && image.getSize().x > 0 &&
-                image.getSize().y > 0,
-            "every registered Luigi asset decodes successfully");
+      for (int frame = 0; frame < frameCount; ++frame) {
+        const std::string& path = SpriteRegistry::playerPath(
+            CharacterId::Luigi, power, animation, frame);
+        CHECK(std::filesystem::exists(path),
+              "every modeled Luigi state has a registered asset file");
+
+        sf::Image image;
+        CHECK(image.loadFromFile(path) && image.getSize().x > 0 &&
+                  image.getSize().y > 0,
+              "every registered Luigi asset decodes successfully");
+      }
     }
   }
 }

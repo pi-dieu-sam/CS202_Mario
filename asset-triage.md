@@ -34,7 +34,7 @@ map for deciding what to re-source before `SpriteRegistry`/`AssetManager` get re
 | Character | Small | Big | Fire |
 |---|---|---|---|
 | Mario | Covered (idle/walk/jump). No skid pose in the pack. | Covered (idle/walk/jump/duck). No skid. | Covered (idle/walk/jump/duck/shoot). No skid. |
-| Luigi | Idle, walk, and jump covered. | Idle, walk, and jump covered; duck remains bonus/unmodeled. | Idle, walk, and jump covered by derived transparent Luigi PNGs. |
+| Luigi | Idle, jump, and a two-frame walk cycle covered. | Idle, jump, and a two-frame walk cycle covered; duck remains bonus/unmodeled. | Idle, jump, and a two-frame walk cycle covered by derived transparent Luigi PNGs. |
 
 Bonus, not currently modeled: `SMBMarioGrowing.png` / `MariotoSuperMario.gif` (mushroom transform), `Invincible_Mario.gif` / `SmallinvincibleMario.gif` (star blink), death sprites, `Firemarioclimb.gif` (16-frame vine-climb clip), swimming Mario/Luigi.
 

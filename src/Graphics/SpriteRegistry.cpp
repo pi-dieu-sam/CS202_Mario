@@ -182,8 +182,11 @@ const std::string &SpriteRegistry::playerPath(CharacterId character,
   if (anim == PlayerAnim::Walk) {
     if (power == PowerUpState::Small) {
       if (luigi) {
-        static const std::string f = "assets/textures/Small_Luigi_Walk_SMB.gif";
-        return f; // only one usable Luigi small-walk file
+        static const std::string frames[2] = {
+            "assets/textures/SMB_Luigi_Walking_0.png",
+            "assets/textures/SMB_Luigi_Walking_1.png",
+        };
+        return frames[frame % 2];
       }
       static const std::string frames[2] = {
           "assets/textures/SMB_Mario_walking_sprite.png",
@@ -193,8 +196,11 @@ const std::string &SpriteRegistry::playerPath(CharacterId character,
     }
     if (power == PowerUpState::Big) {
       if (luigi) {
-        static const std::string f = "assets/textures/SMB_NES_Luigi_Running.gif";
-        return f; // only one usable Luigi big-walk file
+        static const std::string frames[2] = {
+            "assets/textures/SMB_Luigi_Walking_0.png",
+            "assets/textures/SMB_Luigi_Walking_1.png",
+        };
+        return frames[frame % 2];
       }
       static const std::string frames[2] = {
           "assets/textures/SMB_Mario_walking_sprite.png",
@@ -266,10 +272,6 @@ int SpriteRegistry::playerFrameCount(CharacterId character, PowerUpState power,
                                       PlayerAnim anim) {
   if (anim != PlayerAnim::Walk) {
     return 1;
-  }
-  bool luigi = (character == CharacterId::Luigi);
-  if (luigi && power != PowerUpState::Fire) {
-    return 1; // Luigi small/big walk only has one usable file each
   }
   return 2;
 }
