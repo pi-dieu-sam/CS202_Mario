@@ -12,7 +12,6 @@ void InputHandler::setDefaultBindings() {
     m_keyBindings[sf::Keyboard::Right]  = std::make_unique<MoveRightCommand>();
     m_keyBindings[sf::Keyboard::A]      = std::make_unique<MoveLeftCommand>();
     m_keyBindings[sf::Keyboard::D]      = std::make_unique<MoveRightCommand>();
-    m_keyBindings[sf::Keyboard::LShift] = std::make_unique<SprintCommand>();
 
     // Press keys — triggered once on key down
     m_pressBindings[sf::Keyboard::Space] = std::make_unique<JumpCommand>();
@@ -39,6 +38,10 @@ bool InputHandler::isJumpHeld() const {
     return sf::Keyboard::isKeyPressed(sf::Keyboard::Space) ||
            sf::Keyboard::isKeyPressed(sf::Keyboard::Up) ||
            sf::Keyboard::isKeyPressed(sf::Keyboard::W);
+}
+
+bool InputHandler::isSprintHeld() const {
+    return sf::Keyboard::isKeyPressed(sf::Keyboard::LShift);
 }
 
 Command* InputHandler::handleEvent(const sf::Event& event) {
