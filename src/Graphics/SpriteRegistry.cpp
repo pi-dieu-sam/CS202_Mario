@@ -147,9 +147,6 @@ const std::string &SpriteRegistry::piranhaPlantPath(int frame) {
 }
 
 namespace {
-// Wherever Luigi-specific art is missing or broken, fall back to the
-// equivalent Mario pose — no usable Luigi source art exists for these
-// (confirmed during asset triage; see asset-triage.md).
 const std::string &marioSmallIdle() {
   static const std::string p = "assets/textures/SMB_Smallmario.png";
   return p;
@@ -205,7 +202,13 @@ const std::string &SpriteRegistry::playerPath(CharacterId character,
       };
       return frames[frame % 2];
     }
-    // Fire — Luigi has no Fire art at all, falls back to Fire Mario.
+    if (luigi) {
+      static const std::string frames[2] = {
+          "assets/textures/SMB_Fire_Luigi_Walking_0.png",
+          "assets/textures/SMB_Fire_Luigi_Walking_1.png",
+      };
+      return frames[frame % 2];
+    }
     static const std::string frames[2] = {
         "assets/textures/SMB_Fire_Mario_Walking.gif",
         "assets/textures/SMB_Fire_Mario_Sprite.png",
@@ -228,21 +231,35 @@ const std::string &SpriteRegistry::playerPath(CharacterId character,
       }
       return marioBigJump();
     }
-    return marioFireJump(); // no Fire Luigi art — fall back to Fire Mario
+    if (luigi) {
+      static const std::string p = "assets/textures/SMB_Fire_Luigi_Jumping.png";
+      return p;
+    }
+    return marioFireJump();
   }
 
   // Idle and Skid: no dedicated skid pose in the pack, so Skid falls back
   // to Idle for every character/power combo (easy to replace once skid art
   // is sourced — this is the only place that decision needs to change).
   if (power == PowerUpState::Small) {
-    // Luigi's small idle files are all broken WebP — fall back to Mario.
+    if (luigi) {
+      static const std::string p = "assets/textures/SMB_Small_Luigi_Idle.png";
+      return p;
+    }
     return marioSmallIdle();
   }
   if (power == PowerUpState::Big) {
-    // Luigi's big idle files are all broken WebP — fall back to Mario.
+    if (luigi) {
+      static const std::string p = "assets/textures/SMB_Super_Luigi_Idle.png";
+      return p;
+    }
     return marioBigIdle();
   }
-  return marioFireIdle(); // no Fire Luigi art — fall back to Fire Mario
+  if (luigi) {
+    static const std::string p = "assets/textures/SMB_Fire_Luigi_Idle.png";
+    return p;
+  }
+  return marioFireIdle();
 }
 
 int SpriteRegistry::playerFrameCount(CharacterId character, PowerUpState power,

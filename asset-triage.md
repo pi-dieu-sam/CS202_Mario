@@ -8,7 +8,10 @@ map for deciding what to re-source before `SpriteRegistry`/`AssetManager` get re
 **Update — all blocking gaps closed:**
 - Re-exported and verified as real PNG: `Warp_Pipe_SMB.png`, `Warp_Pipe_Gray_SMB.png`, `Warp_Pipe_Orange_SMB.png`, `SMB_Castle_Brick_Block.png`, `SMB_Castle_Question_Block.png`. (`Warp_Pipe_Water_SMB.png` is still broken WebP, but Underwater isn't a modeled theme, so it doesn't block anything.)
 - Decision: Castle-theme Goomba and Underground/Castle-theme Koopa reuse the Overworld/normal-variant art instead of needing dedicated sprites — no separate castle enemy files needed.
-- Decision: wherever Luigi-specific art is missing (Small idle, Big idle, all of Fire Luigi), fall back to the equivalent Mario sprite. No Luigi source art available for these poses.
+- Luigi coverage restored: valid transparent PNGs now cover Small/Big idle and
+  every Fire Luigi state. They were derived from the matching loadable Mario
+  poses with Luigi's green/white NES palette, verified against the shared
+  Mario & Luigi reference sheet.
 
 ## Bottom line
 
@@ -31,7 +34,7 @@ map for deciding what to re-source before `SpriteRegistry`/`AssetManager` get re
 | Character | Small | Big | Fire |
 |---|---|---|---|
 | Mario | Covered (idle/walk/jump). No skid pose in the pack. | Covered (idle/walk/jump/duck). No skid. | Covered (idle/walk/jump/duck/shoot). No skid. |
-| Luigi | Walk + jump real; idle falls back to Mario's small-idle sprite (decision — no Luigi idle art available). | Duck + jump real; idle falls back to Mario's big-idle sprite (decision — both Luigi idle files are broken WebP). Walk covered via `SMB_NES_Luigi_Running.gif`. | No Fire Luigi art exists — falls back to Fire Mario's sprites entirely (decision). |
+| Luigi | Idle, walk, and jump covered. | Idle, walk, and jump covered; duck remains bonus/unmodeled. | Idle, walk, and jump covered by derived transparent Luigi PNGs. |
 
 Bonus, not currently modeled: `SMBMarioGrowing.png` / `MariotoSuperMario.gif` (mushroom transform), `Invincible_Mario.gif` / `SmallinvincibleMario.gif` (star blink), death sprites, `Firemarioclimb.gif` (16-frame vine-climb clip), swimming Mario/Luigi.
 
@@ -118,5 +121,5 @@ way of rebuilding `SpriteRegistry`/`AssetManager` around the per-file asset set:
 
 1. ~~Pipes~~ — resolved, re-exported and verified.
 2. ~~Castle-theme block art~~ — resolved, re-exported and verified. Castle Goomba/Koopa resolved by reusing Overworld art.
-3. ~~Fire Luigi / Luigi idle~~ — resolved by falling back to Mario's sprite for those states.
+3. ~~Fire Luigi / Luigi idle~~ — resolved with loadable Luigi palette variants for every modeled state.
 4. Everything else already had a working file; the remaining broken WebP files (§3, now 49) are all either non-blocking bonus/future-scope content or have a real, loadable twin already covering the same content.

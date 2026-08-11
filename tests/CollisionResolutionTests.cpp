@@ -8,6 +8,7 @@
 
 #include "Physics/CollisionDetector.hpp"
 #include "Physics/PhysicsConstants.hpp"
+#include "Graphics/SpriteRegistry.hpp"
 #include "Level/TileGrid.hpp"
 #include "Entities/Goomba.hpp"
 #include "Entities/Koopa.hpp"
@@ -15,6 +16,7 @@
 #include "Entities/Mushroom.hpp"
 #include "Entities/Tile.hpp"
 #include <cmath>
+#include <filesystem>
 #include <iostream>
 #include <memory>
 #include <vector>
@@ -265,6 +267,28 @@ static void testSprintDoesNotCompoundVelocity() {
         "sprint changes commanded movement speed to the configured maximum");
 }
 
+static void testAllLuigiSpriteStatesLoad() {
+  const std::vector<PowerUpState> powers = {
+      PowerUpState::Small, PowerUpState::Big, PowerUpState::Fire};
+  const std::vector<SpriteRegistry::PlayerAnim> animations = {
+      SpriteRegistry::PlayerAnim::Idle, SpriteRegistry::PlayerAnim::Walk,
+      SpriteRegistry::PlayerAnim::Jump, SpriteRegistry::PlayerAnim::Skid};
+
+  for (PowerUpState power : powers) {
+    for (SpriteRegistry::PlayerAnim animation : animations) {
+      const std::string& path = SpriteRegistry::playerPath(
+          CharacterId::Luigi, power, animation, 0);
+      CHECK(std::filesystem::exists(path),
+            "every modeled Luigi state has a registered asset file");
+
+      sf::Image image;
+      CHECK(image.loadFromFile(path) && image.getSize().x > 0 &&
+                image.getSize().y > 0,
+            "every registered Luigi asset decodes successfully");
+    }
+  }
+}
+
 int main() {
   testReflectHelperPure();
   testGoombaBouncesBothDirections();
@@ -275,6 +299,7 @@ int main() {
   testUpwardEdgeHitResolvesAsWall();
   testSweptStompCatchesTunneling();
   testSprintDoesNotCompoundVelocity();
+  testAllLuigiSpriteStatesLoad();
 
   if (g_failures == 0) {
     std::cout << "All collision-resolution tests passed.\n";
