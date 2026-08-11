@@ -2,6 +2,86 @@
 #include "Entities/GameObject.hpp"
 #include <algorithm>
 #include <cmath>
+#include <limits>
+
+namespace {
+
+struct SweepResult {
+    bool hit = false;
+    CollisionDetector::Side side = CollisionDetector::Side::None;
+    float timeOfImpact = 1.0f;
+};
+
+sf::FloatRect previousBounds(const GameObject& object,
+                             const sf::FloatRect& currentBounds, float dt) {
+    sf::Vector2f velocity = object.getVelocity();
+    return {currentBounds.left - velocity.x * dt,
+            currentBounds.top - velocity.y * dt,
+            currentBounds.width,
+            currentBounds.height};
+}
+
+SweepResult sweepAabb(const sf::FloatRect& aPrevious,
+                      const sf::FloatRect& bPrevious,
+                      const sf::Vector2f& relativeDelta) {
+    constexpr float infinity = std::numeric_limits<float>::infinity();
+
+    float xEntry = -infinity;
+    float xExit = infinity;
+    if (relativeDelta.x > 0.0f) {
+        xEntry = (bPrevious.left - (aPrevious.left + aPrevious.width)) /
+                 relativeDelta.x;
+        xExit = ((bPrevious.left + bPrevious.width) - aPrevious.left) /
+                relativeDelta.x;
+    } else if (relativeDelta.x < 0.0f) {
+        xEntry = ((bPrevious.left + bPrevious.width) - aPrevious.left) /
+                 relativeDelta.x;
+        xExit = (bPrevious.left - (aPrevious.left + aPrevious.width)) /
+                relativeDelta.x;
+    } else if (aPrevious.left + aPrevious.width <= bPrevious.left ||
+               aPrevious.left >= bPrevious.left + bPrevious.width) {
+        return {};
+    }
+
+    float yEntry = -infinity;
+    float yExit = infinity;
+    if (relativeDelta.y > 0.0f) {
+        yEntry = (bPrevious.top - (aPrevious.top + aPrevious.height)) /
+                 relativeDelta.y;
+        yExit = ((bPrevious.top + bPrevious.height) - aPrevious.top) /
+                relativeDelta.y;
+    } else if (relativeDelta.y < 0.0f) {
+        yEntry = ((bPrevious.top + bPrevious.height) - aPrevious.top) /
+                 relativeDelta.y;
+        yExit = (bPrevious.top - (aPrevious.top + aPrevious.height)) /
+                relativeDelta.y;
+    } else if (aPrevious.top + aPrevious.height <= bPrevious.top ||
+               aPrevious.top >= bPrevious.top + bPrevious.height) {
+        return {};
+    }
+
+    const float entryTime = std::max(xEntry, yEntry);
+    const float exitTime = std::min(xExit, yExit);
+    if (entryTime > exitTime || entryTime < 0.0f || entryTime > 1.0f) {
+        return {};
+    }
+
+    SweepResult result;
+    result.hit = true;
+    result.timeOfImpact = entryTime;
+    if (xEntry > yEntry) {
+        result.side = relativeDelta.x > 0.0f
+                          ? CollisionDetector::Side::Right
+                          : CollisionDetector::Side::Left;
+    } else {
+        result.side = relativeDelta.y > 0.0f
+                          ? CollisionDetector::Side::Bottom
+                          : CollisionDetector::Side::Top;
+    }
+    return result;
+}
+
+} // namespace
 
 CollisionDetector::CollisionResult CollisionDetector::checkCollision(
     const GameObject& a, const GameObject& b)
@@ -38,13 +118,22 @@ CollisionDetector::CollisionResult CollisionDetector::checkCollision(
                              : (vel.x < 0.0f) ? overlapRight
                              : std::min(overlapLeft, overlapRight);
 
-    // At a seam between two flush tiles (e.g. walking across flat ground),
-    // floating-point rounding can make the horizontal overlap come out
-    // marginally smaller than the vertical one, which would wrongly resolve
-    // a landing as a sideways push ("snagging"). Only trust the horizontal
-    // resolution when it's clearly smaller than the vertical alternative.
-    const float VERTICAL_BIAS = 4.0f;
-    bool horizontalWins = horizontalOverlap < verticalOverlap - VERTICAL_BIAS;
+    // A support contact while falling may be a fraction of a pixel deep, so
+    // retain a small tolerance only in that direction. Applying it while
+    // rising was the source of edge-jump snagging: a shallow side overlap was
+    // incorrectly turned into a vertical head/landing collision.
+    const float fallingSupportBias = vel.y > 0.0f ? 4.0f : 0.0f;
+    bool horizontalWins = horizontalOverlap < verticalOverlap - fallingSupportBias;
+
+    // An upward-moving player can clip a block's lower corner by only a few
+    // pixels while travelling beside it. The tiny vertical penetration in
+    // that case is not a head-hit: resolving it vertically zeroes vy and
+    // produces the visible jump snag. Treat this narrow edge band as a wall.
+    // A wider overlap still behaves as a normal hit from below.
+    constexpr float upwardEdgeOverlap = 6.0f;
+    if (vel.y < 0.0f && horizontalOverlap <= upwardEdgeOverlap) {
+        horizontalWins = true;
+    }
 
     if (horizontalWins) {
         if (horizontalOverlap == overlapLeft) {
@@ -65,6 +154,50 @@ CollisionDetector::CollisionResult CollisionDetector::checkCollision(
     }
 
     return result;
+}
+
+CollisionDetector::CollisionResult CollisionDetector::checkSweptCollision(
+    const GameObject& a, const GameObject& b, float dt) {
+    CollisionResult result;
+    if (dt <= 0.0f) {
+        return result;
+    }
+
+    const sf::FloatRect currentA = a.getBounds();
+    const sf::FloatRect currentB = b.getBounds();
+    const sf::FloatRect previousA = previousBounds(a, currentA, dt);
+    const sf::FloatRect previousB = previousBounds(b, currentB, dt);
+
+    // A swept test describes a new impact. Persistent overlap is handled by
+    // the regular discrete resolver so we do not repeatedly report an old
+    // contact as a new one.
+    if (previousA.intersects(previousB)) {
+        return result;
+    }
+
+    const sf::Vector2f relativeDelta{
+        (currentA.left - previousA.left) - (currentB.left - previousB.left),
+        (currentA.top - previousA.top) - (currentB.top - previousB.top)};
+    const SweepResult sweep = sweepAabb(previousA, previousB, relativeDelta);
+    if (!sweep.hit) {
+        return result;
+    }
+
+    result.collided = true;
+    result.side = sweep.side;
+    result.swept = true;
+    result.timeOfImpact = sweep.timeOfImpact;
+    const sf::Vector2f velocity = a.getVelocity();
+    result.impactPosition =
+        a.getPosition() - velocity * (dt * (1.0f - sweep.timeOfImpact));
+    return result;
+}
+
+void CollisionDetector::moveToImpact(GameObject& movable,
+                                     const CollisionResult& result) {
+    if (result.collided && result.swept) {
+        movable.setPosition(result.impactPosition);
+    }
 }
 
 void CollisionDetector::resolveCollision(
