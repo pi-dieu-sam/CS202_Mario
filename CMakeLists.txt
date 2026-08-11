@@ -49,6 +49,9 @@ if(BUILD_TESTS)
     )
     enable_testing()
     add_test(NAME CollisionResolutionTests COMMAND CollisionTests)
+    set_tests_properties(CollisionResolutionTests PROPERTIES
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    )
 endif()
 
 # --- Copy assets to build directory ---
