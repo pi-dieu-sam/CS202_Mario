@@ -27,6 +27,10 @@ public:
     /// Check whether any jump key is currently held.
     bool isJumpHeld() const;
 
+    /// Check whether sprint is held. Read separately so movement always sees
+    /// the sprint state before directional commands execute.
+    bool isSprintHeld() const;
+
     /// Handle a single SFML key-press event (for one-shot actions like jump).
     Command* handleEvent(const sf::Event& event);
 
