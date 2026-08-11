@@ -45,11 +45,6 @@ void Player::update(float dt) {
     }
   }
 
-  // Fall off screen = death
-  if (m_position.y > 800.0f) {
-    die();
-  }
-
   // Reset sprint flag (re-set by SprintCommand each frame if held)
   m_sprinting = false;
 

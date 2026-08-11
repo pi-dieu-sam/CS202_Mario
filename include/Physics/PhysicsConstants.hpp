@@ -12,6 +12,7 @@ constexpr float TILE_SIZE        = 32.0f;    // pixels per tile
 constexpr float PLAYER_SPEED     = 200.0f;   // pixels/s
 constexpr float PLAYER_JUMP      = -420.0f;  // initial jump velocity (negative = up)
 constexpr float PLAYER_SPRINT    = 1.5f;     // speed multiplier when sprinting
+constexpr float PLAYER_FALL_DEATH_MARGIN = TILE_SIZE * 3.0f; // allow brief fall below map before death
 
 // ── Window ──
 constexpr unsigned WINDOW_WIDTH  = 800;
