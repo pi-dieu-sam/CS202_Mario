@@ -1,6 +1,7 @@
 #pragma once
 #include "LevelTheme.hpp"
 #include "Background.hpp"
+#include "TileGrid.hpp"
 #include "../Entities/Block.hpp"
 #include "../Entities/Enemy.hpp"
 #include "../Entities/Fireball.hpp"
@@ -54,11 +55,12 @@ public:
   bool isComplete() const;
 
 private:
-  void handleCollisions();
+  void handleCollisions(float dt);
   void removeInactiveEntities();
 
   std::unique_ptr<Player> m_player;
   std::vector<std::unique_ptr<Tile>> m_tiles;
+  TileGrid m_tileGrid;
   std::vector<std::unique_ptr<Block>> m_blocks;
   std::vector<std::unique_ptr<Enemy>> m_enemies;
   std::vector<std::unique_ptr<Item>> m_items;

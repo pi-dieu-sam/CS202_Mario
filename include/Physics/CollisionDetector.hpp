@@ -1,4 +1,5 @@
 #pragma once
+#include <SFML/System/Vector2.hpp>
 #include <vector>
 #include <memory>
 
@@ -13,13 +14,29 @@ public:
 
     /// Result of a collision check.
     struct CollisionResult {
-        bool  collided = false;
-        Side  side     = Side::None;
-        float overlap  = 0.0f;
+        bool         collided = false;
+        Side         side = Side::None;
+        float        overlap = 0.0f;
+        bool         swept = false;
+        float        timeOfImpact = 1.0f;
+        sf::Vector2f impactPosition{};
     };
 
     /// Check AABB overlap between two objects.
     static CollisionResult checkCollision(const GameObject& a, const GameObject& b);
+
+    /// Detect the first AABB contact during the most recent simulation step.
+    /// This catches objects that pass through each other between two frames and
+    /// reports the side at the actual time of impact instead of inferring it
+    /// from a deep final overlap.
+    static CollisionResult checkSweptCollision(const GameObject& a,
+                                               const GameObject& b,
+                                               float dt);
+
+    /// Move an object back to the contact point returned by
+    /// checkSweptCollision(). This is useful before applying a response such
+    /// as a stomp bounce.
+    static void moveToImpact(GameObject& movable, const CollisionResult& result);
 
     /// Resolve player-tile collision (push player out of tile).
     static void resolveCollision(GameObject& movable, const GameObject& solid, const CollisionResult& result);

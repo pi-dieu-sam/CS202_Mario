@@ -145,8 +145,10 @@ void PlayingState::update(float dt) {
         return;
     }
 
-    // Reset sprint each frame (only active while key held)
-    m_player->setSprinting(false);
+    // Set sprint before processing movement. handleInput() stores bindings in
+    // an unordered map, so relying on a SprintCommand's execution order made
+    // sprint speed inconsistent when sprint and direction were held together.
+    m_player->setSprinting(m_input.isSprintHeld());
     m_player->setJumpHeld(m_input.isJumpHeld());
 
     // Handle held-key commands

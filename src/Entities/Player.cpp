@@ -20,11 +20,6 @@ void Player::update(float dt) {
   // Apply friction when no horizontal input this frame
   applyFriction();
 
-  // Sprint multiplier
-  if (m_sprinting) {
-    m_velocity.x *= PLAYER_SPRINT;
-  }
-
   // Move
   m_position += m_velocity * dt;
 
@@ -100,6 +95,10 @@ sf::FloatRect Player::getBounds() const {
   return sf::FloatRect(m_position.x + 2,
                        m_position.y + (TILE_SIZE * 2 - height), TILE_SIZE - 4,
                        height - 2);
+}
+
+float Player::getEffectiveSpeed() const {
+  return m_sprinting ? m_speed * PLAYER_SPRINT : m_speed;
 }
 
 // ── Power-ups ──

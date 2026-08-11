@@ -8,11 +8,16 @@
 
 #include "Physics/CollisionDetector.hpp"
 #include "Physics/PhysicsConstants.hpp"
+#include "Level/TileGrid.hpp"
 #include "Entities/Goomba.hpp"
 #include "Entities/Koopa.hpp"
+#include "Entities/Mario.hpp"
 #include "Entities/Mushroom.hpp"
 #include "Entities/Tile.hpp"
+#include <cmath>
 #include <iostream>
+#include <memory>
+#include <vector>
 
 static int g_failures = 0;
 
@@ -174,12 +179,102 @@ static void testResolveCollisionAloneStillZeroesVelocity() {
   }
 }
 
+static void testTileGridExcludesDistantTiles() {
+  std::vector<std::unique_ptr<Tile>> tiles;
+  auto nearby = std::make_unique<Tile>();
+  nearby->setPosition(0.0f, 0.0f);
+  Tile* nearbyPtr = nearby.get();
+  tiles.push_back(std::move(nearby));
+
+  auto distant = std::make_unique<Tile>();
+  distant->setPosition(TILE_SIZE * 100.0f, TILE_SIZE * 100.0f);
+  tiles.push_back(std::move(distant));
+
+  TileGrid grid;
+  grid.build(tiles);
+  auto candidates = grid.query(sf::FloatRect(1.0f, 1.0f, 8.0f, 8.0f));
+  CHECK(candidates.size() == 1 && candidates.front() == nearbyPtr,
+        "tile grid returns only tiles adjacent to the queried bounds");
+}
+
+static void testUpwardEdgeHitResolvesAsWall() {
+  Goomba jumper;
+  // Jumper bounds: x=[1,31], y=[29,59]. The block has only 1px horizontal
+  // overlap but 3px vertical overlap at its lower-left corner.
+  jumper.setPosition(0.0f, 28.0f);
+  jumper.setVelocity(0.0f, -100.0f);
+  Tile block;
+  block.setPosition(30.0f, 0.0f);
+
+  auto result = CollisionDetector::checkCollision(jumper, block);
+  CHECK(result.collided, "upward edge-hit setup overlaps the block");
+  CHECK(result.side == CollisionDetector::Side::Right,
+        "upward edge hit resolves as a wall, not a vertical collision");
+
+  // This is the former snagging case: the player only catches 3px of the
+  // block's edge, while the upward head penetration is only 1px. Comparing
+  // overlap magnitudes alone selects Side::Top and immediately stops a jump.
+  jumper.setPosition(0.0f, 30.0f);
+  block.setPosition(28.0f, 0.0f);
+  result = CollisionDetector::checkCollision(jumper, block);
+  CHECK(result.collided, "upward corner-snag setup overlaps the block");
+  CHECK(result.side == CollisionDetector::Side::Right,
+        "narrow upward corner overlap resolves as a wall, not a head hit");
+}
+
+static void testSweptStompCatchesTunneling() {
+  Mario player;
+  Goomba enemy;
+  enemy.setPosition(0.0f, 100.0f);
+  enemy.setVelocity(0.0f, 0.0f);
+
+  // End the step fully below the Goomba so a discrete overlap test misses it.
+  // The player's prior bounds were above the Goomba and crossed its top.
+  player.setPosition(0.0f, 128.0f);
+  player.setVelocity(0.0f, 1400.0f);
+  constexpr float dt = 0.1f;
+
+  CHECK(!CollisionDetector::checkCollision(player, enemy).collided,
+        "tunneling setup has no final-frame overlap");
+  auto result = CollisionDetector::checkSweptCollision(player, enemy, dt);
+  CHECK(result.collided && result.swept,
+        "swept collision catches an enemy crossed during the frame");
+  CHECK(result.side == CollisionDetector::Side::Bottom,
+        "downward swept collision is classified as a stomp");
+
+  CollisionDetector::moveToImpact(player, result);
+  const float playerBottom = player.getBounds().top + player.getBounds().height;
+  const float enemyTop = enemy.getBounds().top;
+  CHECK(std::abs(playerBottom - enemyTop) < 0.001f,
+        "swept stomp moves the player back to the impact point");
+}
+
+static void testSprintDoesNotCompoundVelocity() {
+  Mario player;
+  const float sprintSpeed = PLAYER_SPEED * PLAYER_SPRINT;
+  player.setVelocity(sprintSpeed, 0.0f);
+  player.setSprinting(true); // Sprint held, but no direction command this frame.
+  player.update(FIXED_DT);
+
+  CHECK(player.getVelocity().x > 0.0f && player.getVelocity().x < sprintSpeed,
+        "releasing direction while sprinting decelerates instead of compounding speed");
+
+  player.setSprinting(true);
+  player.moveRight(FIXED_DT);
+  CHECK(player.getVelocity().x == sprintSpeed,
+        "sprint changes commanded movement speed to the configured maximum");
+}
+
 int main() {
   testReflectHelperPure();
   testGoombaBouncesBothDirections();
   testMushroomReversesInsteadOfStopping();
   testSlidingKoopaShellBouncesBothDirections();
   testResolveCollisionAloneStillZeroesVelocity();
+  testTileGridExcludesDistantTiles();
+  testUpwardEdgeHitResolvesAsWall();
+  testSweptStompCatchesTunneling();
+  testSprintDoesNotCompoundVelocity();
 
   if (g_failures == 0) {
     std::cout << "All collision-resolution tests passed.\n";

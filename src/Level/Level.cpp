@@ -19,6 +19,7 @@ bool Level::loadFromFile(const std::string &filename,
   auto data = LevelLoader::loadLevel(filename, theme, autoPlaceFlagpole);
 
   m_tiles = std::move(data.tiles);
+  m_tileGrid.build(m_tiles);
   m_blocks = std::move(data.blocks);
   m_enemies = std::move(data.enemies);
   m_items = std::move(data.items);
@@ -84,7 +85,7 @@ void Level::update(float dt) {
     m_flagpole->update(dt);
 
   // Handle collisions
-  handleCollisions();
+  handleCollisions(dt);
 
   // Remove inactive entities
   removeInactiveEntities();
@@ -232,7 +233,7 @@ Level::getTouchedPipeBounds(const Player &player) const {
 
 bool Level::isComplete() const { return m_flagpole && m_flagpole->isReached(); }
 
-void Level::handleCollisions() {
+void Level::handleCollisions(float dt) {
   if (!m_player || m_player->isDead())
     return;
 
@@ -240,7 +241,7 @@ void Level::handleCollisions() {
   m_player->setGrounded(false);
 
   // Player vs Tiles
-  for (auto &tile : m_tiles) {
+  for (Tile *tile : m_tileGrid.query(m_player->getBounds())) {
     auto result = CollisionDetector::checkCollision(*m_player, *tile);
     if (result.collided) {
       CollisionDetector::resolveCollision(*m_player, *tile, result);
@@ -272,47 +273,53 @@ void Level::handleCollisions() {
   }
 
   // Player vs Enemies
+  Enemy *firstEnemyHit = nullptr;
+  CollisionDetector::CollisionResult firstEnemyResult;
+  float firstImpactTime = 2.0f;
   for (auto &enemy : m_enemies) {
     if (!enemy->isActive() || enemy->isDead())
       continue;
 
-    auto result = CollisionDetector::checkCollision(*m_player, *enemy);
+    // Prefer the time-of-impact result for a new player/enemy contact. A
+    // final-frame overlap can be deep enough to make a legitimate stomp look
+    // like a side collision, and can miss an enemy entirely at higher speed.
+    auto result = CollisionDetector::checkSweptCollision(*m_player, *enemy, dt);
+    if (!result.collided) {
+      result = CollisionDetector::checkCollision(*m_player, *enemy);
+    }
     if (!result.collided)
       continue;
 
     if (m_player->hasStarPower()) {
-      // Star power kills enemies on contact
+      // Star power kills every enemy it touches this frame.
       enemy->onStomped();
       EventManager::getInstance().publish(
           {EventType::EnemyDefeated, enemy->getScoreValue()});
       continue;
     }
 
-    const bool isStompingFromAbove =
-        result.side == CollisionDetector::Side::Bottom ||
-        (m_player->getVelocity().y > 0.0f &&
-         m_player->getPosition().y + m_player->getBounds().height <=
-             enemy->getPosition().y + enemy->getBounds().height);
+    // Resolve only the first contact in the step. This makes a cluster
+    // deterministic and avoids evaluating later enemies after a stomp has
+    // already moved the player back to its impact point and reversed vy.
+    const float impactTime = result.swept ? result.timeOfImpact : 1.0f;
+    if (impactTime < firstImpactTime) {
+      firstEnemyHit = enemy.get();
+      firstEnemyResult = result;
+      firstImpactTime = impactTime;
+    }
+  }
 
-    if (isStompingFromAbove) {
+  if (firstEnemyHit) {
+    if (firstEnemyResult.side == CollisionDetector::Side::Bottom &&
+        m_player->getVelocity().y > 0) {
       // Stomp from above
-      enemy->onStomped();
-
-      const bool holdingJump =
-          sf::Keyboard::isKeyPressed(sf::Keyboard::Space) ||
-          sf::Keyboard::isKeyPressed(sf::Keyboard::Up) ||
-          sf::Keyboard::isKeyPressed(sf::Keyboard::W);
-      const float bounceVelocity = holdingJump ? -450.0f : -180.0f;
-
-      m_player->setGrounded(false);
-      m_player->setVelocity(0.0f, bounceVelocity);
-
-      // Apply an immediate upward nudge so the next update frame keeps the boost.
-      const sf::Vector2f playerPos = m_player->getPosition();
-      m_player->setPosition(playerPos.x, playerPos.y - 2.0f);
-
+      CollisionDetector::moveToImpact(*m_player, firstEnemyResult);
+      firstEnemyHit->onStomped();
+      const float bounceVelocity =
+          m_player->isJumpHeld() ? m_player->getJumpForce() : -250.0f;
+      m_player->setVelocity(m_player->getVelocity().x, bounceVelocity);
       EventManager::getInstance().publish(
-          {EventType::EnemyDefeated, enemy->getScoreValue()});
+          {EventType::EnemyDefeated, firstEnemyHit->getScoreValue()});
     } else {
       // Side collision — player takes damage
       m_player->takeDamage();
@@ -345,7 +352,7 @@ void Level::handleCollisions() {
     if (!enemy->isActive() || enemy->isDead())
       continue;
     enemy->setGrounded(false);
-    for (auto &tile : m_tiles) {
+    for (Tile *tile : m_tileGrid.query(enemy->getBounds())) {
       auto result = CollisionDetector::checkCollision(*enemy, *tile);
       if (result.collided) {
         sf::Vector2f preVel = enemy->getVelocity(); // capture BEFORE resolve zeroes vel.x
@@ -431,7 +438,7 @@ void Level::handleCollisions() {
       continue;
 
     // Fireball vs Tiles
-    for (auto &tile : m_tiles) {
+    for (Tile *tile : m_tileGrid.query(fb->getBounds())) {
       auto result = CollisionDetector::checkCollision(*fb, *tile);
       if (result.collided) {
         if (result.side == CollisionDetector::Side::Bottom) {
@@ -466,7 +473,7 @@ void Level::handleCollisions() {
   for (auto &item : m_items) {
     if (!item->isActive() || !item->isMoving())
       continue;
-    for (auto &tile : m_tiles) {
+    for (Tile *tile : m_tileGrid.query(item->getBounds())) {
       auto result = CollisionDetector::checkCollision(*item, *tile);
       if (result.collided) {
         sf::Vector2f preVel = item->getVelocity();
