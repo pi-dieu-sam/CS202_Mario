@@ -1,5 +1,6 @@
 #include "Core/PlayerProgress.hpp"
 #include "Physics/PhysicsConstants.hpp"
+#include "Core/SoundManager.hpp"
 
 // ── Score ──
 int PlayerProgress::getScore() const { return m_score; }
@@ -26,6 +27,7 @@ void PlayerProgress::addCoin() {
     // Every 100 coins = extra life
     if (m_coins % 100 == 0) {
         m_lives++;
+        SoundManager::getInstance().playSound(SoundID::OneUp);
     }
 }
 void PlayerProgress::setCoins(int coins) { m_coins = coins; }
