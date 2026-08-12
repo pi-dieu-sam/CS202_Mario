@@ -46,10 +46,29 @@ static void testTimeBonusConversion() {
     CHECK(remainingSeconds == expectedSeconds,
           "conversion tick decreases the displayed time by one second");
     CHECK(convertedScore == (3 - expectedSeconds) * TIME_BONUS_PER_SECOND,
-          "conversion tick increases score by 100 points");
+          "conversion tick increases score by the configured amount");
   }
   CHECK(!LevelCompletion::convertNextSecond(remainingSeconds, convertedScore),
         "time conversion stops at zero and cannot award score twice");
+
+  constexpr int flagpoleBonus = 5000;
+  int convertedFlagpoleScore = 0;
+  int synchronizedSeconds = 3;
+  int synchronizedTimeScore = 0;
+  for (int expectedSeconds = 2; expectedSeconds >= 0; --expectedSeconds) {
+    const int flagpoleIncrement = LevelCompletion::flagpoleBonusForNextTick(
+        flagpoleBonus, convertedFlagpoleScore, synchronizedSeconds);
+    CHECK(LevelCompletion::convertNextSecond(
+              synchronizedSeconds, synchronizedTimeScore),
+          "flagpole and time score are applied on the same tick");
+    convertedFlagpoleScore += flagpoleIncrement;
+    CHECK(synchronizedSeconds == expectedSeconds,
+          "synchronized tick decreases time by one second");
+  }
+  CHECK(convertedFlagpoleScore == flagpoleBonus,
+        "synchronized ticks distribute the entire flagpole bonus");
+  CHECK(synchronizedTimeScore == 3 * TIME_BONUS_PER_SECOND,
+        "synchronized ticks award the full time bonus");
 }
 
 static void testOrdinaryCompletionAdvancesLevel() {
