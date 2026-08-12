@@ -2,6 +2,7 @@
 // completion, victory, and retry semantics.
 
 #include "Core/PlayerProgress.hpp"
+#include "Core/LevelCompletion.hpp"
 #include "Physics/PhysicsConstants.hpp"
 #include <iostream>
 #include <string>
@@ -27,6 +28,28 @@ static void testFlagpoleBonusIsPersistedOnce() {
 
   CHECK(progress.getScore() == existingScore + flagpoleBonus,
         "flagpole bonus is added once to persistent progress score");
+}
+
+static void testTimeBonusConversion() {
+  CHECK(LevelCompletion::displayedSeconds(42.99f) == 42,
+        "time bonus uses the HUD's truncated whole-second display");
+  CHECK(LevelCompletion::displayedSeconds(-1.0f) == 0,
+        "time bonus clamps expired time to zero");
+  CHECK(LevelCompletion::timeBonusForSeconds(42) == 4200,
+        "each remaining second awards 100 points");
+
+  int remainingSeconds = 3;
+  int convertedScore = 0;
+  for (int expectedSeconds = 2; expectedSeconds >= 0; --expectedSeconds) {
+    CHECK(LevelCompletion::convertNextSecond(remainingSeconds, convertedScore),
+          "each remaining second produces one conversion tick");
+    CHECK(remainingSeconds == expectedSeconds,
+          "conversion tick decreases the displayed time by one second");
+    CHECK(convertedScore == (3 - expectedSeconds) * TIME_BONUS_PER_SECOND,
+          "conversion tick increases score by 100 points");
+  }
+  CHECK(!LevelCompletion::convertNextSecond(remainingSeconds, convertedScore),
+        "time conversion stops at zero and cannot award score twice");
 }
 
 static void testOrdinaryCompletionAdvancesLevel() {
@@ -95,6 +118,7 @@ static void testNewGameRemainsFullReset() {
 
 int main() {
   testFlagpoleBonusIsPersistedOnce();
+  testTimeBonusConversion();
   testOrdinaryCompletionAdvancesLevel();
   testFinalCompletionReportsVictory();
   testRetryPreservesProgressForEveryLevel();
