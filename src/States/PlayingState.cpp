@@ -143,7 +143,6 @@ void PlayingState::update(float dt) {
     if (m_transitionStage != LevelTransitionStage::Inactive) {
         if (m_transitionStage == LevelTransitionStage::FlagSlide ||
             m_transitionStage == LevelTransitionStage::CastleEntry ||
-            m_transitionStage == LevelTransitionStage::FlagpoleScoreCount ||
             m_transitionStage == LevelTransitionStage::TimeBonusCount) {
             m_level->update(dt);
         }
@@ -254,6 +253,7 @@ void PlayingState::startLevelTransition() {
     m_transitionTimeBonus =
         LevelCompletion::timeBonusForSeconds(m_transitionRemainingSeconds);
     m_transitionConvertedTimeScore = 0;
+    m_transitionConvertedFlagpoleScore = 0;
     m_transitionDisplayScore = 0;
     m_hud->setTime(static_cast<float>(m_transitionRemainingSeconds));
 
@@ -407,27 +407,8 @@ void PlayingState::updateLevelTransition(float dt) {
         m_transitionTimer += dt;
         if (m_transitionTimer >= 0.75f) {
             m_player->setActive(false);
-            m_transitionStage = LevelTransitionStage::FlagpoleScoreCount;
+            m_transitionStage = LevelTransitionStage::TimeBonusCount;
             m_transitionTimer = 0.0f;
-        }
-        break;
-    }
-    case LevelTransitionStage::FlagpoleScoreCount: {
-        m_transitionScoreTimer += dt;
-        if (m_transitionScoreTimer >= 0.08f) {
-            m_transitionScoreTimer = 0.0f;
-            if (m_transitionFlagpoleBonus > m_transitionDisplayScore) {
-                const int increment = std::max(100, m_transitionFlagpoleBonus / 10);
-                const int add = std::min(
-                    increment, m_transitionFlagpoleBonus - m_transitionDisplayScore);
-                m_transitionDisplayScore += add;
-
-                m_hud->setScore(m_transitionStartScore + m_transitionDisplayScore);
-                SoundManager::getInstance().playSound(SoundID::Coin);
-            } else {
-                m_transitionScoreTimer = 0.0f;
-                m_transitionStage = LevelTransitionStage::TimeBonusCount;
-            }
         }
         break;
     }
@@ -435,10 +416,15 @@ void PlayingState::updateLevelTransition(float dt) {
         m_transitionScoreTimer += dt;
         if (m_transitionScoreTimer >= TIME_BONUS_TICK_INTERVAL) {
             m_transitionScoreTimer -= TIME_BONUS_TICK_INTERVAL;
+            const int flagpoleIncrement =
+                LevelCompletion::flagpoleBonusForNextTick(
+                    m_transitionFlagpoleBonus, m_transitionConvertedFlagpoleScore,
+                    m_transitionRemainingSeconds);
             if (LevelCompletion::convertNextSecond(
                     m_transitionRemainingSeconds, m_transitionConvertedTimeScore)) {
+                m_transitionConvertedFlagpoleScore += flagpoleIncrement;
                 m_transitionDisplayScore =
-                    m_transitionFlagpoleBonus + m_transitionConvertedTimeScore;
+                    m_transitionConvertedFlagpoleScore + m_transitionConvertedTimeScore;
                 m_hud->setTime(static_cast<float>(m_transitionRemainingSeconds));
                 m_hud->setScore(m_transitionStartScore + m_transitionDisplayScore);
                 SoundManager::getInstance().playSound(SoundID::Coin);
