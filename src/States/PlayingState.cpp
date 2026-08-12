@@ -63,7 +63,7 @@ void PlayingState::onEnter() {
     m_playerDiedSub = ScopedEventSubscription(EventType::PlayerDied, [this](const GameEvent& e) {
         SoundManager::getInstance().stopMusic();
         SoundManager::getInstance().playSound(SoundID::PlayerDeath);
-        onPlayerDeath();
+        beginPlayerDeath();
     });
 
     m_powerUpSub = ScopedEventSubscription(EventType::PowerUpCollected, [this](const GameEvent& e) {
@@ -147,6 +147,17 @@ void PlayingState::update(float dt) {
     if (m_levelComplete) return;
 
     if (m_transitionStage != LevelTransitionStage::Inactive) {
+        if (m_transitionStage == LevelTransitionStage::DeathAnimation) {
+            // The player owns the arc and pause timing. Keep the level alive
+            // until that animation reports completion.
+            m_level->update(dt);
+            m_camera.update(m_player->getPosition());
+            if (m_player->isDeathAnimationComplete()) {
+                finishPlayerDeath();
+            }
+            return;
+        }
+
         if (m_transitionStage == LevelTransitionStage::FlagSlide ||
             m_transitionStage == LevelTransitionStage::CastleEntry ||
             m_transitionStage == LevelTransitionStage::TimeBonusCount) {
@@ -183,6 +194,14 @@ void PlayingState::update(float dt) {
     // Update level (entities + collisions)
     m_level->update(dt);
 
+    if (m_transitionStage == LevelTransitionStage::DeathAnimation) {
+        m_camera.update(m_player->getPosition());
+        if (m_player->isDeathAnimationComplete()) {
+            finishPlayerDeath();
+        }
+        return;
+    }
+
     // In secret rooms, touching the exit pipe auto-returns to the main map.
     if (m_inSecretRoom && m_transitionStage == LevelTransitionStage::Inactive) {
         if (m_level->getTouchedPipeBounds(*m_player)) {
@@ -197,8 +216,13 @@ void PlayingState::update(float dt) {
     // Timer
     m_levelTimer -= dt;
     m_hud->setTime(m_levelTimer);
-    if (m_levelTimer <= 0.0f) {
+    if (!m_player->isDead() && m_levelTimer <= 0.0f) {
         m_player->die();
+    }
+
+    if (m_transitionStage == LevelTransitionStage::DeathAnimation) {
+        m_camera.update(m_player->getPosition());
+        return;
     }
 
     // Check level completion
@@ -393,6 +417,10 @@ void PlayingState::updateLevelTransition(float dt) {
     }
 
     switch (m_transitionStage) {
+    case LevelTransitionStage::DeathAnimation:
+        // DeathAnimation is updated directly in update() so the player keeps
+        // advancing its own rise/fall/pause timeline.
+        break;
     case LevelTransitionStage::FlagSlide: {
         sf::Vector2f pos = m_player->getPosition();
         pos.y += 220.0f * dt;
@@ -467,7 +495,15 @@ void PlayingState::finishLevelTransition() {
     m_levelComplete = true;
 }
 
-void PlayingState::onPlayerDeath() {
+void PlayingState::beginPlayerDeath() {
+    if (m_transitionStage != LevelTransitionStage::Inactive || !m_player) {
+        return;
+    }
+
+    m_transitionStage = LevelTransitionStage::DeathAnimation;
+}
+
+void PlayingState::finishPlayerDeath() {
     Game& game = Game::getInstance();
     game.getProgress().loseLife();
     m_hud->setLives(game.getProgress().getLives());

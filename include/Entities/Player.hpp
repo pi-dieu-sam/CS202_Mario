@@ -51,6 +51,7 @@ public:
   // ── Override damage to handle power-up states ──
   void takeDamage(int amount = 1) override;
   void die() override;
+  bool isDeathAnimationComplete() const;
 
   // ── Lives ──
   int getLives() const;
@@ -87,4 +88,14 @@ protected:
   // ── Sprite selection ──
   CharacterId m_characterId = CharacterId::Mario;
   SpriteRegistry::PlayerAnim m_currentAnim = SpriteRegistry::PlayerAnim::Idle;
+
+private:
+  enum class DeathAnimationPhase { None, Rising, Falling, Paused, Complete };
+
+  void updateDeathAnimation(float dt);
+  sf::FloatRect getDeathBounds() const;
+
+  DeathAnimationPhase m_deathAnimationPhase = DeathAnimationPhase::None;
+  float m_deathPauseTimer = 0.0f;
+  float m_deathPauseY = 0.0f;
 };

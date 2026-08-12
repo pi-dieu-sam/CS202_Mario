@@ -12,6 +12,7 @@
 #include "Level/TileGrid.hpp"
 #include "Entities/Goomba.hpp"
 #include "Entities/Koopa.hpp"
+#include "Entities/Luigi.hpp"
 #include "Entities/Mario.hpp"
 #include "Entities/Mushroom.hpp"
 #include "Entities/Tile.hpp"
@@ -298,6 +299,55 @@ static void testAllLuigiSpriteStatesLoad() {
   }
 }
 
+static void testPlayerDeathAnimationUsesFacingPoses() {
+  const std::vector<CharacterId> characters = {
+      CharacterId::Mario, CharacterId::Luigi};
+  for (CharacterId character : characters) {
+    const std::string &path = SpriteRegistry::playerDeathPath(character);
+    CHECK(std::filesystem::exists(path),
+          "death animation has a registered character-specific asset");
+
+    sf::Image image;
+    CHECK(image.loadFromFile(path) && image.getSize().x == 14 &&
+              image.getSize().y == 14,
+          "death animation asset is a loadable 14x14 pose facing the player");
+  }
+
+  Mario mario;
+  Luigi luigi;
+  for (Player *player : {static_cast<Player *>(&mario),
+                         static_cast<Player *>(&luigi)}) {
+    player->setPosition(100.0f, 200.0f);
+    const float startY = player->getPosition().y;
+    float previousY = startY;
+    bool rose = false;
+    bool fell = false;
+
+    player->die();
+    CHECK(player->isDead() && !player->isDeathAnimationComplete(),
+          "death starts as an active animation instead of completing immediately");
+
+    for (int frame = 0; frame < 120 && !player->isDeathAnimationComplete();
+         ++frame) {
+      player->update(FIXED_DT);
+      const float y = player->getPosition().y;
+      rose = rose || y < startY;
+      fell = fell || (rose && y > previousY);
+      previousY = y;
+    }
+
+    CHECK(rose, "death animation moves the player upward first");
+    CHECK(fell, "death animation reverses into a downward drop");
+    CHECK(player->isDeathAnimationComplete(),
+          "death animation pauses briefly and then reports completion");
+    CHECK(player->getPosition().y > startY &&
+              std::abs(player->getVelocity().y) < 0.001f,
+          "death animation stops below its starting position before respawn");
+    CHECK(player->getBounds().top > static_cast<float>(WINDOW_HEIGHT),
+          "death animation pauses only after the player falls out of the screen");
+  }
+}
+
 int main() {
   testReflectHelperPure();
   testGoombaBouncesBothDirections();
@@ -309,6 +359,7 @@ int main() {
   testSweptStompCatchesTunneling();
   testSprintDoesNotCompoundVelocity();
   testAllLuigiSpriteStatesLoad();
+  testPlayerDeathAnimationUsesFacingPoses();
 
   if (g_failures == 0) {
     std::cout << "All collision-resolution tests passed.\n";

@@ -268,6 +268,14 @@ const std::string &SpriteRegistry::playerPath(CharacterId character,
   return marioFireIdle();
 }
 
+const std::string &SpriteRegistry::playerDeathPath(CharacterId character) {
+  static const std::string mario =
+      "assets/textures/SMB_Mario_Death_Sprite.png";
+  static const std::string luigi =
+      "assets/textures/SMB_Luigi_Death_Sprite.png";
+  return character == CharacterId::Luigi ? luigi : mario;
+}
+
 int SpriteRegistry::playerFrameCount(CharacterId character, PowerUpState power,
                                       PlayerAnim anim) {
   if (anim != PlayerAnim::Walk) {
