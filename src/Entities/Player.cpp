@@ -161,9 +161,7 @@ void Player::die() {
   EventManager::getInstance().publish({EventType::PlayerDied});
 }
 
-// ── Score & lives ──
-int Player::getScore() const { return m_score; }
-void Player::addScore(int points) { m_score += points; }
+// ── Lives ──
 int Player::getLives() const { return m_lives; }
 void Player::setLives(int lives) { m_lives = lives; }
 void Player::loseLife() { m_lives--; }

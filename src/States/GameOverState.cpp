@@ -1,4 +1,5 @@
 #include "States/GameOverState.hpp"
+#include "States/CharacterSelectState.hpp"
 #include "States/MenuState.hpp"
 #include "States/PlayingState.hpp"
 #include "Core/Game.hpp"
@@ -6,18 +7,21 @@
 #include "States/StateManager.hpp"
 #include "Physics/PhysicsConstants.hpp"
 
-GameOverState::GameOverState() {}
+GameOverState::GameOverState(GameResult result) : m_result(result) {}
 
 void GameOverState::onEnter() {
     sf::Font& font = AssetManager::getInstance().getFont("assets/fonts/mario_font.ttf");
 
     m_background.setSize(sf::Vector2f(WINDOW_WIDTH, WINDOW_HEIGHT));
-    m_background.setFillColor(sf::Color(20, 20, 20));
+    m_background.setFillColor(m_result == GameResult::Won
+                                  ? sf::Color(20, 45, 75)
+                                  : sf::Color(20, 20, 20));
 
     m_title.setFont(font);
-    m_title.setString("GAME OVER");
+    m_title.setString(m_result == GameResult::Won ? "YOU WIN!" : "GAME OVER");
     m_title.setCharacterSize(52);
-    m_title.setFillColor(sf::Color::Red);
+    m_title.setFillColor(m_result == GameResult::Won ? sf::Color::Yellow
+                                                      : sf::Color::Red);
     auto tb = m_title.getLocalBounds();
     m_title.setOrigin(tb.width / 2.0f, tb.height / 2.0f);
     m_title.setPosition(WINDOW_WIDTH / 2.0f, 150.0f);
@@ -30,7 +34,8 @@ void GameOverState::onEnter() {
     m_scoreText.setOrigin(sb.width / 2.0f, sb.height / 2.0f);
     m_scoreText.setPosition(WINDOW_WIDTH / 2.0f, 250.0f);
 
-    std::string labels[] = {"RETRY", "MAIN MENU"};
+    std::string labels[] = {
+        m_result == GameResult::Won ? "NEW GAME" : "RETRY", "MAIN MENU"};
     for (int i = 0; i < 2; i++) {
         m_options[i].setFont(font);
         m_options[i].setString(labels[i]);
@@ -45,6 +50,24 @@ void GameOverState::onEnter() {
 }
 
 void GameOverState::onExit() {}
+
+void GameOverState::activateSelectedOption() {
+    Game& game = Game::getInstance();
+
+    if (m_selected == 0) {
+        if (m_result == GameResult::Won) {
+            game.getProgress().resetGameData();
+            game.getStateManager().changeState(
+                std::make_unique<CharacterSelectState>());
+        } else {
+            game.getProgress().retryCurrentLevel();
+            game.getStateManager().changeState(
+                std::make_unique<PlayingState>());
+        }
+    } else {
+        game.getStateManager().changeState(std::make_unique<MenuState>());
+    }
+}
 
 void GameOverState::handleEvent(const sf::Event& event) {
     sf::RenderWindow& window = Game::getInstance().getWindow();
@@ -69,14 +92,7 @@ void GameOverState::handleEvent(const sf::Event& event) {
         for (int i = 0; i < 2; i++) {
             if (m_options[i].getGlobalBounds().contains(mousePos)) {
                 m_selected = i;
-                if (m_selected == 0) {
-                    Game::getInstance().getProgress().resetGameData();
-                    Game::getInstance().getStateManager().changeState(
-                        std::make_unique<PlayingState>());
-                } else {
-                    Game::getInstance().getStateManager().changeState(
-                        std::make_unique<MenuState>());
-                }
+                activateSelectedOption();
                 return;
             }
         }
@@ -100,14 +116,7 @@ void GameOverState::handleEvent(const sf::Event& event) {
 
             case sf::Keyboard::Return:
             case sf::Keyboard::Space:
-                if (m_selected == 0) {
-                    Game::getInstance().getProgress().resetGameData();
-                    Game::getInstance().getStateManager().changeState(
-                        std::make_unique<PlayingState>());
-                } else {
-                    Game::getInstance().getStateManager().changeState(
-                        std::make_unique<MenuState>());
-                }
+                activateSelectedOption();
                 break;
 
             default:

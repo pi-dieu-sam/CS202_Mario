@@ -20,6 +20,14 @@ public:
     int  getCurrentLevel() const;
     void setCurrentLevel(int level);
 
+    /// Advance to the next level. Returns false when the current level is
+    /// already the final level, so callers can show the victory flow.
+    bool advanceToNextLevel(int totalLevels);
+
+    /// Restart the current level after a game over without discarding the
+    /// player's score, coins, selected character, or level selection.
+    void retryCurrentLevel();
+
     int  getCoins() const;
     void addCoin();
     void setCoins(int coins);

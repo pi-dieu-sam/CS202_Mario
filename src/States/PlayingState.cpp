@@ -3,6 +3,7 @@
 #include "States/GameOverState.hpp"
 #include "States/MenuState.hpp"
 #include "Core/Game.hpp"
+#include "Core/LevelCompletion.hpp"
 #include "Core/Command.hpp"
 #include "Core/SoundManager.hpp"
 #include "Level/Level.hpp"
@@ -15,6 +16,10 @@
 #include <algorithm>
 #include <iostream>
 #include <sstream>
+
+namespace {
+constexpr float TIME_BONUS_TICK_INTERVAL = 0.03f;
+}
 
 PlayingState::PlayingState() : m_hud(std::make_unique<HUD>()) {}
 PlayingState::~PlayingState() {}
@@ -74,7 +79,7 @@ void PlayingState::onEnter() {
     });
 
     m_levelCompletedSub = ScopedEventSubscription(EventType::LevelCompleted, [this](const GameEvent& e) {
-        m_transitionBonusScore = e.intData;
+        m_transitionFlagpoleBonus = e.intData;
     });
 }
 
@@ -138,7 +143,7 @@ void PlayingState::update(float dt) {
     if (m_transitionStage != LevelTransitionStage::Inactive) {
         if (m_transitionStage == LevelTransitionStage::FlagSlide ||
             m_transitionStage == LevelTransitionStage::CastleEntry ||
-            m_transitionStage == LevelTransitionStage::ScoreCount) {
+            m_transitionStage == LevelTransitionStage::TimeBonusCount) {
             m_level->update(dt);
         }
         updateLevelTransition(dt);
@@ -243,7 +248,14 @@ void PlayingState::startLevelTransition() {
     m_transitionStage = LevelTransitionStage::FlagSlide;
     m_transitionTimer = 0.0f;
     m_transitionScoreTimer = 0.0f;
+    m_transitionStartScore = Game::getInstance().getProgress().getScore();
+    m_transitionRemainingSeconds = LevelCompletion::displayedSeconds(m_levelTimer);
+    m_transitionTimeBonus =
+        LevelCompletion::timeBonusForSeconds(m_transitionRemainingSeconds);
+    m_transitionConvertedTimeScore = 0;
+    m_transitionConvertedFlagpoleScore = 0;
     m_transitionDisplayScore = 0;
+    m_hud->setTime(static_cast<float>(m_transitionRemainingSeconds));
 
     if (m_player) {
         m_player->setGrounded(false);
@@ -395,25 +407,31 @@ void PlayingState::updateLevelTransition(float dt) {
         m_transitionTimer += dt;
         if (m_transitionTimer >= 0.75f) {
             m_player->setActive(false);
-            m_transitionStage = LevelTransitionStage::ScoreCount;
+            m_transitionStage = LevelTransitionStage::TimeBonusCount;
             m_transitionTimer = 0.0f;
         }
         break;
     }
-    case LevelTransitionStage::ScoreCount: {
+    case LevelTransitionStage::TimeBonusCount: {
         m_transitionScoreTimer += dt;
-        if (m_transitionScoreTimer >= 0.08f) {
-            m_transitionScoreTimer = 0.0f;
-            if (m_transitionBonusScore > m_transitionDisplayScore) {
-                const int increment = std::max(100, m_transitionBonusScore / 10);
-                const int add = std::min(increment, m_transitionBonusScore - m_transitionDisplayScore);
-                m_transitionDisplayScore += add;
-
-                PlayerProgress& progress = Game::getInstance().getProgress();
-                progress.addScore(add);
-                m_hud->setScore(progress.getScore());
+        if (m_transitionScoreTimer >= TIME_BONUS_TICK_INTERVAL) {
+            m_transitionScoreTimer -= TIME_BONUS_TICK_INTERVAL;
+            const int flagpoleIncrement =
+                LevelCompletion::flagpoleBonusForNextTick(
+                    m_transitionFlagpoleBonus, m_transitionConvertedFlagpoleScore,
+                    m_transitionRemainingSeconds);
+            if (LevelCompletion::convertNextSecond(
+                    m_transitionRemainingSeconds, m_transitionConvertedTimeScore)) {
+                m_transitionConvertedFlagpoleScore += flagpoleIncrement;
+                m_transitionDisplayScore =
+                    m_transitionConvertedFlagpoleScore + m_transitionConvertedTimeScore;
+                m_hud->setTime(static_cast<float>(m_transitionRemainingSeconds));
+                m_hud->setScore(m_transitionStartScore + m_transitionDisplayScore);
                 SoundManager::getInstance().playSound(SoundID::Coin);
             } else {
+                PlayerProgress& progress = Game::getInstance().getProgress();
+                progress.addScore(m_transitionFlagpoleBonus + m_transitionTimeBonus);
+                m_hud->setScore(progress.getScore());
                 m_transitionStage = LevelTransitionStage::Finished;
             }
         }
@@ -429,14 +447,12 @@ void PlayingState::updateLevelTransition(float dt) {
 
 void PlayingState::finishLevelTransition() {
     Game& game = Game::getInstance();
-    int nextLevel = game.getProgress().getCurrentLevel() + 1;
 
-    if (nextLevel > TOTAL_LEVELS) {
-        SoundManager::getInstance().playSound(SoundID::GameOver);
-        game.getStateManager().changeState(std::make_unique<GameOverState>());
-    } else {
-        game.getProgress().setCurrentLevel(nextLevel);
+    if (game.getProgress().advanceToNextLevel(TOTAL_LEVELS)) {
         game.getStateManager().changeState(std::make_unique<PlayingState>());
+    } else {
+        game.getStateManager().changeState(
+            std::make_unique<GameOverState>(GameResult::Won));
     }
 
     m_levelComplete = true;

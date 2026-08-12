@@ -52,9 +52,7 @@ public:
   void takeDamage(int amount = 1) override;
   void die() override;
 
-  // ── Score & lives ──
-  int getScore() const;
-  void addScore(int points);
+  // ── Lives ──
   int getLives() const;
   void setLives(int lives);
   void loseLife();
@@ -70,7 +68,6 @@ public:
 protected:
   PowerUpState m_powerUp = PowerUpState::Small;
   int m_lives = 3;
-  int m_score = 0;
   bool m_sprinting = false;
   bool m_wantsToShoot = false;
   bool m_jumpHeld = false;
