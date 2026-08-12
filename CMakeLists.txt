@@ -52,6 +52,21 @@ if(BUILD_TESTS)
     set_tests_properties(CollisionResolutionTests PROPERTIES
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     )
+
+    add_executable(ProgressionTests tests/ProgressionTests.cpp ${TEST_SOURCES})
+    target_include_directories(ProgressionTests PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
+    )
+    target_link_libraries(ProgressionTests PRIVATE
+        sfml-graphics
+        sfml-window
+        sfml-system
+        sfml-audio
+    )
+    add_test(NAME ProgressionTests COMMAND ProgressionTests)
+    set_tests_properties(ProgressionTests PROPERTIES
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    )
 endif()
 
 # --- Copy assets to build directory ---

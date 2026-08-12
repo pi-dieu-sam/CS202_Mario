@@ -342,7 +342,6 @@ void Level::handleCollisions(float dt) {
     if (result.collided) {
       m_flagpole->setReached(true);
       int bonus = m_flagpole->calculateScore(m_player->getPosition().y);
-      m_player->addScore(bonus);
       EventManager::getInstance().publish({EventType::LevelCompleted, bonus});
     }
   }
