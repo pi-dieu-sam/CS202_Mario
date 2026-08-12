@@ -10,6 +10,20 @@
 #include <cmath>
 #include <optional>
 
+namespace {
+sf::Vector2f boundsCenter(const GameObject& object) {
+  const sf::FloatRect bounds = object.getBounds();
+  return {bounds.left + bounds.width * 0.5f,
+          bounds.top + bounds.height * 0.5f};
+}
+
+void publishEnemyDefeated(Enemy& enemy, const sf::Vector2f& worldPosition) {
+  GameEvent event{EventType::EnemyDefeated, enemy.getScoreValue()};
+  event.worldPosition = worldPosition;
+  EventManager::getInstance().publish(event);
+}
+} // namespace
+
 Level::Level() {}
 Level::~Level() {}
 
@@ -292,9 +306,9 @@ void Level::handleCollisions(float dt) {
 
     if (m_player->hasStarPower()) {
       // Star power kills every enemy it touches this frame.
+      const sf::Vector2f scorePosition = boundsCenter(*enemy);
       enemy->onStomped();
-      EventManager::getInstance().publish(
-          {EventType::EnemyDefeated, enemy->getScoreValue()});
+      publishEnemyDefeated(*enemy, scorePosition);
       continue;
     }
 
@@ -314,12 +328,12 @@ void Level::handleCollisions(float dt) {
         m_player->getVelocity().y > 0) {
       // Stomp from above
       CollisionDetector::moveToImpact(*m_player, firstEnemyResult);
+      const sf::Vector2f scorePosition = boundsCenter(*firstEnemyHit);
       firstEnemyHit->onStomped();
       const float bounceVelocity =
           m_player->isJumpHeld() ? m_player->getJumpForce() : -250.0f;
       m_player->setVelocity(m_player->getVelocity().x, bounceVelocity);
-      EventManager::getInstance().publish(
-          {EventType::EnemyDefeated, firstEnemyHit->getScoreValue()});
+      publishEnemyDefeated(*firstEnemyHit, scorePosition);
     } else {
       // Side collision — player takes damage
       m_player->takeDamage();
@@ -413,14 +427,14 @@ void Level::handleCollisions(float dt) {
 
       if (aIsSlidingShell || bIsSlidingShell) {
         if (aIsSlidingShell) {
+          const sf::Vector2f scorePosition = boundsCenter(*enemyB);
           enemyB->onStomped();
-          EventManager::getInstance().publish(
-              {EventType::EnemyDefeated, enemyB->getScoreValue()});
+          publishEnemyDefeated(*enemyB, scorePosition);
         }
         if (bIsSlidingShell) {
+          const sf::Vector2f scorePosition = boundsCenter(*enemyA);
           enemyA->onStomped();
-          EventManager::getInstance().publish(
-              {EventType::EnemyDefeated, enemyA->getScoreValue()});
+          publishEnemyDefeated(*enemyA, scorePosition);
         }
       } else {
         const sf::Vector2f velA = enemyA->getVelocity();
@@ -460,10 +474,10 @@ void Level::handleCollisions(float dt) {
         continue;
       auto result = CollisionDetector::checkCollision(*fb, *enemy);
       if (result.collided) {
+        const sf::Vector2f scorePosition = boundsCenter(*enemy);
         enemy->onStomped(); // Fireball kills enemy
         fb->setActive(false);
-        EventManager::getInstance().publish(
-            {EventType::EnemyDefeated, enemy->getScoreValue()});
+        publishEnemyDefeated(*enemy, scorePosition);
       }
     }
   }

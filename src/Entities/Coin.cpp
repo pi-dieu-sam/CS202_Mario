@@ -12,7 +12,13 @@ Coin::Coin() {
 }
 
 void Coin::activate(Player& player) {
-    EventManager::getInstance().publish({EventType::CoinCollected, COIN_SCORE});
+    const sf::FloatRect bounds = getBounds();
+    GameEvent event{EventType::CoinCollected, COIN_SCORE};
+    event.worldPosition = {
+        bounds.left + bounds.width * 0.5f,
+        bounds.top + bounds.height * 0.5f
+    };
+    EventManager::getInstance().publish(event);
 }
 
 void Coin::update(float dt) {
