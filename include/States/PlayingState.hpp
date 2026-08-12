@@ -5,6 +5,7 @@
 #include "../Level/LevelTheme.hpp"
 #include "../Entities/Player.hpp"
 #include "../Observers/EventManager.hpp"
+#include "../UI/ScorePopup.hpp"
 #include <memory>
 
 // Forward declarations
@@ -53,6 +54,7 @@ private:
     std::unique_ptr<Level>  m_level;
     Player*                 m_player = nullptr; // owned by m_level
     std::unique_ptr<HUD>    m_hud;
+    ScorePopupManager       m_scorePopups;
     InputHandler            m_input;
     Camera                  m_camera;
 

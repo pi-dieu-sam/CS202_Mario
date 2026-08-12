@@ -31,6 +31,7 @@ void PlayingState::onEnter() {
     m_levelComplete = false;
 
     m_hud->init();
+    m_scorePopups.init();
     m_hud->setCharacterName(progress.getSelectedCharacter());
     m_hud->setLevel(progress.getCurrentLevel());
     m_hud->setLives(progress.getLives());
@@ -48,6 +49,7 @@ void PlayingState::onEnter() {
         progress.addCoin();
         m_hud->setCoins(progress.getCoins());
         m_hud->setScore(progress.getScore());
+        m_scorePopups.add(e.intData, e.worldPosition);
     });
 
     m_enemyDefeatedSub = ScopedEventSubscription(EventType::EnemyDefeated, [this](const GameEvent& e) {
@@ -55,6 +57,7 @@ void PlayingState::onEnter() {
         PlayerProgress& progress = Game::getInstance().getProgress();
         progress.addScore(e.intData);
         m_hud->setScore(progress.getScore());
+        m_scorePopups.add(e.intData, e.worldPosition);
     });
 
     m_playerDiedSub = ScopedEventSubscription(EventType::PlayerDied, [this](const GameEvent& e) {
@@ -91,6 +94,7 @@ void PlayingState::onExit() {
     m_blockHitSub.reset();
     m_playerDamagedSub.reset();
     m_levelCompletedSub.reset();
+    m_scorePopups.clear();
     SoundManager::getInstance().stopMusic();
 }
 
@@ -137,6 +141,8 @@ void PlayingState::handleEvent(const sf::Event& event) {
 }
 
 void PlayingState::update(float dt) {
+    m_scorePopups.update(dt);
+
     if (!m_level || !m_player) return;
     if (m_levelComplete) return;
 
@@ -211,6 +217,7 @@ void PlayingState::render(sf::RenderWindow& window) {
 
     if (m_level) {
         m_level->render(window, m_camera.getView().getCenter().x);
+        m_scorePopups.render(window);
     }
 
     // Reset view for HUD (screen-space)
@@ -219,6 +226,7 @@ void PlayingState::render(sf::RenderWindow& window) {
 }
 
 void PlayingState::loadLevel(int levelNumber) {
+    m_scorePopups.clear();
     m_level = std::make_unique<Level>();
     m_mainLevelNumber = levelNumber;
     m_inSecretRoom = false;
@@ -348,6 +356,7 @@ void PlayingState::updatePipeTransition(float dt) {
     const std::string charName = Game::getInstance().getProgress().getSelectedCharacter();
     const LevelTheme theme = getLevelTheme(levelNumber, secretRoom);
 
+    m_scorePopups.clear();
     m_level = std::make_unique<Level>();
     if (!m_level->loadFromFile(filename, charName, theme, !secretRoom)) {
         std::cerr << "[PlayingState] Failed to load pipe level: " << filename << std::endl;
