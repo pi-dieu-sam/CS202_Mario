@@ -17,7 +17,8 @@ enum class LevelTransitionStage {
     Inactive,
     FlagSlide,
     CastleEntry,
-    ScoreCount,
+    FlagpoleScoreCount,
+    TimeBonusCount,
     Finished,
     PipeEnter,
     PipeReturn
@@ -70,7 +71,10 @@ private:
     float m_transitionTimer = 0.0f;
     float m_transitionScoreTimer = 0.0f;
     int m_transitionStartScore = 0;
-    int m_transitionBonusScore = 0;
+    int m_transitionFlagpoleBonus = 0;
+    int m_transitionTimeBonus = 0;
+    int m_transitionRemainingSeconds = 0;
+    int m_transitionConvertedTimeScore = 0;
     int m_transitionDisplayScore = 0;
     int m_mainLevelNumber = 1;
     bool m_inSecretRoom = false;
