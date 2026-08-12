@@ -25,5 +25,5 @@ constexpr float LEVEL_TIME        = 300.0f;  // seconds per level
 constexpr float INVINCIBILITY_DUR = 2.0f;    // seconds after taking damage
 constexpr int   COIN_SCORE        = 100;
 constexpr int   ENEMY_SCORE       = 200;
-constexpr int   TIME_BONUS_PER_SECOND = 100;
+constexpr int   TIME_BONUS_PER_SECOND = 10;
 constexpr int   TOTAL_LEVELS      = 3;
