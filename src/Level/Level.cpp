@@ -112,6 +112,20 @@ void Level::update(float dt) {
   removeInactiveEntities();
 }
 
+void Level::updateCompletion(float dt) {
+  if (!m_player) {
+    return;
+  }
+
+  // Only the player cutscene and falling flag progress here. Letting the
+  // normal update path run would re-enable gravity, enemy contacts, pickups,
+  // and tile collision responses partway through the flag-pole sequence.
+  m_player->update(dt);
+  if (m_flagpole) {
+    m_flagpole->update(dt);
+  }
+}
+
 void Level::render(sf::RenderWindow &window, float cameraCenterX) {
   m_background.render(window, cameraCenterX);
 
@@ -154,6 +168,7 @@ void Level::render(sf::RenderWindow &window, float cameraCenterX) {
 }
 
 Player *Level::getPlayer() const { return m_player.get(); }
+Flagpole *Level::getFlagpole() const { return m_flagpole.get(); }
 float Level::getWidth() const { return m_width; }
 float Level::getHeight() const { return m_height; }
 

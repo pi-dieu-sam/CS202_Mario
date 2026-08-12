@@ -161,7 +161,7 @@ void PlayingState::update(float dt) {
         if (m_transitionStage == LevelTransitionStage::FlagSlide ||
             m_transitionStage == LevelTransitionStage::CastleEntry ||
             m_transitionStage == LevelTransitionStage::TimeBonusCount) {
-            m_level->update(dt);
+            m_level->updateCompletion(dt);
         }
         updateLevelTransition(dt);
         return;
@@ -290,8 +290,16 @@ void PlayingState::startLevelTransition() {
     m_hud->setTime(static_cast<float>(m_transitionRemainingSeconds));
 
     if (m_player) {
-        m_player->setGrounded(false);
-        m_player->setVelocity(0.0f, 0.0f);
+        if (Flagpole* flagpole = m_level ? m_level->getFlagpole() : nullptr) {
+            m_player->beginFlagpoleSlide(flagpole->getSlideAnchorX(),
+                                         flagpole->getSlideEndY());
+        } else {
+            // isComplete() is normally driven by a flagpole, but malformed
+            // custom levels must still be able to finish instead of waiting
+            // forever for a slide target that does not exist.
+            m_player->beginFlagpoleCastleWalk();
+            m_transitionStage = LevelTransitionStage::CastleEntry;
+        }
     }
 
     SoundManager::getInstance().stopMusic();
@@ -422,13 +430,8 @@ void PlayingState::updateLevelTransition(float dt) {
         // advancing its own rise/fall/pause timeline.
         break;
     case LevelTransitionStage::FlagSlide: {
-        sf::Vector2f pos = m_player->getPosition();
-        pos.y += 220.0f * dt;
-        m_player->setPosition(pos);
-        m_player->setVelocity(0.0f, 0.0f);
-
-        m_transitionTimer += dt;
-        if (m_transitionTimer >= 1.0f) {
+        if (m_player->isFlagpoleSlideComplete()) {
+            m_player->beginFlagpoleCastleWalk();
             m_transitionStage = LevelTransitionStage::CastleEntry;
             m_transitionTimer = 0.0f;
         }

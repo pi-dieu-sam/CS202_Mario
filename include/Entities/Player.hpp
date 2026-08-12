@@ -48,6 +48,16 @@ public:
   void setJumpHeld(bool held);
   bool isJumpHeld() const;
 
+  // ── Goal cutscene ──
+  /// Lock the player to the pole and descend to `landingY` using the
+  /// character-specific climbing animation.
+  void beginFlagpoleSlide(float poleCenterX, float landingY);
+  /// Switch from the pole pose to a cutscene-only walk animation used while
+  /// the player heads toward the castle.
+  void beginFlagpoleCastleWalk();
+  bool isFlagpoleSlideComplete() const;
+  bool isFlagpoleCutsceneActive() const;
+
   // ── Override damage to handle power-up states ──
   void takeDamage(int amount = 1) override;
   void die() override;
@@ -91,11 +101,18 @@ protected:
 
 private:
   enum class DeathAnimationPhase { None, Rising, Falling, Paused, Complete };
+  enum class GoalAnimationPhase { None, Sliding, SlideComplete, CastleWalk };
 
   void updateDeathAnimation(float dt);
+  void updateFlagpoleSlide(float dt);
+  void updateFlagpoleCastleWalk(float dt);
   sf::FloatRect getDeathBounds() const;
 
   DeathAnimationPhase m_deathAnimationPhase = DeathAnimationPhase::None;
   float m_deathPauseTimer = 0.0f;
   float m_deathPauseY = 0.0f;
+
+  GoalAnimationPhase m_goalAnimationPhase = GoalAnimationPhase::None;
+  float m_flagpoleSlideX = 0.0f;
+  float m_flagpoleSlideTargetY = 0.0f;
 };

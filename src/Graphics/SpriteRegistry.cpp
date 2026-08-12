@@ -3,17 +3,52 @@
 #include "Entities/Block.hpp"
 #include "Entities/Player.hpp"
 #include "Entities/Tile.hpp"
+#include <iostream>
 
 // ─────────────────────────────────────────────────────────────────────────
-// Every path below points at a single-sprite file under assets/textures/,
-// sourced from the Mario Wiki / Wikipedia. Where a theme or animation frame
-// has no working dedicated asset, it deliberately falls back to the closest
-// available art (documented inline) rather than being left broken — see
-// asset-triage.md at the repo root for the full survey this was built from.
+// Every ordinary path below points at a single-sprite file under
+// assets/textures/, sourced from the Mario Wiki / Wikipedia. The flag-pole
+// climb poses are the deliberate exception: they are cropped from the shared
+// playable-character sheet because that is where both Mario and Luigi poses
+// are available. Where a theme or animation frame has no working dedicated
+// asset, it deliberately falls back to the closest available art (documented
+// inline) rather than being left broken — see asset-triage.md at the repo root
+// for the full survey this was built from.
 // ─────────────────────────────────────────────────────────────────────────
 
 namespace {
 constexpr int THEME_COUNT = 3; // Overworld, Underground, Castle
+constexpr char PLAYER_FLAGPOLE_SHEET_PATH[] =
+    "assets/textures/NES - Super Mario Bros. - Playable Characters - Mario & Luigi.png";
+const sf::Color PLAYER_SHEET_CELL_BACKGROUND(146, 144, 255);
+
+/// The character sheet is an annotated reference image rather than a normal
+/// transparent sprite atlas.  Its climb cells are surrounded by this exact
+/// lavender colour, so make only that colour transparent once before using
+/// the known frame rectangles below.
+sf::Texture &flagpoleSlideSheetTexture() {
+  static sf::Texture texture;
+  static bool attemptedLoad = false;
+  if (attemptedLoad) {
+    return texture;
+  }
+  attemptedLoad = true;
+
+  sf::Image image;
+  if (!image.loadFromFile(PLAYER_FLAGPOLE_SHEET_PATH)) {
+    std::cerr << "[SpriteRegistry] Failed to load flagpole player sheet: "
+              << PLAYER_FLAGPOLE_SHEET_PATH << "\n";
+    return texture;
+  }
+
+  image.createMaskFromColor(PLAYER_SHEET_CELL_BACKGROUND);
+  if (!texture.loadFromImage(image)) {
+    std::cerr << "[SpriteRegistry] Failed to create flagpole player texture: "
+              << PLAYER_FLAGPOLE_SHEET_PATH << "\n";
+  }
+  return texture;
+}
+
 int themeIndex(LevelTheme theme) { return static_cast<int>(theme); }
 
 const std::string &groundPath(LevelTheme theme) {
@@ -178,6 +213,13 @@ const std::string &SpriteRegistry::playerPath(CharacterId character,
                                                PlayerAnim anim, int frame) {
   bool luigi = (character == CharacterId::Luigi);
 
+  if (anim == PlayerAnim::FlagpoleSlide) {
+    // The caller must use applyPlayerFlagpoleSlideFrame() so only the
+    // selected source cell is shown. Returning the real sheet path here keeps
+    // this logical animation queryable like every other PlayerAnim.
+    return playerFlagpoleSlideSheetPath();
+  }
+
   // Walk needs a small per-combo frame list; everything else is one pose.
   if (anim == PlayerAnim::Walk) {
     if (power == PowerUpState::Small) {
@@ -278,10 +320,56 @@ const std::string &SpriteRegistry::playerDeathPath(CharacterId character) {
 
 int SpriteRegistry::playerFrameCount(CharacterId character, PowerUpState power,
                                       PlayerAnim anim) {
+  if (anim == PlayerAnim::FlagpoleSlide) {
+    return playerFlagpoleSlideFrameCount(character, power);
+  }
   if (anim != PlayerAnim::Walk) {
     return 1;
   }
   return 2;
+}
+
+const std::string &SpriteRegistry::playerFlagpoleSlideSheetPath() {
+  static const std::string path = PLAYER_FLAGPOLE_SHEET_PATH;
+  return path;
+}
+
+int SpriteRegistry::playerFlagpoleSlideFrameCount(CharacterId /*character*/,
+                                                    PowerUpState /*power*/) {
+  return 2;
+}
+
+sf::IntRect SpriteRegistry::playerFlagpoleSlideRect(CharacterId character,
+                                                     PowerUpState power,
+                                                     int frame) {
+  // These two cells are the alternating pole-climb poses in the shared NES
+  // character sheet. The Luigi half begins exactly 288 pixels to the right.
+  constexpr int marioFrameX[2] = {136, 154};
+  constexpr int luigiOffsetX = 288;
+  constexpr int smallFrameY = 8;
+  constexpr int tallFrameY = 31;
+  constexpr int frameWidth = 16;
+  constexpr int smallFrameHeight = 16;
+  constexpr int tallFrameHeight = 32;
+
+  const int normalizedFrame =
+      frame % playerFlagpoleSlideFrameCount(character, power);
+  const int x = marioFrameX[normalizedFrame] +
+                (character == CharacterId::Luigi ? luigiOffsetX : 0);
+  const bool small = power == PowerUpState::Small;
+  return sf::IntRect(x, small ? smallFrameY : tallFrameY, frameWidth,
+                     small ? smallFrameHeight : tallFrameHeight);
+}
+
+void SpriteRegistry::applyPlayerFlagpoleSlideFrame(
+    sf::Sprite &sprite, CharacterId character, PowerUpState power, int frame,
+    const sf::FloatRect &box, bool flip) {
+  sf::Texture &texture = flagpoleSlideSheetTexture();
+  if (texture.getSize().x == 0 || texture.getSize().y == 0) {
+    return;
+  }
+  applyFrame(sprite, texture, playerFlagpoleSlideRect(character, power, frame),
+             box, flip);
 }
 
 const std::string &SpriteRegistry::coinPath(LevelTheme theme, int /*frame*/) {
