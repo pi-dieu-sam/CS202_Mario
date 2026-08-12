@@ -19,6 +19,19 @@ void PlayerProgress::loseLife() {
 int PlayerProgress::getCurrentLevel() const { return m_currentLevel; }
 void PlayerProgress::setCurrentLevel(int level) { m_currentLevel = level; }
 
+bool PlayerProgress::advanceToNextLevel(int totalLevels) {
+    if (m_currentLevel >= totalLevels) {
+        return false;
+    }
+
+    ++m_currentLevel;
+    return true;
+}
+
+void PlayerProgress::retryCurrentLevel() {
+    m_lives = STARTING_LIVES;
+}
+
 // ── Coins ──
 int PlayerProgress::getCoins() const { return m_coins; }
 void PlayerProgress::addCoin() {
@@ -42,4 +55,5 @@ void PlayerProgress::resetGameData() {
     m_lives        = STARTING_LIVES;
     m_coins        = 0;
     m_currentLevel = 1;
+    m_selectedChar = "Mario";
 }
