@@ -16,6 +16,7 @@ class HUD;
 /// Loads and runs a level, handles input, physics, and rendering.
 enum class LevelTransitionStage {
     Inactive,
+    DeathAnimation,
     FlagSlide,
     CastleEntry,
     TimeBonusCount,
@@ -46,7 +47,8 @@ private:
     void startLevelTransition();
     void updateLevelTransition(float dt);
     void finishLevelTransition();
-    void onPlayerDeath();
+    void beginPlayerDeath();
+    void finishPlayerDeath();
 
     std::string getLevelPath(int levelNumber, bool secretRoom) const;
     LevelTheme   getLevelTheme(int levelNumber, bool secretRoom) const;

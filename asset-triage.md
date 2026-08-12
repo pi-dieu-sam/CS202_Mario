@@ -12,6 +12,9 @@ map for deciding what to re-source before `SpriteRegistry`/`AssetManager` get re
   every Fire Luigi state. They were derived from the matching loadable Mario
   poses with Luigi's green/white NES palette, verified against the shared
   Mario & Luigi reference sheet.
+- Player death poses are now usable: `SMB_Luigi_Death_Sprite.png` was already a
+  valid 14x14 PNG, while the mislabeled WebP `SMB_NES_Mario_Death_Sprite.png`
+  was re-exported as the loadable `SMB_Mario_Death_Sprite.png`.
 
 ## Bottom line
 
@@ -36,7 +39,7 @@ map for deciding what to re-source before `SpriteRegistry`/`AssetManager` get re
 | Mario | Covered (idle/walk/jump). No skid pose in the pack. | Covered (idle/walk/jump/duck). No skid. | Covered (idle/walk/jump/duck/shoot). No skid. |
 | Luigi | Idle, jump, and a two-frame walk cycle covered. | Idle, jump, and a two-frame walk cycle covered; duck remains bonus/unmodeled. | Idle, jump, and a two-frame walk cycle covered by derived transparent Luigi PNGs. |
 
-Bonus, not currently modeled: `SMBMarioGrowing.png` / `MariotoSuperMario.gif` (mushroom transform), `Invincible_Mario.gif` / `SmallinvincibleMario.gif` (star blink), death sprites, `Firemarioclimb.gif` (16-frame vine-climb clip), swimming Mario/Luigi.
+Bonus, not currently modeled: `SMBMarioGrowing.png` / `MariotoSuperMario.gif` (mushroom transform), `Invincible_Mario.gif` / `SmallinvincibleMario.gif` (star blink), `Firemarioclimb.gif` (16-frame vine-climb clip), swimming Mario/Luigi.
 
 **Enemies**
 

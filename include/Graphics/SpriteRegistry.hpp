@@ -41,6 +41,7 @@ public:
   // ── Player ──
   static const std::string &playerPath(CharacterId character, PowerUpState power,
                                         PlayerAnim anim, int frame);
+  static const std::string &playerDeathPath(CharacterId character);
   static int playerFrameCount(CharacterId character, PowerUpState power,
                                PlayerAnim anim);
 

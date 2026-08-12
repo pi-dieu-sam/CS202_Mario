@@ -65,6 +65,13 @@ void Level::update(float dt) {
     m_player->die();
   }
 
+  // During the visible death sequence, Mario/Luigi is the only entity that
+  // advances. Freezing the rest of the level keeps enemies, items, fireballs,
+  // and block animations at their exact death-frame positions until respawn.
+  if (m_player->isDead()) {
+    return;
+  }
+
   // Update enemies
   for (auto &enemy : m_enemies) {
     if (!enemy->isActive())
@@ -338,6 +345,10 @@ void Level::handleCollisions(float dt) {
       // Side collision — player takes damage
       m_player->takeDamage();
     }
+  }
+
+  if (m_player->isDead()) {
+    return;
   }
 
   // Player vs Items
