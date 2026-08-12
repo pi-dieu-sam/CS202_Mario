@@ -66,5 +66,15 @@ int Flagpole::calculateScore(float playerY) const {
     return 100;
 }
 
+float Flagpole::getSlideAnchorX() const {
+    return m_position.x + TILE_SIZE / 2.0f;
+}
+
+float Flagpole::getSlideEndY() const {
+    // Player positions reserve a two-tile-tall anchor even for Small form.
+    // This keeps either form's feet just above the ground tile below the pole.
+    return m_position.y - TILE_SIZE;
+}
+
 bool Flagpole::isReached() const { return m_reached; }
 void Flagpole::setReached(bool reached) { m_reached = reached; }

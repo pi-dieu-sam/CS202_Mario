@@ -15,6 +15,10 @@ public:
     /// Calculate score bonus based on where the player grabs the pole.
     int calculateScore(float playerY) const;
 
+    /// World-space target coordinates for the player completion cutscene.
+    float getSlideAnchorX() const;
+    float getSlideEndY() const;
+
     bool isReached() const;
     void setReached(bool reached);
 

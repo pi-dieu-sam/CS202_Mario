@@ -9,6 +9,8 @@ namespace {
 constexpr float DEATH_INITIAL_VELOCITY = -300.0f;
 constexpr float DEATH_OFFSCREEN_MARGIN = TILE_SIZE;
 constexpr float DEATH_PAUSE_DURATION = 0.35f;
+constexpr float FLAGPOLE_SLIDE_SPEED = 180.0f;
+constexpr float FLAGPOLE_ANIM_SPEED = 0.12f;
 }
 
 Player::Player() {
@@ -19,6 +21,26 @@ Player::Player() {
 void Player::update(float dt) {
   if (m_dead) {
     updateDeathAnimation(dt);
+    return;
+  }
+
+  if (m_goalAnimationPhase == GoalAnimationPhase::Sliding) {
+    updateFlagpoleSlide(dt);
+    return;
+  }
+
+  if (m_goalAnimationPhase == GoalAnimationPhase::SlideComplete) {
+    // Hold the player at the pole base until PlayingState starts the castle
+    // walk. This is still a cutscene, so normal gravity must not resume.
+    m_position.x = m_flagpoleSlideX;
+    m_position.y = m_flagpoleSlideTargetY;
+    m_velocity = {0.0f, 0.0f};
+    m_grounded = false;
+    return;
+  }
+
+  if (m_goalAnimationPhase == GoalAnimationPhase::CastleWalk) {
+    updateFlagpoleCastleWalk(dt);
     return;
   }
 
@@ -89,6 +111,14 @@ void Player::draw(sf::RenderWindow &window) {
   if (!m_visible)
     return;
 
+  if (m_goalAnimationPhase == GoalAnimationPhase::Sliding ||
+      m_goalAnimationPhase == GoalAnimationPhase::SlideComplete) {
+    SpriteRegistry::applyPlayerFlagpoleSlideFrame(
+        m_sprite, m_characterId, m_powerUp, m_animFrame, getBounds(), false);
+    window.draw(m_sprite);
+    return;
+  }
+
   sf::Color tint = sf::Color::White;
   if (m_starPower) {
     // Rainbow flash effect
@@ -158,6 +188,49 @@ bool Player::isSprinting() const { return m_sprinting; }
 void Player::setJumpHeld(bool held) { m_jumpHeld = held; }
 bool Player::isJumpHeld() const { return m_jumpHeld; }
 
+// ── Goal cutscene ──
+void Player::beginFlagpoleSlide(float poleCenterX, float landingY) {
+  // Player::getBounds() is 28px wide. Place its right edge at the centre of
+  // the 6px pole so the character's outstretched hands meet it while facing
+  // right, just as the player approaches it during regular gameplay.
+  m_flagpoleSlideX = poleCenterX - (TILE_SIZE - 2.0f);
+  m_flagpoleSlideTargetY = landingY;
+  m_position.x = m_flagpoleSlideX;
+  m_velocity = {0.0f, 0.0f};
+  m_grounded = false;
+  m_sprinting = false;
+  m_wantsToShoot = false;
+  m_facingRight = true;
+  m_goalAnimationPhase = GoalAnimationPhase::Sliding;
+  m_currentAnim = SpriteRegistry::PlayerAnim::FlagpoleSlide;
+  m_animFrames = SpriteRegistry::playerFlagpoleSlideFrameCount(
+      m_characterId, m_powerUp);
+  m_animFrame = 0;
+  m_animTimer = 0.0f;
+  m_animSpeed = FLAGPOLE_ANIM_SPEED;
+}
+
+void Player::beginFlagpoleCastleWalk() {
+  m_goalAnimationPhase = GoalAnimationPhase::CastleWalk;
+  m_velocity = {0.0f, 0.0f};
+  m_grounded = false;
+  m_facingRight = true;
+  m_currentAnim = SpriteRegistry::PlayerAnim::Walk;
+  m_animFrames = SpriteRegistry::playerFrameCount(
+      m_characterId, m_powerUp, m_currentAnim);
+  m_animFrame = 0;
+  m_animTimer = 0.0f;
+  m_animSpeed = FLAGPOLE_ANIM_SPEED;
+}
+
+bool Player::isFlagpoleSlideComplete() const {
+  return m_goalAnimationPhase == GoalAnimationPhase::SlideComplete;
+}
+
+bool Player::isFlagpoleCutsceneActive() const {
+  return m_goalAnimationPhase != GoalAnimationPhase::None;
+}
+
 // ── Damage override ──
 void Player::takeDamage(int amount) {
   if (m_invincible || m_starPower)
@@ -178,6 +251,7 @@ void Player::die() {
   if (m_dead)
     return;
 
+  m_goalAnimationPhase = GoalAnimationPhase::None;
   m_dead = true;
   m_grounded = false;
   m_sprinting = false;
@@ -227,6 +301,42 @@ void Player::updateDeathAnimation(float dt) {
   case DeathAnimationPhase::Complete:
     break;
   }
+}
+
+void Player::updateFlagpoleSlide(float dt) {
+  m_position.x = m_flagpoleSlideX;
+  m_velocity = {0.0f, 0.0f};
+  m_grounded = false;
+  m_sprinting = false;
+  m_wantsToShoot = false;
+  m_facingRight = true;
+  m_currentAnim = SpriteRegistry::PlayerAnim::FlagpoleSlide;
+  setAnimFrameCount(
+      SpriteRegistry::playerFlagpoleSlideFrameCount(m_characterId, m_powerUp),
+      FLAGPOLE_ANIM_SPEED);
+  updateSprite(dt);
+
+  const float remainingY = m_flagpoleSlideTargetY - m_position.y;
+  const float movement = FLAGPOLE_SLIDE_SPEED * dt;
+  if (std::abs(remainingY) <= movement) {
+    m_position.y = m_flagpoleSlideTargetY;
+    m_goalAnimationPhase = GoalAnimationPhase::SlideComplete;
+  } else {
+    m_position.y += remainingY > 0.0f ? movement : -movement;
+  }
+}
+
+void Player::updateFlagpoleCastleWalk(float dt) {
+  m_velocity = {0.0f, 0.0f};
+  m_grounded = false;
+  m_sprinting = false;
+  m_wantsToShoot = false;
+  m_facingRight = true;
+  m_currentAnim = SpriteRegistry::PlayerAnim::Walk;
+  setAnimFrameCount(
+      SpriteRegistry::playerFrameCount(m_characterId, m_powerUp, m_currentAnim),
+      FLAGPOLE_ANIM_SPEED);
+  updateSprite(dt);
 }
 
 sf::FloatRect Player::getDeathBounds() const {

@@ -29,11 +29,17 @@ public:
   /// Update all entities.
   void update(float dt);
 
+  /// Update only the player completion animation and flag. This keeps normal
+  /// physics, enemies, item collection, and collisions frozen during the
+  /// end-of-level cutscene.
+  void updateCompletion(float dt);
+
   /// Render all entities. cameraCenterX drives the parallax background.
   void render(sf::RenderWindow &window, float cameraCenterX);
 
   /// Get the player pointer (owned by this level).
   Player *getPlayer() const;
+  Flagpole *getFlagpole() const;
 
   /// Get level dimensions in pixels.
   float getWidth() const;

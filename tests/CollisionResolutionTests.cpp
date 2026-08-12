@@ -15,6 +15,7 @@
 #include "Entities/Luigi.hpp"
 #include "Entities/Mario.hpp"
 #include "Entities/Mushroom.hpp"
+#include "Entities/Flagpole.hpp"
 #include "Entities/Tile.hpp"
 #include <cmath>
 #include <filesystem>
@@ -299,6 +300,89 @@ static void testAllLuigiSpriteStatesLoad() {
   }
 }
 
+static void testFlagpoleSlideFramesAndCutscene() {
+  const std::string& sheet = SpriteRegistry::playerFlagpoleSlideSheetPath();
+  CHECK(std::filesystem::exists(sheet),
+        "flagpole animation uses the checked-in player sheet");
+
+  sf::Image sheetImage;
+  CHECK(sheetImage.loadFromFile(sheet) && sheetImage.getSize().x == 584 &&
+            sheetImage.getSize().y == 469,
+        "flagpole animation source sheet decodes at its expected dimensions");
+  sf::Image keyedSheet = sheetImage;
+  keyedSheet.createMaskFromColor(sf::Color(146, 144, 255));
+
+  const std::vector<CharacterId> characters = {
+      CharacterId::Mario, CharacterId::Luigi};
+  const std::vector<PowerUpState> powers = {
+      PowerUpState::Small, PowerUpState::Big, PowerUpState::Fire};
+  for (CharacterId character : characters) {
+    for (PowerUpState power : powers) {
+      CHECK(SpriteRegistry::playerFrameCount(
+                character, power, SpriteRegistry::PlayerAnim::FlagpoleSlide) == 2,
+            "flagpole slide exposes both climb frames for every player form");
+      for (int frame = 0; frame < 2; ++frame) {
+        const sf::IntRect rect = SpriteRegistry::playerFlagpoleSlideRect(
+            character, power, frame);
+        CHECK(rect.left >= 0 && rect.top >= 0 &&
+                  rect.left + rect.width <= static_cast<int>(sheetImage.getSize().x) &&
+                  rect.top + rect.height <= static_cast<int>(sheetImage.getSize().y),
+              "flagpole slide source rectangle stays inside the character sheet");
+        CHECK(rect.width == 16 &&
+                  rect.height == (power == PowerUpState::Small ? 16 : 32),
+              "flagpole slide selects the correct small or tall character cell");
+        CHECK(keyedSheet.getPixel(static_cast<unsigned>(rect.left),
+                                  static_cast<unsigned>(rect.top)).a == 0,
+              "flagpole slide cell background becomes transparent after keying");
+      }
+    }
+  }
+
+  Flagpole pole(300.0f, 300.0f);
+  CHECK(std::abs(pole.getSlideAnchorX() - 316.0f) < 0.001f &&
+            std::abs(pole.getSlideEndY() - 268.0f) < 0.001f,
+        "flagpole exposes a stable cutscene anchor and landing position");
+
+  Mario mario;
+  Luigi luigi;
+  for (Player* player : {static_cast<Player*>(&mario), static_cast<Player*>(&luigi)}) {
+    player->setPosition(100.0f, 100.0f);
+    player->beginFlagpoleSlide(pole.getSlideAnchorX(), pole.getSlideEndY());
+    CHECK(player->isFlagpoleCutsceneActive(),
+          "starting the flagpole sequence locks the player into a cutscene");
+
+    const float expectedX = pole.getSlideAnchorX() - (TILE_SIZE - 2.0f);
+    const float startY = player->getPosition().y;
+    player->setVelocity(-500.0f, 600.0f);
+    player->update(FIXED_DT);
+    CHECK(std::abs(player->getPosition().x - expectedX) < 0.001f,
+          "flagpole slide holds the player against the pole horizontally");
+    CHECK(player->getPosition().y > startY &&
+              player->getPosition().y < pole.getSlideEndY(),
+          "flagpole slide moves toward the landing point without gravity physics");
+    CHECK(std::abs(player->getVelocity().x) < 0.001f &&
+              std::abs(player->getVelocity().y) < 0.001f,
+          "flagpole slide clears player velocity every cutscene frame");
+
+    for (int frame = 0; frame < 120 && !player->isFlagpoleSlideComplete();
+         ++frame) {
+      player->update(FIXED_DT);
+    }
+    CHECK(player->isFlagpoleSlideComplete(),
+          "flagpole slide reaches its exact landing point");
+    CHECK(std::abs(player->getPosition().y - pole.getSlideEndY()) < 0.001f,
+          "flagpole slide clamps to the pole base rather than overshooting");
+
+    player->beginFlagpoleCastleWalk();
+    player->setVelocity(400.0f, 400.0f);
+    player->update(FIXED_DT);
+    CHECK(player->isFlagpoleCutsceneActive() &&
+              std::abs(player->getVelocity().x) < 0.001f &&
+              std::abs(player->getVelocity().y) < 0.001f,
+          "castle walk remains a physics-free completion cutscene");
+  }
+}
+
 static void testPlayerDeathAnimationUsesFacingPoses() {
   const std::vector<CharacterId> characters = {
       CharacterId::Mario, CharacterId::Luigi};
@@ -359,6 +443,7 @@ int main() {
   testSweptStompCatchesTunneling();
   testSprintDoesNotCompoundVelocity();
   testAllLuigiSpriteStatesLoad();
+  testFlagpoleSlideFramesAndCutscene();
   testPlayerDeathAnimationUsesFacingPoses();
 
   if (g_failures == 0) {

@@ -22,7 +22,7 @@ enum class PowerUpState;
 class SpriteRegistry {
 public:
   enum class BlockVisualState { Idle, Hit, Used };
-  enum class PlayerAnim { Idle, Walk, Jump, Skid };
+  enum class PlayerAnim { Idle, Walk, Jump, Skid, FlagpoleSlide };
 
   // ── Tiles ──
   static const std::string &tilePath(TileType type, LevelTheme theme);
@@ -44,6 +44,19 @@ public:
   static const std::string &playerDeathPath(CharacterId character);
   static int playerFrameCount(CharacterId character, PowerUpState power,
                                PlayerAnim anim);
+
+  /// The playable-character reference sheet contains the two original
+  /// flag-pole climbing poses for both Mario and Luigi.  Unlike normal player
+  /// art, these frames must be cropped from the sheet and have its lavender
+  /// cell background made transparent before drawing.
+  static const std::string &playerFlagpoleSlideSheetPath();
+  static int playerFlagpoleSlideFrameCount(CharacterId character,
+                                            PowerUpState power);
+  static sf::IntRect playerFlagpoleSlideRect(CharacterId character,
+                                              PowerUpState power, int frame);
+  static void applyPlayerFlagpoleSlideFrame(
+      sf::Sprite &sprite, CharacterId character, PowerUpState power, int frame,
+      const sf::FloatRect &box, bool flip = false);
 
   // ── Items ──
   static const std::string &coinPath(LevelTheme theme, int frame);
