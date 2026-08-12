@@ -45,6 +45,7 @@ private:
     void updatePipeTransition(float dt);
     void startLevelTransition();
     void updateLevelTransition(float dt);
+    void updateCompletionBreakdown();
     void finishLevelTransition();
     void onPlayerDeath();
 
@@ -76,6 +77,7 @@ private:
     int m_transitionRemainingSeconds = 0;
     int m_transitionConvertedTimeScore = 0;
     int m_transitionDisplayScore = 0;
+    sf::Text m_completionBreakdownText;
     int m_mainLevelNumber = 1;
     bool m_inSecretRoom = false;
     sf::Vector2f m_pipeReturnPosition = {0.0f, 0.0f};

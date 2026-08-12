@@ -3,6 +3,7 @@
 #include "States/GameOverState.hpp"
 #include "States/MenuState.hpp"
 #include "Core/Game.hpp"
+#include "Core/AssetManager.hpp"
 #include "Core/LevelCompletion.hpp"
 #include "Core/Command.hpp"
 #include "Core/SoundManager.hpp"
@@ -36,6 +37,15 @@ void PlayingState::onEnter() {
     m_hud->setLives(progress.getLives());
     m_hud->setScore(progress.getScore());
     m_hud->setCoins(progress.getCoins());
+
+    m_completionBreakdownText.setFont(
+        AssetManager::getInstance().getFont("assets/fonts/mario_font.ttf"));
+    m_completionBreakdownText.setCharacterSize(20);
+    m_completionBreakdownText.setFillColor(sf::Color::White);
+    m_completionBreakdownText.setOutlineColor(sf::Color::Black);
+    m_completionBreakdownText.setOutlineThickness(1.0f);
+    m_completionBreakdownText.setPosition(WINDOW_WIDTH / 2.0f - 130.0f, 250.0f);
+    m_completionBreakdownText.setString("");
 
     // Start/continue selected background music track (does not restart if already playing)
     SoundManager& snd = SoundManager::getInstance();
@@ -217,6 +227,10 @@ void PlayingState::render(sf::RenderWindow& window) {
     // Reset view for HUD (screen-space)
     window.setView(window.getDefaultView());
     m_hud->render(window);
+    if (m_transitionStage == LevelTransitionStage::FlagpoleScoreCount ||
+        m_transitionStage == LevelTransitionStage::TimeBonusCount) {
+        window.draw(m_completionBreakdownText);
+    }
 }
 
 void PlayingState::loadLevel(int levelNumber) {
@@ -256,6 +270,7 @@ void PlayingState::startLevelTransition() {
     m_transitionConvertedTimeScore = 0;
     m_transitionDisplayScore = 0;
     m_hud->setTime(static_cast<float>(m_transitionRemainingSeconds));
+    updateCompletionBreakdown();
 
     if (m_player) {
         m_player->setGrounded(false);
@@ -264,6 +279,15 @@ void PlayingState::startLevelTransition() {
 
     SoundManager::getInstance().stopMusic();
     SoundManager::getInstance().playSound(SoundID::LevelComplete);
+}
+
+void PlayingState::updateCompletionBreakdown() {
+    std::ostringstream text;
+    text << "FLAG BONUS: " << m_transitionFlagpoleBonus << "\n"
+         << "TIME: " << m_transitionRemainingSeconds << " x "
+         << TIME_BONUS_PER_SECOND << "\n"
+         << "BONUS: " << m_transitionDisplayScore;
+    m_completionBreakdownText.setString(text.str());
 }
 
 std::string PlayingState::getLevelPath(int levelNumber, bool secretRoom) const {
@@ -423,6 +447,7 @@ void PlayingState::updateLevelTransition(float dt) {
                 m_transitionDisplayScore += add;
 
                 m_hud->setScore(m_transitionStartScore + m_transitionDisplayScore);
+                updateCompletionBreakdown();
                 SoundManager::getInstance().playSound(SoundID::Coin);
             } else {
                 m_transitionScoreTimer = 0.0f;
@@ -441,6 +466,7 @@ void PlayingState::updateLevelTransition(float dt) {
                     m_transitionFlagpoleBonus + m_transitionConvertedTimeScore;
                 m_hud->setTime(static_cast<float>(m_transitionRemainingSeconds));
                 m_hud->setScore(m_transitionStartScore + m_transitionDisplayScore);
+                updateCompletionBreakdown();
                 SoundManager::getInstance().playSound(SoundID::Coin);
             } else {
                 PlayerProgress& progress = Game::getInstance().getProgress();
