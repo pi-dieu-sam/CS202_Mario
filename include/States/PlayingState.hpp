@@ -69,6 +69,7 @@ private:
     LevelTransitionStage m_transitionStage = LevelTransitionStage::Inactive;
     float m_transitionTimer = 0.0f;
     float m_transitionScoreTimer = 0.0f;
+    int m_transitionStartScore = 0;
     int m_transitionBonusScore = 0;
     int m_transitionDisplayScore = 0;
     int m_mainLevelNumber = 1;

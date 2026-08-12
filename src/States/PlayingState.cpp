@@ -243,6 +243,7 @@ void PlayingState::startLevelTransition() {
     m_transitionStage = LevelTransitionStage::FlagSlide;
     m_transitionTimer = 0.0f;
     m_transitionScoreTimer = 0.0f;
+    m_transitionStartScore = Game::getInstance().getProgress().getScore();
     m_transitionDisplayScore = 0;
 
     if (m_player) {
@@ -409,11 +410,12 @@ void PlayingState::updateLevelTransition(float dt) {
                 const int add = std::min(increment, m_transitionBonusScore - m_transitionDisplayScore);
                 m_transitionDisplayScore += add;
 
-                PlayerProgress& progress = Game::getInstance().getProgress();
-                progress.addScore(add);
-                m_hud->setScore(progress.getScore());
+                m_hud->setScore(m_transitionStartScore + m_transitionDisplayScore);
                 SoundManager::getInstance().playSound(SoundID::Coin);
             } else {
+                PlayerProgress& progress = Game::getInstance().getProgress();
+                progress.addScore(m_transitionBonusScore);
+                m_hud->setScore(progress.getScore());
                 m_transitionStage = LevelTransitionStage::Finished;
             }
         }
@@ -429,14 +431,12 @@ void PlayingState::updateLevelTransition(float dt) {
 
 void PlayingState::finishLevelTransition() {
     Game& game = Game::getInstance();
-    int nextLevel = game.getProgress().getCurrentLevel() + 1;
 
-    if (nextLevel > TOTAL_LEVELS) {
-        SoundManager::getInstance().playSound(SoundID::GameOver);
-        game.getStateManager().changeState(std::make_unique<GameOverState>());
-    } else {
-        game.getProgress().setCurrentLevel(nextLevel);
+    if (game.getProgress().advanceToNextLevel(TOTAL_LEVELS)) {
         game.getStateManager().changeState(std::make_unique<PlayingState>());
+    } else {
+        game.getStateManager().changeState(
+            std::make_unique<GameOverState>(GameResult::Won));
     }
 
     m_levelComplete = true;
