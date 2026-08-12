@@ -35,8 +35,8 @@ static void testTimeBonusConversion() {
         "time bonus uses the HUD's truncated whole-second display");
   CHECK(LevelCompletion::displayedSeconds(-1.0f) == 0,
         "time bonus clamps expired time to zero");
-  CHECK(LevelCompletion::timeBonusForSeconds(42) == 4200,
-        "each remaining second awards 100 points");
+  CHECK(LevelCompletion::timeBonusForSeconds(42) == 42 * TIME_BONUS_PER_SECOND,
+        "each remaining second awards the configured score value");
 
   int remainingSeconds = 3;
   int convertedScore = 0;
