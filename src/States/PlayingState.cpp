@@ -21,7 +21,10 @@ namespace {
 constexpr float TIME_BONUS_TICK_INTERVAL = 0.03f;
 }
 
-PlayingState::PlayingState() : m_hud(std::make_unique<HUD>()) {}
+PlayingState::PlayingState() : m_hud(std::make_unique<HUD>()) {
+    m_inputP1.setPlayer1Bindings();
+    m_inputP2.setPlayer2Bindings();
+}
 PlayingState::~PlayingState() {}
 
 void PlayingState::onEnter() {
@@ -130,11 +133,19 @@ void PlayingState::handleEvent(const sf::Event& event) {
             }
         }
 
-        // Handle one-shot commands (jump, fire)
+        // Handle one-shot commands (jump, fire) for P1
         if (m_player && !m_player->isDead()) {
-            Command* cmd = m_input.handleEvent(event);
+            Command* cmd = m_inputP1.handleEvent(event);
             if (cmd) {
                 cmd->execute(*m_player, FIXED_DT);
+            }
+        }
+        
+        // Handle one-shot commands for P2
+        if (m_player2 && !m_player2->isDead()) {
+            Command* cmd2 = m_inputP2.handleEvent(event);
+            if (cmd2) {
+                cmd2->execute(*m_player2, FIXED_DT);
             }
         }
     }
@@ -151,8 +162,12 @@ void PlayingState::update(float dt) {
             // The player owns the arc and pause timing. Keep the level alive
             // until that animation reports completion.
             m_level->update(dt);
-            m_camera.update(m_player->getPosition());
-            if (m_player->isDeathAnimationComplete()) {
+            if (m_player2 && !m_player->isDead()) {
+                m_camera.update(m_player->getPosition(), m_player2->getPosition());
+            } else {
+                m_camera.update(m_player->getPosition());
+            }
+            if (m_player->isDeathAnimationComplete() || (m_player2 && m_player2->isDeathAnimationComplete())) {
                 finishPlayerDeath();
             }
             return;
@@ -167,36 +182,56 @@ void PlayingState::update(float dt) {
         return;
     }
 
-    // Set sprint before processing movement. handleInput() stores bindings in
-    // an unordered map, so relying on a SprintCommand's execution order made
-    // sprint speed inconsistent when sprint and direction were held together.
-    m_player->setSprinting(m_input.isSprintHeld());
-    m_player->setJumpHeld(m_input.isJumpHeld());
-
-    // Handle held-key commands
-    auto commands = m_input.handleInput();
-    for (auto* cmd : commands) {
-        cmd->execute(*m_player, dt);
+    // Handle P1 inputs
+    if (!m_player->isDead()) {
+        m_player->setSprinting(m_inputP1.isSprintHeld());
+        m_player->setJumpHeld(m_inputP1.isJumpHeld());
+        auto commands1 = m_inputP1.handleInput();
+        for (auto* cmd : commands1) {
+            cmd->execute(*m_player, dt);
+        }
+        if (m_player->wantsToShoot()) {
+            m_player->clearShootFlag();
+            int dir = m_player->isFacingRight() ? 1 : -1;
+            auto fb = std::make_unique<Fireball>(
+                m_player->getPosition().x + (dir > 0 ? 20.0f : -20.0f),
+                m_player->getPosition().y + 8.0f,
+                dir
+            );
+            m_level->addFireball(std::move(fb));
+        }
     }
 
-    // Handle fireball spawning
-    if (m_player->wantsToShoot()) {
-        m_player->clearShootFlag();
-        int dir = m_player->isFacingRight() ? 1 : -1;
-        auto fb = std::make_unique<Fireball>(
-            m_player->getPosition().x + (dir > 0 ? 20.0f : -20.0f),
-            m_player->getPosition().y + 8.0f,
-            dir
-        );
-        m_level->addFireball(std::move(fb));
+    // Handle P2 inputs
+    if (m_player2 && !m_player2->isDead()) {
+        m_player2->setSprinting(m_inputP2.isSprintHeld());
+        m_player2->setJumpHeld(m_inputP2.isJumpHeld());
+        auto commands2 = m_inputP2.handleInput();
+        for (auto* cmd : commands2) {
+            cmd->execute(*m_player2, dt);
+        }
+        if (m_player2->wantsToShoot()) {
+            m_player2->clearShootFlag();
+            int dir = m_player2->isFacingRight() ? 1 : -1;
+            auto fb = std::make_unique<Fireball>(
+                m_player2->getPosition().x + (dir > 0 ? 20.0f : -20.0f),
+                m_player2->getPosition().y + 8.0f,
+                dir
+            );
+            m_level->addFireball(std::move(fb));
+        }
     }
 
     // Update level (entities + collisions)
     m_level->update(dt);
 
     if (m_transitionStage == LevelTransitionStage::DeathAnimation) {
-        m_camera.update(m_player->getPosition());
-        if (m_player->isDeathAnimationComplete()) {
+        if (m_player2 && !m_player->isDead()) {
+            m_camera.update(m_player->getPosition(), m_player2->getPosition());
+        } else {
+            m_camera.update(m_player->getPosition());
+        }
+        if (m_player->isDeathAnimationComplete() || (m_player2 && m_player2->isDeathAnimationComplete())) {
             finishPlayerDeath();
         }
         return;
@@ -211,7 +246,11 @@ void PlayingState::update(float dt) {
     }
 
     // Update camera
-    m_camera.update(m_player->getPosition());
+    if (m_player2 && !m_player2->isDead() && !m_player->isDead()) {
+        m_camera.update(m_player->getPosition(), m_player2->getPosition());
+    } else {
+        m_camera.update(m_player->getPosition());
+    }
 
     // Timer
     m_levelTimer -= dt;
@@ -221,7 +260,11 @@ void PlayingState::update(float dt) {
     }
 
     if (m_transitionStage == LevelTransitionStage::DeathAnimation) {
-        m_camera.update(m_player->getPosition());
+        if (m_player2 && !m_player->isDead()) {
+            m_camera.update(m_player->getPosition(), m_player2->getPosition());
+        } else {
+            m_camera.update(m_player->getPosition());
+        }
         return;
     }
 
@@ -266,6 +309,7 @@ void PlayingState::loadLevel(int levelNumber) {
     }
 
     m_player = m_level->getPlayer();
+    m_player2 = m_level->getPlayer2();
     m_camera.setLevelBounds(m_level->getWidth(), m_level->getHeight());
 }
 
@@ -327,22 +371,31 @@ bool PlayingState::tryEnterPipe() {
         return false;
 
     auto pipeBounds = m_level->getEnterablePipeBounds(*m_player);
+    if (!pipeBounds) {
+        if (m_player2 && m_player2->isGrounded()) {
+            pipeBounds = m_level->getEnterablePipeBounds(*m_player2);
+        }
+    }
     if (!pipeBounds)
         return false;
 
-    m_pipeReturnPosition = m_player->getPosition();
+    m_pipeReturnPosition = m_player->getPosition(); // We'll just spawn both here on return
     m_pipeReturnPowerUp = m_player->getPowerUpState();
+    if (m_player2) m_pipeReturnPowerUp2 = m_player2->getPowerUpState();
     startPipeTransition(true);
     return true;
 }
 
 bool PlayingState::tryExitPipe() {
-    if (!m_level || !m_player || !m_player->isGrounded() || !m_inSecretRoom)
+    if (!m_level || !m_inSecretRoom)
         return false;
 
-    auto pipeBounds = m_level->getEnterablePipeBounds(*m_player);
-    if (!pipeBounds)
-        return false;
+    bool canExit = (m_player && m_player->isGrounded() && m_level->getEnterablePipeBounds(*m_player));
+    if (!canExit && m_player2 && m_player2->isGrounded()) {
+        canExit = m_level->getEnterablePipeBounds(*m_player2).has_value();
+    }
+    
+    if (!canExit) return false;
 
     startPipeTransition(false);
     return true;
@@ -357,6 +410,10 @@ void PlayingState::startPipeTransition(bool enteringSecret) {
         m_player->setGrounded(false);
         m_player->setVelocity(0.0f, 0.0f);
     }
+    if (m_player2) {
+        m_player2->setGrounded(false);
+        m_player2->setVelocity(0.0f, 0.0f);
+    }
 }
 
 void PlayingState::updatePipeTransition(float dt) {
@@ -366,15 +423,22 @@ void PlayingState::updatePipeTransition(float dt) {
 
     const float pipeTravelSpeed = 120.0f;
     sf::Vector2f pos = m_player->getPosition();
+    sf::Vector2f pos2 = m_player2 ? m_player2->getPosition() : sf::Vector2f();
 
     if (m_transitionStage == LevelTransitionStage::PipeEnter) {
         pos.y += pipeTravelSpeed * dt;
+        pos2.y += pipeTravelSpeed * dt;
     } else if (m_transitionStage == LevelTransitionStage::PipeReturn) {
         pos.y -= pipeTravelSpeed * dt;
+        pos2.y -= pipeTravelSpeed * dt;
     }
 
     m_player->setPosition(pos);
     m_player->setVelocity(0.0f, 0.0f);
+    if (m_player2) {
+        m_player2->setPosition(pos2);
+        m_player2->setVelocity(0.0f, 0.0f);
+    }
 
     m_transitionTimer += dt;
     if (m_transitionTimer < 0.45f) {
@@ -397,6 +461,7 @@ void PlayingState::updatePipeTransition(float dt) {
     }
 
     m_player = m_level->getPlayer();
+    m_player2 = m_level->getPlayer2();
     m_camera.setLevelBounds(m_level->getWidth(), m_level->getHeight());
 
     if (m_player) {
@@ -405,6 +470,15 @@ void PlayingState::updatePipeTransition(float dt) {
             m_player->setPosition(m_pipeReturnPosition);
             m_player->setVelocity(0.0f, 0.0f);
             m_player->setGrounded(false);
+        }
+    }
+    if (m_player2) {
+        m_player2->applyPowerUp(m_pipeReturnPowerUp2);
+        if (!enteringSecret) {
+            // Spawn P2 slightly off to the side so they don't exactly overlap
+            m_player2->setPosition(m_pipeReturnPosition + sf::Vector2f(32.0f, 0.0f));
+            m_player2->setVelocity(0.0f, 0.0f);
+            m_player2->setGrounded(false);
         }
     }
 
