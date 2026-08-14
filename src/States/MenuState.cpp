@@ -1,5 +1,6 @@
 #include "States/MenuState.hpp"
 #include "States/CharacterSelectState.hpp"
+#include "States/LevelSelectState.hpp"
 #include "States/PlayingState.hpp"
 #include "Core/Game.hpp"
 #include "Core/AssetManager.hpp"
@@ -247,7 +248,7 @@ void MenuState::handleEvent(const sf::Event& event) {
                         Game::getInstance().getProgress().resetGameData();
                         Game::getInstance().getProgress().setGameMode(GameMode::Coop);
                         Game::getInstance().getStateManager().changeState(
-                            std::make_unique<PlayingState>());
+                            std::make_unique<LevelSelectState>());
                         break;
                     case 2: // 2 Player PvP
                         Game::getInstance().getProgress().resetGameData();
