@@ -198,13 +198,13 @@ void MenuState::handleEvent(const sf::Event& event) {
                         Game::getInstance().getProgress().resetGameData();
                         Game::getInstance().getProgress().setGameMode(GameMode::Coop);
                         Game::getInstance().getStateManager().changeState(
-                            std::make_unique<CharacterSelectState>());
+                            std::make_unique<LevelSelectState>());
                         break;
                     case 2: // 2 Player PvP
                         Game::getInstance().getProgress().resetGameData();
                         Game::getInstance().getProgress().setGameMode(GameMode::PvP);
                         Game::getInstance().getStateManager().changeState(
-                            std::make_unique<CharacterSelectState>());
+                            std::make_unique<PlayingState>());
                         break;
                     case 3: // Load Game
                         if (SaveManager::loadGame()) {
