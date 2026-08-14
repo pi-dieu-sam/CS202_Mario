@@ -45,11 +45,13 @@ bool Level::loadFromFile(const std::string &filename,
   // Create player at spawn point
   m_player = EntityFactory::createPlayer(characterName, data.playerSpawn);
 
-  if (Game::getInstance().getProgress().isCoop()) {
+  if (Game::getInstance().getProgress().isMultiplayer()) {
       std::string char2 = (characterName == "Mario") ? "Luigi" : "Mario";
-      m_player2 = EntityFactory::createPlayer(char2, data.playerSpawn);
-      // Offset P2 slightly to avoid instant collision/stomp with P1 at spawn
-      m_player2->setPosition(data.playerSpawn.x - 24.0f, data.playerSpawn.y);
+      // Use explicit P2 spawn if the map defines one ('2'), otherwise offset from P1
+      sf::Vector2f spawn2 = data.hasPlayer2Spawn
+                              ? data.player2Spawn
+                              : sf::Vector2f(data.playerSpawn.x - 24.0f, data.playerSpawn.y);
+      m_player2 = EntityFactory::createPlayer(char2, spawn2);
   }
 
   if (!m_player)
