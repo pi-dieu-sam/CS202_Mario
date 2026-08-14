@@ -28,7 +28,9 @@ private:
     std::string         m_winnerName; ///< e.g. "MARIO" or "LUIGI" for PvP
     sf::RectangleShape  m_background;
     sf::Text            m_title;
+    sf::Text            m_subtitleText; ///< "PLAYER 1 / PLAYER 2 IS THE WINNER!" for PvP
     sf::Text            m_scoreText;
     sf::Text            m_options[2]; // Primary action, Main Menu
     int                 m_selected = 0;
+    float               m_animTime = 0.0f; ///< For pulsing title animation
 };

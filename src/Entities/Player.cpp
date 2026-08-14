@@ -262,7 +262,10 @@ void Player::die() {
   // entire death pose below the viewport before the pause begins.
   m_deathPauseY = static_cast<float>(WINDOW_HEIGHT) + DEATH_OFFSCREEN_MARGIN;
   m_velocity = {0.0f, DEATH_INITIAL_VELOCITY};
-  EventManager::getInstance().publish({EventType::PlayerDied});
+  GameEvent evt;
+  evt.type     = EventType::PlayerDied;
+  evt.playerId = m_playerId;
+  EventManager::getInstance().publish(evt);
 }
 
 bool Player::isDeathAnimationComplete() const {
