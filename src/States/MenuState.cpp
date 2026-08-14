@@ -137,8 +137,7 @@ void MenuState::onEnter() {
         m_copyrightText.setPosition(WINDOW_WIDTH / 2.0f, 285.0f);
     }
 
-    // "TOP- 000000" flavor text, decorative (no high-score system exists).
-    setupHudText(m_topScoreText, "TOP-000000", 330.0f, 452.0f, 18);
+    // "TOP- 000000" flavor text removed per request
 
     // Menu options.
     std::string labels[] = {"1 PLAYER GAME", "2 PLAYER CO-OP", "2 PLAYER PvP", "LOAD GAME", "EXIT"};
@@ -248,13 +247,13 @@ void MenuState::handleEvent(const sf::Event& event) {
                         Game::getInstance().getProgress().resetGameData();
                         Game::getInstance().getProgress().setGameMode(GameMode::Coop);
                         Game::getInstance().getStateManager().changeState(
-                            std::make_unique<CharacterSelectState>());
+                            std::make_unique<PlayingState>());
                         break;
                     case 2: // 2 Player PvP
                         Game::getInstance().getProgress().resetGameData();
                         Game::getInstance().getProgress().setGameMode(GameMode::PvP);
                         Game::getInstance().getStateManager().changeState(
-                            std::make_unique<CharacterSelectState>());
+                            std::make_unique<PlayingState>());
                         break;
                     case 3: // Load Game
                         if (SaveManager::loadGame()) {
@@ -306,8 +305,6 @@ void MenuState::render(sf::RenderWindow& window) {
         window.draw(m_options[i]);
     }
     window.draw(m_cursor);
-
-    window.draw(m_topScoreText);
 }
 
 void MenuState::updateOptionVisuals() {
