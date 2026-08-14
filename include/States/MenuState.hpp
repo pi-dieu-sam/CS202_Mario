@@ -45,7 +45,7 @@ private:
     sf::Text m_topScoreText;
 
     // Menu options
-    sf::Text  m_options[4]; // 1 Player, 2 Player, Load Game, Exit
+    sf::Text  m_options[5]; // 1 Player, Co-op, PvP, Load Game, Exit
     int       m_selectedOption = 0;
     sf::CircleShape m_cursor;
 
