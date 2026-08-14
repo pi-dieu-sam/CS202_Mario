@@ -395,20 +395,20 @@ void Level::handleCollisions(float dt) {
   if (m_player) handlePlayerCollisions(m_player.get(), dt);
   if (m_player2) handlePlayerCollisions(m_player2.get(), dt);
 
-  // PvP Collisions
+  // Player vs Player collisions (only when 2 players exist)
   if (m_player && !m_player->isDead() && m_player2 && !m_player2->isDead()) {
+    bool pvp = Game::getInstance().getProgress().isPvP();
     auto result = CollisionDetector::checkSweptCollision(*m_player, *m_player2, dt);
     if (!result.collided) result = CollisionDetector::checkCollision(*m_player, *m_player2);
     if (result.collided) {
-        if (result.side == CollisionDetector::Side::Bottom && m_player->getVelocity().y > 0) {
-            // P1 stomped P2
+        if (pvp && result.side == CollisionDetector::Side::Bottom && m_player->getVelocity().y > 0) {
+            // PvP: P1 stomped P2
             CollisionDetector::moveToImpact(*m_player, result);
             const float bounceVelocity = m_player->isJumpHeld() ? m_player->getJumpForce() : -250.0f;
             m_player->setVelocity(m_player->getVelocity().x, bounceVelocity);
             m_player2->takeDamage();
-        } else if (result.side == CollisionDetector::Side::Top && m_player2->getVelocity().y > 0) {
-            // P2 stomped P1
-            // We invert result for moveToImpact, or just push P2
+        } else if (pvp && result.side == CollisionDetector::Side::Top && m_player2->getVelocity().y > 0) {
+            // PvP: P2 stomped P1
             CollisionDetector::CollisionResult res2 = result;
             res2.side = CollisionDetector::Side::Bottom;
             CollisionDetector::moveToImpact(*m_player2, res2);
@@ -416,27 +416,29 @@ void Level::handleCollisions(float dt) {
             m_player2->setVelocity(m_player2->getVelocity().x, bounceVelocity);
             m_player->takeDamage();
         } else {
-            // Side collision push
+            // Co-op or side collision: just push them apart, no damage
             CollisionDetector::resolveCollision(*m_player, *m_player2, result);
         }
     }
   }
 
-  // Fireballs vs Players
-  for (auto &fb : m_fireballs) {
-      if (!fb->isActive()) continue;
-      if (m_player && !m_player->isDead()) {
-          auto result = CollisionDetector::checkCollision(*fb, *m_player);
-          if (result.collided) {
-              m_player->takeDamage();
-              fb->setActive(false);
+  // Fireballs vs Players (only in PvP)
+  if (Game::getInstance().getProgress().isPvP()) {
+      for (auto& fb : m_fireballs) {
+          if (!fb->isActive()) continue;
+          if (m_player && !m_player->isDead()) {
+              auto result = CollisionDetector::checkCollision(*fb, *m_player);
+              if (result.collided) {
+                  m_player->takeDamage();
+                  fb->setActive(false);
+              }
           }
-      }
-      if (m_player2 && !m_player2->isDead()) {
-          auto result = CollisionDetector::checkCollision(*fb, *m_player2);
-          if (result.collided) {
-              m_player2->takeDamage();
-              fb->setActive(false);
+          if (m_player2 && !m_player2->isDead()) {
+              auto result = CollisionDetector::checkCollision(*fb, *m_player2);
+              if (result.collided) {
+                  m_player2->takeDamage();
+                  fb->setActive(false);
+              }
           }
       }
   }
