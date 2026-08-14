@@ -69,8 +69,14 @@ void Level::update(float dt) {
     return;
 
   // Update players
-  m_player->update(dt);
-  if (m_player2) m_player2->update(dt);
+  bool anyDead = (m_player && m_player->isDead()) || (m_player2 && m_player2->isDead());
+  
+  if (m_player) {
+      if (m_player->isDead() || !anyDead) m_player->update(dt);
+  }
+  if (m_player2) {
+      if (m_player2->isDead() || !anyDead) m_player2->update(dt);
+  }
 
   // Use level height instead of a hardcoded world-space Y to decide abyss death.
   if (!m_player->isDead() &&
@@ -420,8 +426,28 @@ void Level::handleCollisions(float dt) {
             m_player2->setVelocity(m_player2->getVelocity().x, bounceVelocity);
             m_player->takeDamage();
         } else {
-            // Co-op or side collision: just push them apart, no damage
-            CollisionDetector::resolveCollision(*m_player, *m_player2, result);
+            // Co-op or side collision: push them apart equally
+            float pushAmount = result.overlap / 2.0f;
+            sf::Vector2f pos1 = m_player->getPosition();
+            sf::Vector2f pos2 = m_player2->getPosition();
+            if (result.side == CollisionDetector::Side::Left) {
+                m_player->setPosition(pos1 + sf::Vector2f(pushAmount, 0));
+                m_player2->setPosition(pos2 - sf::Vector2f(pushAmount, 0));
+            } else if (result.side == CollisionDetector::Side::Right) {
+                m_player->setPosition(pos1 - sf::Vector2f(pushAmount, 0));
+                m_player2->setPosition(pos2 + sf::Vector2f(pushAmount, 0));
+            } else if (result.side == CollisionDetector::Side::Top) {
+                m_player->setPosition(pos1 + sf::Vector2f(0, pushAmount));
+                m_player2->setPosition(pos2 - sf::Vector2f(0, pushAmount));
+            } else if (result.side == CollisionDetector::Side::Bottom) {
+                m_player->setPosition(pos1 - sf::Vector2f(0, pushAmount));
+                m_player2->setPosition(pos2 + sf::Vector2f(0, pushAmount));
+            }
+            // Stop horizontal velocity if colliding horizontally
+            if (result.side == CollisionDetector::Side::Left || result.side == CollisionDetector::Side::Right) {
+                m_player->setVelocity(0.0f, m_player->getVelocity().y);
+                m_player2->setVelocity(0.0f, m_player2->getVelocity().y);
+            }
         }
     }
   }
