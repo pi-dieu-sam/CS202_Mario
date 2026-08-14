@@ -43,7 +43,9 @@ public:
         std::vector<std::unique_ptr<Enemy>>  enemies;
         std::vector<std::unique_ptr<Item>>   items;
         std::unique_ptr<Flagpole>            flagpole;
-        sf::Vector2f                         playerSpawn = {100.0f, 100.0f};
+        sf::Vector2f                         playerSpawn  = {100.0f, 100.0f};
+        sf::Vector2f                         player2Spawn = {200.0f, 100.0f}; ///< P2 spawn (@2 in map)
+        bool                                 hasPlayer2Spawn = false;
         float                                width  = 0.0f;
         float                                height = 0.0f;
     };
