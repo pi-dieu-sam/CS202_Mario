@@ -42,7 +42,6 @@ private:
 
     // Copyright + top score flavor text
     sf::Text m_copyrightText;
-    sf::Text m_topScoreText;
 
     // Menu options
     sf::Text  m_options[5]; // 1 Player, Co-op, PvP, Load Game, Exit
