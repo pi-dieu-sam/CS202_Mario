@@ -12,6 +12,7 @@ public:
 
     /// Update the camera to follow a target position.
     void update(const sf::Vector2f& targetPos);
+    void update(const sf::Vector2f& pos1, const sf::Vector2f& pos2);
 
     /// Apply this camera's view to the window.
     void applyTo(sf::RenderWindow& window) const;

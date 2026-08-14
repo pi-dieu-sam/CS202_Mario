@@ -68,6 +68,10 @@ public:
   void setLives(int lives);
   void loseLife();
 
+  // ── Player ID (1 = P1, 2 = P2) for event routing ──
+  int  getPlayerId() const { return m_playerId; }
+  void setPlayerId(int id) { m_playerId = id; }
+
   // ── Invincibility (star or post-damage) ──
   bool isInvincible() const;
   void setInvincibleTimer(float seconds);
@@ -82,6 +86,7 @@ protected:
   bool m_sprinting = false;
   bool m_wantsToShoot = false;
   bool m_jumpHeld = false;
+  int  m_playerId = 1; ///< 1 = P1, 2 = P2
 
   // Invincibility after damage
   float m_invincibleTimer = 0.0f;

@@ -24,4 +24,5 @@ struct GameEvent {
     float       floatData = 0.0f; // e.g., position
     std::string strData;          // e.g., item name
     sf::Vector2f worldPosition = {0.0f, 0.0f};
+    int         playerId  = 1;    // 1 = Player 1, 2 = Player 2
 };
