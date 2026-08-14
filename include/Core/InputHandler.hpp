@@ -15,10 +15,11 @@ class InputHandler {
 public:
     InputHandler();
 
-    /// Set default key bindings.
-    void setDefaultBindings();
+    /// Set bindings for Player 1 (WASD)
+    void setPlayer1Bindings();
 
-    /// Rebind a key to a command.
+    /// Set bindings for Player 2 (Arrows)
+    void setPlayer2Bindings();
     void bindKey(sf::Keyboard::Key key, std::unique_ptr<Command> command);
 
     /// Poll held keys and return commands to execute this frame.
@@ -37,4 +38,6 @@ public:
 private:
     std::unordered_map<sf::Keyboard::Key, std::unique_ptr<Command>> m_keyBindings;
     std::unordered_map<sf::Keyboard::Key, std::unique_ptr<Command>> m_pressBindings;
+    std::vector<sf::Keyboard::Key> m_jumpKeys;
+    std::vector<sf::Keyboard::Key> m_sprintKeys;
 };

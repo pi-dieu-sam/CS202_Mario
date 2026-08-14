@@ -3,21 +3,41 @@
 #include "Entities/Player.hpp"
 
 InputHandler::InputHandler() {
-    setDefaultBindings();
+    setPlayer1Bindings(); // default
 }
 
-void InputHandler::setDefaultBindings() {
-    // Held keys — polled every frame
-    m_keyBindings[sf::Keyboard::Left]   = std::make_unique<MoveLeftCommand>();
-    m_keyBindings[sf::Keyboard::Right]  = std::make_unique<MoveRightCommand>();
-    m_keyBindings[sf::Keyboard::A]      = std::make_unique<MoveLeftCommand>();
-    m_keyBindings[sf::Keyboard::D]      = std::make_unique<MoveRightCommand>();
+void InputHandler::setPlayer1Bindings() {
+    m_keyBindings.clear();
+    m_pressBindings.clear();
+    
+    // Held keys
+    m_keyBindings[sf::Keyboard::A] = std::make_unique<MoveLeftCommand>();
+    m_keyBindings[sf::Keyboard::D] = std::make_unique<MoveRightCommand>();
 
-    // Press keys — triggered once on key down
-    m_pressBindings[sf::Keyboard::Space] = std::make_unique<JumpCommand>();
-    m_pressBindings[sf::Keyboard::Up]    = std::make_unique<JumpCommand>();
+    // Press keys
     m_pressBindings[sf::Keyboard::W]     = std::make_unique<JumpCommand>();
-    m_pressBindings[sf::Keyboard::X]     = std::make_unique<FireCommand>();
+    m_pressBindings[sf::Keyboard::Space] = std::make_unique<JumpCommand>();
+    m_pressBindings[sf::Keyboard::LShift]= std::make_unique<FireCommand>();
+
+    m_jumpKeys = {sf::Keyboard::W, sf::Keyboard::Space};
+    m_sprintKeys = {sf::Keyboard::LShift};
+}
+
+void InputHandler::setPlayer2Bindings() {
+    m_keyBindings.clear();
+    m_pressBindings.clear();
+    
+    // Held keys
+    m_keyBindings[sf::Keyboard::Left]  = std::make_unique<MoveLeftCommand>();
+    m_keyBindings[sf::Keyboard::Right] = std::make_unique<MoveRightCommand>();
+
+    // Press keys
+    m_pressBindings[sf::Keyboard::Up]       = std::make_unique<JumpCommand>();
+    m_pressBindings[sf::Keyboard::Numpad0]  = std::make_unique<JumpCommand>();
+    m_pressBindings[sf::Keyboard::RShift]   = std::make_unique<FireCommand>();
+
+    m_jumpKeys = {sf::Keyboard::Up, sf::Keyboard::Numpad0};
+    m_sprintKeys = {sf::Keyboard::RShift};
 }
 
 void InputHandler::bindKey(sf::Keyboard::Key key, std::unique_ptr<Command> command) {
@@ -35,13 +55,17 @@ std::vector<Command*> InputHandler::handleInput() {
 }
 
 bool InputHandler::isJumpHeld() const {
-    return sf::Keyboard::isKeyPressed(sf::Keyboard::Space) ||
-           sf::Keyboard::isKeyPressed(sf::Keyboard::Up) ||
-           sf::Keyboard::isKeyPressed(sf::Keyboard::W);
+    for (auto k : m_jumpKeys) {
+        if (sf::Keyboard::isKeyPressed(k)) return true;
+    }
+    return false;
 }
 
 bool InputHandler::isSprintHeld() const {
-    return sf::Keyboard::isKeyPressed(sf::Keyboard::LShift);
+    for (auto k : m_sprintKeys) {
+        if (sf::Keyboard::isKeyPressed(k)) return true;
+    }
+    return false;
 }
 
 Command* InputHandler::handleEvent(const sf::Event& event) {

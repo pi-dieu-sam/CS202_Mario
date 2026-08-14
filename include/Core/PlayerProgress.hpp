@@ -38,10 +38,14 @@ public:
     /// Reset all progress data to defaults.
     void resetGameData();
 
+    bool isCoop() const { return m_isCoop; }
+    void setCoop(bool coop) { m_isCoop = coop; }
+
 private:
     int         m_score         = 0;
     int         m_lives         = 3;
     int         m_coins         = 0;
     int         m_currentLevel  = 1;
     std::string m_selectedChar  = "Mario";
+    bool        m_isCoop        = false;
 };
