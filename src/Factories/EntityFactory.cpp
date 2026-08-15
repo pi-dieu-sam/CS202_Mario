@@ -11,6 +11,7 @@
 #include "Entities/Mario.hpp"
 #include "Entities/Luigi.hpp"
 #include "AI/PatrolStrategy.hpp"
+#include "Physics/PhysicsConstants.hpp"
 
 std::unique_ptr<Enemy> EntityFactory::createEnemy(EnemyType type, sf::Vector2f pos, LevelTheme theme) {
     std::unique_ptr<Enemy> enemy;
@@ -80,6 +81,36 @@ std::unique_ptr<Tile> EntityFactory::createTile(char tileChar, float x, float y,
         default:  return nullptr;
     }
     return std::make_unique<Tile>(type, x, y, theme);
+}
+
+std::vector<std::unique_ptr<Tile>>
+EntityFactory::createForkedPipe(float x, float y, LevelTheme theme) {
+    std::vector<std::unique_ptr<Tile>> pieces;
+    const float cell = TILE_SIZE * FORKED_PIPE_SCALE;
+    pieces.push_back(std::make_unique<Tile>(TileType::ForkedPipeHead,
+                                            x + cell, y, theme));
+    pieces.push_back(std::make_unique<Tile>(TileType::ForkedPipeBase,
+                                            x, y + cell, theme));
+    return pieces;
+}
+
+std::vector<std::unique_ptr<Tile>>
+EntityFactory::createCastle(char castleChar, float x, float y, LevelTheme theme) {
+    const TileType type = (castleChar == 'c') ? TileType::CastleSmall
+                                              : TileType::CastleLarge;
+    const int stripCount = (type == TileType::CastleSmall)
+                               ? CASTLE_SMALL_H_TILES
+                               : CASTLE_LARGE_H_TILES;
+
+    // x, y is the bottom-left corner: strip 0 sits on the ground row and
+    // each strip above it stacks upward. subIndex counts up from the bottom.
+    std::vector<std::unique_ptr<Tile>> pieces;
+    pieces.reserve(stripCount);
+    for (int i = 0; i < stripCount; i++) {
+        pieces.push_back(std::make_unique<Tile>(type, x, y - i * TILE_SIZE,
+                                                theme, i));
+    }
+    return pieces;
 }
 
 std::unique_ptr<Block> EntityFactory::createBlock(char blockChar, float x, float y, LevelTheme theme) {
