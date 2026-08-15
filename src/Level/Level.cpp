@@ -516,6 +516,39 @@ void Level::handleCollisions(float dt) {
         }
       }
     }
+
+    // Edge guard: a grounded enemy walking toward a pit (or the end of the
+    // map) turns around instead of stepping off and falling. Probes a small
+    // column just past the leading edge, at foot level, for any solid tile
+    // or active block.
+    sf::Vector2f enemyVel = enemy->getVelocity();
+    if (enemy->isGrounded() && enemyVel.x != 0.0f) {
+      const sf::FloatRect bounds = enemy->getBounds();
+      constexpr float PROBE_WIDTH = 8.0f;
+      const sf::FloatRect probe(
+          enemyVel.x > 0.0f ? bounds.left + bounds.width + 2.0f
+                            : bounds.left - 2.0f - PROBE_WIDTH,
+          bounds.top + bounds.height + 2.0f, PROBE_WIDTH, TILE_SIZE);
+
+      bool groundAhead = false;
+      for (Tile *tile : m_tileGrid.query(probe)) {
+        if (tile->getBounds().intersects(probe)) {
+          groundAhead = true;
+          break;
+        }
+      }
+      if (!groundAhead) {
+        for (auto &block : m_blocks) {
+          if (block->isActive() && block->getBounds().intersects(probe)) {
+            groundAhead = true;
+            break;
+          }
+        }
+      }
+      if (!groundAhead) {
+        enemy->setVelocity(-enemyVel.x, enemyVel.y);
+      }
+    }
   }
 
   // Enemy vs Enemy
