@@ -23,8 +23,12 @@ constexpr float TIME_BONUS_TICK_INTERVAL = 0.03f;
 }
 
 PlayingState::PlayingState() : m_hud(std::make_unique<HUD>()) {
-    m_inputP1.setPlayer1Bindings();
-    m_inputP2.setPlayer2Bindings();
+    if (Game::getInstance().getProgress().isMultiplayer()) {
+        m_inputP1.setPlayer1Bindings();
+        m_inputP2.setPlayer2Bindings();
+    } else {
+        m_inputP1.setSinglePlayerBindings();
+    }
 }
 PlayingState::~PlayingState() {}
 

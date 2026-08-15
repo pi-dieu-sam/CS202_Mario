@@ -20,6 +20,9 @@ public:
 
     /// Set bindings for Player 2 (Arrows)
     void setPlayer2Bindings();
+
+    /// Set combined bindings (WASD + Arrows) for single-player control.
+    void setSinglePlayerBindings();
     void bindKey(sf::Keyboard::Key key, std::unique_ptr<Command> command);
 
     /// Poll held keys and return commands to execute this frame.
