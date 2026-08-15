@@ -1,6 +1,7 @@
 #pragma once
 #include <SFML/Graphics.hpp>
 #include <memory>
+#include <set>
 #include <vector>
 #include <unordered_map>
 
@@ -25,7 +26,14 @@ public:
     void setSinglePlayerBindings();
     void bindKey(sf::Keyboard::Key key, std::unique_ptr<Command> command);
 
-    /// Poll held keys and return commands to execute this frame.
+    /// Seed the held-key set from the physical keyboard state. Call once
+    /// after (re)binding so keys already held still register.
+    void seedHeldKeys();
+
+    /// Clear all tracked held keys (e.g. when the window loses focus).
+    void clearHeldKeys();
+
+    /// Return commands to execute this frame for all currently held keys.
     std::vector<Command*> handleInput();
 
     /// Check whether any jump key is currently held.
@@ -35,7 +43,9 @@ public:
     /// the sprint state before directional commands execute.
     bool isSprintHeld() const;
 
-    /// Handle a single SFML key-press event (for one-shot actions like jump).
+    /// Handle a single SFML event. Tracks KeyPressed/KeyReleased/LostFocus
+    /// to maintain the held-key set, and returns a one-shot command for
+    /// press-only actions like jump or fire.
     Command* handleEvent(const sf::Event& event);
 
 private:
@@ -43,4 +53,5 @@ private:
     std::unordered_map<sf::Keyboard::Key, std::unique_ptr<Command>> m_pressBindings;
     std::vector<sf::Keyboard::Key> m_jumpKeys;
     std::vector<sf::Keyboard::Key> m_sprintKeys;
+    std::set<sf::Keyboard::Key> m_heldKeys;
 };
