@@ -40,6 +40,29 @@ void InputHandler::setPlayer2Bindings() {
     m_sprintKeys = {sf::Keyboard::RShift};
 }
 
+void InputHandler::setSinglePlayerBindings() {
+    m_keyBindings.clear();
+    m_pressBindings.clear();
+
+    // Held keys — WASD + arrows
+    m_keyBindings[sf::Keyboard::A]     = std::make_unique<MoveLeftCommand>();
+    m_keyBindings[sf::Keyboard::Left]  = std::make_unique<MoveLeftCommand>();
+    m_keyBindings[sf::Keyboard::D]     = std::make_unique<MoveRightCommand>();
+    m_keyBindings[sf::Keyboard::Right] = std::make_unique<MoveRightCommand>();
+
+    // Press keys
+    m_pressBindings[sf::Keyboard::W]       = std::make_unique<JumpCommand>();
+    m_pressBindings[sf::Keyboard::Space]   = std::make_unique<JumpCommand>();
+    m_pressBindings[sf::Keyboard::Up]      = std::make_unique<JumpCommand>();
+    m_pressBindings[sf::Keyboard::Numpad0] = std::make_unique<JumpCommand>();
+    m_pressBindings[sf::Keyboard::LShift]  = std::make_unique<FireCommand>();
+    m_pressBindings[sf::Keyboard::RShift]  = std::make_unique<FireCommand>();
+
+    m_jumpKeys = {sf::Keyboard::W, sf::Keyboard::Space,
+                  sf::Keyboard::Up, sf::Keyboard::Numpad0};
+    m_sprintKeys = {sf::Keyboard::LShift, sf::Keyboard::RShift};
+}
+
 void InputHandler::bindKey(sf::Keyboard::Key key, std::unique_ptr<Command> command) {
     m_keyBindings[key] = std::move(command);
 }
