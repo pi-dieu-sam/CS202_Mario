@@ -9,6 +9,7 @@
 #include <fstream>
 #include <iostream>
 #include <sstream>
+#include <algorithm>
 
 namespace {
 
@@ -20,6 +21,8 @@ bool isSolidChar(char c) {
         case '<': case '>': case '[': case ']':
         case 'B': case 'b':
         case 'M': case 'F': case 's':
+        case 'P':
+        case 'c': case 'C':
             return true;
         default:
             return false;
@@ -83,6 +86,29 @@ LevelLoader::LevelData LevelLoader::loadLevel(const std::string& filename,
                 {
                     auto tile = EntityFactory::createTile(c, x, y, theme);
                     if (tile) data.tiles.push_back(std::move(tile));
+                    break;
+                }
+
+                // Forked/warp pipe ('P') — one char, two pieces (head + base).
+                case 'P':
+                {
+                    auto pieces = EntityFactory::createForkedPipe(x, y, theme);
+                    for (auto& piece : pieces) {
+                        data.tiles.push_back(std::move(piece));
+                    }
+                    break;
+                }
+
+                // Castle ('c' small / 'C' large) — one char = bottom-left
+                // corner; the factory stacks H one-tile strips upward.
+                case 'c':
+                case 'C':
+                {
+                    auto pieces = EntityFactory::createCastle(c, x, y, theme);
+                    for (auto& piece : pieces) {
+                        data.tiles.push_back(std::move(piece));
+                    }
+                    data.castleCol = col;
                     break;
                 }
 
@@ -164,13 +190,23 @@ LevelLoader::LevelData LevelLoader::loadLevel(const std::string& filename,
     }
 
     if (autoPlaceFlagpole && !data.flagpole) {
-        const int margin = 3;
-        for (int col = cols - 1 - margin; col > 0; col--) {
-            if (isSolidChar(rowAt(groundRow, col)) && !isSolidChar(rowAt(groundRow - 1, col))) {
-                data.flagpole = std::make_unique<Flagpole>(
-                    static_cast<float>(col) * TILE_SIZE,
-                    static_cast<float>(groundRow - 1 + rowOffset) * TILE_SIZE);
-                break;
+        const float flagY =
+            static_cast<float>(groundRow - 1 + rowOffset) * TILE_SIZE;
+        if (data.castleCol >= 0) {
+            // Castle present: stand the flagpole 3 tiles before it (the char
+            // marks the castle's bottom-left corner, so this is simply
+            // castleCol - 3, at the same ground level as the castle base).
+            const int flagCol = std::max(0, data.castleCol - 3);
+            data.flagpole = std::make_unique<Flagpole>(
+                static_cast<float>(flagCol) * TILE_SIZE, flagY);
+        } else {
+            const int margin = 3;
+            for (int col = cols - 1 - margin; col > 0; col--) {
+                if (isSolidChar(rowAt(groundRow, col)) && !isSolidChar(rowAt(groundRow - 1, col))) {
+                    data.flagpole = std::make_unique<Flagpole>(
+                        static_cast<float>(col) * TILE_SIZE, flagY);
+                    break;
+                }
             }
         }
     }
