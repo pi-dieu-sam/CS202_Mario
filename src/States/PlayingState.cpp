@@ -23,8 +23,12 @@ constexpr float TIME_BONUS_TICK_INTERVAL = 0.03f;
 }
 
 PlayingState::PlayingState() : m_hud(std::make_unique<HUD>()) {
-    m_inputP1.setPlayer1Bindings();
-    m_inputP2.setPlayer2Bindings();
+    if (Game::getInstance().getProgress().isMultiplayer()) {
+        m_inputP1.setPlayer1Bindings();
+        m_inputP2.setPlayer2Bindings();
+    } else {
+        m_inputP1.setSinglePlayerBindings();
+    }
 }
 PlayingState::~PlayingState() {}
 
@@ -110,9 +114,24 @@ void PlayingState::onExit() {
 
 void PlayingState::onResume() {
     SoundManager::getInstance().resumeMusic();
+    // While paused the state receives no events, so re-sync the held-key
+    // tracking with the physical keyboard state on the way back in.
+    m_inputP1.clearHeldKeys();
+    m_inputP1.seedHeldKeys();
+    m_inputP2.clearHeldKeys();
+    m_inputP2.seedHeldKeys();
 }
 
 void PlayingState::handleEvent(const sf::Event& event) {
+    // Keep the held-key tracking in sync regardless of player state so a
+    // released key never leaves the character moving on its own.
+    if (event.type == sf::Event::KeyReleased ||
+        event.type == sf::Event::LostFocus) {
+        m_inputP1.handleEvent(event);
+        m_inputP2.handleEvent(event);
+        return;
+    }
+
     if (m_transitionStage != LevelTransitionStage::Inactive) {
         return;
     }
