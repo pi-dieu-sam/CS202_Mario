@@ -21,6 +21,9 @@ void InputHandler::setPlayer1Bindings() {
 
     m_jumpKeys = {sf::Keyboard::W, sf::Keyboard::Space};
     m_sprintKeys = {sf::Keyboard::LShift};
+
+    m_heldKeys.clear();
+    seedHeldKeys();
 }
 
 void InputHandler::setPlayer2Bindings() {
@@ -38,6 +41,9 @@ void InputHandler::setPlayer2Bindings() {
 
     m_jumpKeys = {sf::Keyboard::Up, sf::Keyboard::Numpad0};
     m_sprintKeys = {sf::Keyboard::RShift};
+
+    m_heldKeys.clear();
+    seedHeldKeys();
 }
 
 void InputHandler::setSinglePlayerBindings() {
@@ -61,17 +67,43 @@ void InputHandler::setSinglePlayerBindings() {
     m_jumpKeys = {sf::Keyboard::W, sf::Keyboard::Space,
                   sf::Keyboard::Up, sf::Keyboard::Numpad0};
     m_sprintKeys = {sf::Keyboard::LShift, sf::Keyboard::RShift};
+
+    m_heldKeys.clear();
+    seedHeldKeys();
 }
 
 void InputHandler::bindKey(sf::Keyboard::Key key, std::unique_ptr<Command> command) {
     m_keyBindings[key] = std::move(command);
 }
 
-std::vector<Command*> InputHandler::handleInput() {
-    std::vector<Command*> commands;
+void InputHandler::seedHeldKeys() {
     for (auto& [key, command] : m_keyBindings) {
         if (sf::Keyboard::isKeyPressed(key)) {
-            commands.push_back(command.get());
+            m_heldKeys.insert(key);
+        }
+    }
+    for (auto k : m_jumpKeys) {
+        if (sf::Keyboard::isKeyPressed(k)) {
+            m_heldKeys.insert(k);
+        }
+    }
+    for (auto k : m_sprintKeys) {
+        if (sf::Keyboard::isKeyPressed(k)) {
+            m_heldKeys.insert(k);
+        }
+    }
+}
+
+void InputHandler::clearHeldKeys() {
+    m_heldKeys.clear();
+}
+
+std::vector<Command*> InputHandler::handleInput() {
+    std::vector<Command*> commands;
+    for (auto key : m_heldKeys) {
+        auto it = m_keyBindings.find(key);
+        if (it != m_keyBindings.end()) {
+            commands.push_back(it->second.get());
         }
     }
     return commands;
@@ -79,24 +111,29 @@ std::vector<Command*> InputHandler::handleInput() {
 
 bool InputHandler::isJumpHeld() const {
     for (auto k : m_jumpKeys) {
-        if (sf::Keyboard::isKeyPressed(k)) return true;
+        if (m_heldKeys.count(k)) return true;
     }
     return false;
 }
 
 bool InputHandler::isSprintHeld() const {
     for (auto k : m_sprintKeys) {
-        if (sf::Keyboard::isKeyPressed(k)) return true;
+        if (m_heldKeys.count(k)) return true;
     }
     return false;
 }
 
 Command* InputHandler::handleEvent(const sf::Event& event) {
     if (event.type == sf::Event::KeyPressed) {
+        m_heldKeys.insert(event.key.code);
         auto it = m_pressBindings.find(event.key.code);
         if (it != m_pressBindings.end()) {
             return it->second.get();
         }
+    } else if (event.type == sf::Event::KeyReleased) {
+        m_heldKeys.erase(event.key.code);
+    } else if (event.type == sf::Event::LostFocus) {
+        m_heldKeys.clear();
     }
     return nullptr;
 }
