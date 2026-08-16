@@ -45,12 +45,11 @@ public:
   static int playerFrameCount(CharacterId character, PowerUpState power,
                                PlayerAnim anim);
 
-  /// Apply the animation frame `frame` for a player character. Mario's Idle /
-  /// Walk / Jump / Fire animations are cropped from his new multi-frame
-  /// sheets under assets/textures/Character/ (frames are unequal-width cells
-  /// on a fixed grid, so each is picked with an sf::IntRect); Luigi keeps the
-  /// old single-sprite-per-state art. Skid falls back to Idle, and the
-  /// flagpole slide keeps its own sheet-based helper.
+  /// Apply the animation frame `frame` for a player character. Both Mario and
+  /// Luigi use their new multi-frame sheets under assets/textures/Character/
+  /// (Skid falls back to the Idle sheet for both). Mario's frames are uniform-
+  /// width grid cells cropped with applySheetFrame(); Luigi's are unevenly-
+  /// offset art blocks cropped with explicit per-frame sf::IntRects.
   static void applyPlayerFrame(sf::Sprite &sprite, CharacterId character,
                                PowerUpState power, PlayerAnim anim, int frame,
                                const sf::FloatRect &box,

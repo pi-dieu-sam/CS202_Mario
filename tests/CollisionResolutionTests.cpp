@@ -274,16 +274,15 @@ static void testAllLuigiSpriteStatesLoad() {
       PowerUpState::Small, PowerUpState::Big, PowerUpState::Fire};
   const std::vector<SpriteRegistry::PlayerAnim> animations = {
       SpriteRegistry::PlayerAnim::Idle, SpriteRegistry::PlayerAnim::Walk,
-      SpriteRegistry::PlayerAnim::Jump, SpriteRegistry::PlayerAnim::Skid};
+      SpriteRegistry::PlayerAnim::Jump, SpriteRegistry::PlayerAnim::Fire,
+      SpriteRegistry::PlayerAnim::Skid};
 
   for (PowerUpState power : powers) {
     for (SpriteRegistry::PlayerAnim animation : animations) {
       const int frameCount = SpriteRegistry::playerFrameCount(
           CharacterId::Luigi, power, animation);
-      if (animation == SpriteRegistry::PlayerAnim::Walk) {
-        CHECK(frameCount == 2,
-              "Luigi walk animation exposes both movement frames");
-      }
+      CHECK(frameCount > 0,
+            "Luigi animation exposes at least one frame");
 
       for (int frame = 0; frame < frameCount; ++frame) {
         const std::string& path = SpriteRegistry::playerPath(
@@ -295,8 +294,36 @@ static void testAllLuigiSpriteStatesLoad() {
         CHECK(image.loadFromFile(path) && image.getSize().x > 0 &&
                   image.getSize().y > 0,
               "every registered Luigi asset decodes successfully");
+
+        sf::Sprite sprite;
+        SpriteRegistry::applyPlayerFrame(
+            sprite, CharacterId::Luigi, power, animation, frame,
+            sf::FloatRect(0.0f, 0.0f, 32.0f, 32.0f));
+        const sf::IntRect rect = sprite.getTextureRect();
+        CHECK(rect.left >= 0 && rect.top >= 0 &&
+                  rect.left + rect.width <=
+                      static_cast<int>(image.getSize().x) &&
+                  rect.top + rect.height <=
+                      static_cast<int>(image.getSize().y),
+              "Luigi animation frame crop stays inside its sheet");
       }
     }
+  }
+
+  // Exact frame counts for the new Luigi Character/ sheets.
+  for (PowerUpState power : powers) {
+    CHECK(SpriteRegistry::playerFrameCount(
+              CharacterId::Luigi, power, SpriteRegistry::PlayerAnim::Idle) == 3,
+          "Luigi Stand sheet exposes its 3 idle frames");
+    CHECK(SpriteRegistry::playerFrameCount(
+              CharacterId::Luigi, power, SpriteRegistry::PlayerAnim::Walk) == 8,
+          "Luigi Walk sheet exposes its 8 walk frames");
+    CHECK(SpriteRegistry::playerFrameCount(
+              CharacterId::Luigi, power, SpriteRegistry::PlayerAnim::Jump) == 5,
+          "Luigi Jump sheet exposes its 5 jump frames");
+    CHECK(SpriteRegistry::playerFrameCount(
+              CharacterId::Luigi, power, SpriteRegistry::PlayerAnim::Fire) == 1,
+          "Luigi Fire sheet exposes its 1 shoot frame");
   }
 }
 
