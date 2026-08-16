@@ -60,15 +60,11 @@ const std::string &groundPath(LevelTheme theme) {
   return paths[themeIndex(theme)];
 }
 
-const std::string &pipePath(LevelTheme theme) {
-  // Each theme's pipe is now one assembled image rather than 4 sliced
-  // quarter-tiles, so all 4 TileType pipe positions reuse it (see tilePath).
-  static const std::string paths[THEME_COUNT] = {
-      "assets/textures/Warp_Pipe_SMB.png",        // Overworld
-      "assets/textures/Warp_Pipe_Gray_SMB.png",   // Underground
-      "assets/textures/Warp_Pipe_Orange_SMB.png", // Castle
-  };
-  return paths[themeIndex(theme)];
+const std::string &pipePath(LevelTheme /*theme*/) {
+  // All themes share the green Overworld pipe so pipes look the same in every
+  // level (Underground/Castle had gray/orange variants).
+  static const std::string green = "assets/textures/Warp_Pipe_SMB.png";
+  return green;
 }
 
 const std::string &brickPath(LevelTheme theme) {
@@ -89,16 +85,17 @@ const std::string &questionIdlePath(LevelTheme theme) {
   return paths[themeIndex(theme)];
 }
 
-const std::string &forkedPipePath() {
-  // Single 64x64 fork/warp-pipe sprite shared across all themes.
-  static const std::string p = "assets/textures/SMBWarpPipeForked.png";
-  return p;
-}
-
 const std::string &castlePiecePath() {
   // 4x2 sheet of 16x16 castle tiles with 1px gaps. Each cell is cropped by
   // Tile (CastlePiece) and scaled to one 32x32 tile.
   static const std::string p = "assets/textures/items/Castle_piece.png";
+  return p;
+}
+
+const std::string &wardPipePiecePath() {
+  // 3x2 sheet of 16x16 ward-pipe tiles with 1px gaps. Each cell is cropped by
+  // Tile (WardPipePiece) and scaled to one 32x32 tile.
+  static const std::string p = "assets/textures/items/WardPipe_piece.png";
   return p;
 }
 } // namespace
@@ -110,11 +107,10 @@ const std::string &SpriteRegistry::tilePath(TileType type, LevelTheme theme) {
   case TileType::PipeBodyLeft:
   case TileType::PipeBodyRight:
     return pipePath(theme);
-  case TileType::ForkedPipeHead:
-  case TileType::ForkedPipeBase:
-    return forkedPipePath();
   case TileType::CastlePiece:
     return castlePiecePath();
+  case TileType::WardPipePiece:
+    return wardPipePiecePath();
   case TileType::Ground:
   case TileType::Underground:
   case TileType::CastleBlock:

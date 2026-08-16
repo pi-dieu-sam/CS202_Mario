@@ -15,17 +15,18 @@ enum class TileType {
   PipeBodyRight,
   CastleBlock,
   Underground,
-  /// Two-piece fork/warp pipe ('P'): the head (mouth up, 1 tile) and the
-  /// horizontal base strip (2 tiles wide). Both crop the same 64x64
-  /// SMBWarpPipeForked.png sprite.
-  ForkedPipeHead,
-  ForkedPipeBase,
   /// Castle piece: one 16x16 cell cut from Castle_piece.png (4x2 sheet,
   /// 1px gaps), scaled up to a single 32x32 tile. subIndex selects the sheet
   /// cell (0..7, reading left-to-right top-to-bottom). A castle is assembled
   /// in the level file by placing the piece characters Q 2 3 4 / 6 S 7 5
   /// (top row above bottom row).
-  CastlePiece
+  CastlePiece,
+  /// Ward pipe piece: one 16x16 cell cut from WardPipe_piece.png (3x2 sheet,
+  /// 1px gaps), scaled up to a single 32x32 tile. subIndex selects the sheet
+  /// cell (0..5, reading left-to-right top-to-bottom). A pipe is assembled in
+  /// the level file by placing the piece characters ( { \ (top row) above
+  /// ) } / (bottom row).
+  WardPipePiece
 };
 
 /// Tile — static, collidable terrain piece (ground, pipes, etc.).

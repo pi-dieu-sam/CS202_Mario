@@ -21,7 +21,7 @@ bool isSolidChar(char c) {
         case '<': case '>': case '[': case ']':
         case 'B': case 'b':
         case 'M': case 'F': case 's':
-        case 'P':
+        case '(': case '{': case '\\': case ')': case '}': case '/':
         case 'Q': case '2': case '3': case '4':
         case '6': case 'S': case '7': case '5':
             return true;
@@ -90,16 +90,6 @@ LevelLoader::LevelData LevelLoader::loadLevel(const std::string& filename,
                     break;
                 }
 
-                // Forked/warp pipe ('P') — one char, two pieces (head + base).
-                case 'P':
-                {
-                    auto pieces = EntityFactory::createForkedPipe(x, y, theme);
-                    for (auto& piece : pieces) {
-                        data.tiles.push_back(std::move(piece));
-                    }
-                    break;
-                }
-
                 // Castle pieces ('Q','2','3','4','6','S','7','5') — each char
                 // is one 32x32 tile cut from Castle_piece.png. Assemble a
                 // castle with "Q234" above "6S75".
@@ -107,6 +97,17 @@ LevelLoader::LevelData LevelLoader::loadLevel(const std::string& filename,
                 case '6': case 'S': case '7': case '5':
                 {
                     auto piece = EntityFactory::createCastlePiece(c, x, y, theme);
+                    if (piece) data.tiles.push_back(std::move(piece));
+                    break;
+                }
+
+                // Ward pipe pieces ('(','{','\\',')','}','/') — each char is
+                // one 32x32 tile cut from WardPipe_piece.png. Stack the top
+                // row ('(','{','\\') above the bottom row (')','}','/').
+                case '(': case '{': case '\\':
+                case ')': case '}': case '/':
+                {
+                    auto piece = EntityFactory::createWardPipePiece(c, x, y, theme);
                     if (piece) data.tiles.push_back(std::move(piece));
                     break;
                 }

@@ -22,7 +22,8 @@ Mỗi ký tự đại diện cho **một ô vuông 32×32 pixel** trong map.
 | `X` | Đất (Ground) |
 | `<` `>` | Miệng ống (top-left / top-right) |
 | `[` `]` | Thân ống (body-left / body-right) |
-| `P` | Ống 2 đầu / ống ngã ba (forked pipe) — **1 ký tự chiếm 4×4 ô** |
+| `(` `{` `\` | Ống Ward (ward pipe) — **mảnh hàng trên** (xếp chồng lên mảnh dưới) |
+| `)` `}` `/` | Ống Ward (ward pipe) — **mảnh hàng dưới** |
 | `c` | Lâu đài nhỏ — **1 ký tự = góc dưới-trái, chiếm 3×3 ô** |
 | `C` | Lâu đài lớn — **1 ký tự = góc dưới-trái, chiếm 5×6 ô** |
 | `S` | Gạch vỡ (Brick, phá được khi Mario to) |
@@ -38,10 +39,12 @@ Mỗi ký tự đại diện cho **một ô vuông 32×32 pixel** trong map.
 | `@` | Điểm spawn Player 1 |
 | `2` | Điểm spawn Player 2 (PvP / Co-op) |
 | `f` | Cột cờ (đích của level) |
+|`Q` `2` `3` `4`| Castle
+|`6` `S` `7` `5`|
+
 
 **Lưu ý:**
 - Ống (`<>` / `[]`) cần xếp thành khối 2 ô ngang × 2 ô dọc để hiển thị đúng (xem ví dụ trong `level1.txt`).
-- Ống 2 đầu (`P`) chỉ cần **1 ký tự** — tự động chiếm 4×4 ô (đầu ống hướng lên ở bên phải, thân ngang nối sang trái). Kích thước chỉnh bằng hằng số `FORKED_PIPE_SCALE` trong `include/Physics/PhysicsConstants.hpp`.
 - Lâu đài (`c` / `C`): đặt ký tự **ngay hàng mặt đất** — ký tự là ô góc dưới-trái, lâu đài tự mọc lên trên (`c` = 3×3 ô, `C` = 5×6 ô). Là khối đặc; kích thước chỉnh bằng `CASTLE_*_TILES` trong `include/Physics/PhysicsConstants.hpp`.
 - Flagpole tự động: khi level có lâu đài, cột cờ tự đặt **3 ô trước lâu đài** (`c`/`C`); không có lâu đài thì mới đặt gần mép phải như cũ. Có thể ghi đè bằng ký tự `f`.
 - Map VGLC chuẩn 14 dòng; LevelLoader tự căn level xuống đáy màn hình (19 dòng), 5 dòng trên cùng là trời.

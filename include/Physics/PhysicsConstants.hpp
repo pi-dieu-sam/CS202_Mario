@@ -8,12 +8,6 @@ constexpr float GROUND_FRICTION  = 0.85f;    // horizontal deceleration factor
 // ── Tile grid ──
 constexpr float TILE_SIZE        = 32.0f;    // pixels per tile
 
-// ── Forked/warp pipe ('P') ──
-// The 64x64 sprite is scaled up so one 'P' occupies (2*scale) x (2*scale)
-// tiles — 2x matches the height of a regular pipe built from 2 stacked
-// '<>' '[]' sets. Bump this number to make the pipe bigger.
-constexpr float FORKED_PIPE_SCALE = 2.0f;
-
 // ── Player defaults ──
 constexpr float PLAYER_SPEED     = 200.0f;   // pixels/s
 constexpr float PLAYER_JUMP      = -420.0f;  // initial jump velocity (negative = up)
