@@ -3,6 +3,22 @@
 #include "Graphics/SpriteRegistry.hpp"
 #include "Physics/PhysicsConstants.hpp"
 
+namespace {
+/// Crop one 16x16 cell out of a sprite sheet with `cols` columns and 1px gaps
+/// between cells, then scale it to fill `box` (one 32x32 tile). Used by
+/// CastlePiece (4 cols) and WardPipePiece (3 cols).
+void applySheetCell(sf::Sprite &sprite, sf::Texture &tex, int cell, int cols,
+                    const sf::FloatRect &box) {
+  constexpr int CELL = 16;
+  constexpr int STEP = CELL + 1; // 16px cell + 1px gap
+
+  const int cellCol = cell % cols;
+  const int cellRow = cell / cols;
+  sf::IntRect crop(cellCol * STEP, cellRow * STEP, CELL, CELL);
+  SpriteRegistry::applyFrame(sprite, tex, crop, box);
+}
+} // namespace
+
 Tile::Tile() { m_type = ObjectType::Tile; }
 
 Tile::Tile(TileType tileType, float x, float y, LevelTheme theme,
@@ -15,48 +31,29 @@ Tile::Tile(TileType tileType, float x, float y, LevelTheme theme,
     return;
   }
 
-  // Forked/warp pipe ('P'): the 64x64 sprite is split into two solid pieces —
-  // a 1-tile head (mouth up, right column) and a 2-tile-wide horizontal base
-  // strip. EntityFactory positions them so they assemble into the 2x2 pipe.
-  if (tileType == TileType::ForkedPipeHead ||
-      tileType == TileType::ForkedPipeBase) {
-    const std::string& path = SpriteRegistry::tilePath(tileType, theme);
-    sf::Texture& tex = AssetManager::getInstance().getTexture(path);
-
-    // Each source cell of the 64x64 sprite is FORKED_PIPE_SCALE tiles big.
-    const float cell = TILE_SIZE * FORKED_PIPE_SCALE;
-
-    sf::IntRect crop;
-    if (tileType == TileType::ForkedPipeHead) {
-      crop = {32, 0, 32, 32};
-      m_size = {cell, cell};
-    } else {
-      crop = {0, 32, 64, 32};
-      m_size = {cell * 2.0f, cell};
-    }
-
-    SpriteRegistry::applyFrame(m_sprite, tex, crop,
-                               sf::FloatRect(x, y, m_size.x, m_size.y));
-    return;
-  }
-
   // Castle piece: one 16x16 cell cut from the 4x2 Castle_piece.png sheet
   // (1px gaps between cells), scaled up to a single 32x32 tile. subIndex is
   // the 0-based sheet-cell index (row-major: 0-3 top row, 4-7 bottom row).
   if (tileType == TileType::CastlePiece) {
-    constexpr int CELL = 16;
-    constexpr int STEP = CELL + 1; // 16px cell + 1px gap
-
     const std::string& path = SpriteRegistry::tilePath(tileType, theme);
     sf::Texture& tex = AssetManager::getInstance().getTexture(path);
 
-    const int cellCol = subIndex % 4;
-    const int cellRow = subIndex / 4;
-    sf::IntRect crop(cellCol * STEP, cellRow * STEP, CELL, CELL);
+    m_size = {TILE_SIZE, TILE_SIZE};
+    applySheetCell(m_sprite, tex, subIndex, 4,
+                   sf::FloatRect(x, y, m_size.x, m_size.y));
+    return;
+  }
+
+  // Ward pipe piece: one 16x16 cell cut from the 3x2 WardPipe_piece.png sheet
+  // (1px gaps between cells), scaled up to a single 32x32 tile. subIndex is
+  // the 0-based sheet-cell index (row-major: 0-2 top row, 3-5 bottom row).
+  if (tileType == TileType::WardPipePiece) {
+    const std::string& path = SpriteRegistry::tilePath(tileType, theme);
+    sf::Texture& tex = AssetManager::getInstance().getTexture(path);
 
     m_size = {TILE_SIZE, TILE_SIZE};
-    SpriteRegistry::applyFrame(m_sprite, tex, crop,
-                               sf::FloatRect(x, y, m_size.x, m_size.y));
+    applySheetCell(m_sprite, tex, subIndex, 3,
+                   sf::FloatRect(x, y, m_size.x, m_size.y));
     return;
   }
 

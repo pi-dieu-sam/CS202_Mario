@@ -24,9 +24,9 @@ class Player;
 /// - 'o' = coin
 /// - 'B' 'b' = cannon top/bottom -- no projectile mechanic exists here,
 ///   rendered as a solid block stand-in
-/// - 'P' = forked/warp pipe (two mouths: up + left). One char, occupies a
-///   (2*FORKED_PIPE_SCALE) x (2*FORKED_PIPE_SCALE) tile area (4x4 at the
-///   default 2x scale) -- assembled from a 1-tile head and a 2-tile-wide base.
+/// - Ward pipe pieces: '(' '{' '\' (top row) and ')' '}' '/' (bottom row) —
+///   each char is one 16x16 cell of WardPipe_piece.png scaled to one 32x32
+///   tile. Assemble a pipe by stacking top-row pieces above bottom-row ones.
 /// - Castle pieces: 'Q','2','3','4' (top row) and '6','S','7','5' (bottom
 ///   row) — each char is one 16x16 cell of Castle_piece.png scaled to one
 ///   32x32 tile. Assemble a castle with "Q234" above "6S75".

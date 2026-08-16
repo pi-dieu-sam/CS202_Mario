@@ -11,7 +11,6 @@
 #include "Entities/Mario.hpp"
 #include "Entities/Luigi.hpp"
 #include "AI/PatrolStrategy.hpp"
-#include "Physics/PhysicsConstants.hpp"
 
 std::unique_ptr<Enemy> EntityFactory::createEnemy(EnemyType type, sf::Vector2f pos, LevelTheme theme) {
     std::unique_ptr<Enemy> enemy;
@@ -83,17 +82,6 @@ std::unique_ptr<Tile> EntityFactory::createTile(char tileChar, float x, float y,
     return std::make_unique<Tile>(type, x, y, theme);
 }
 
-std::vector<std::unique_ptr<Tile>>
-EntityFactory::createForkedPipe(float x, float y, LevelTheme theme) {
-    std::vector<std::unique_ptr<Tile>> pieces;
-    const float cell = TILE_SIZE * FORKED_PIPE_SCALE;
-    pieces.push_back(std::make_unique<Tile>(TileType::ForkedPipeHead,
-                                            x + cell, y, theme));
-    pieces.push_back(std::make_unique<Tile>(TileType::ForkedPipeBase,
-                                            x, y + cell, theme));
-    return pieces;
-}
-
 std::unique_ptr<Tile>
 EntityFactory::createCastlePiece(char pieceChar, float x, float y, LevelTheme theme) {
     // Character -> 0-based sheet-cell index (row-major on the 4x2 sheet):
@@ -112,6 +100,24 @@ EntityFactory::createCastlePiece(char pieceChar, float x, float y, LevelTheme th
         default:  return nullptr;
     }
     return std::make_unique<Tile>(TileType::CastlePiece, x, y, theme, subIndex);
+}
+
+std::unique_ptr<Tile>
+EntityFactory::createWardPipePiece(char pieceChar, float x, float y, LevelTheme theme) {
+    // Character -> 0-based sheet-cell index (row-major on the 3x2 sheet):
+    //   ( { \   (top row = cells 0-2)
+    //   ) } /   (bottom row = cells 3-5)
+    int subIndex;
+    switch (pieceChar) {
+        case '(': subIndex = 0; break;
+        case '{': subIndex = 1; break;
+        case '\\': subIndex = 2; break;
+        case ')': subIndex = 3; break;
+        case '}': subIndex = 4; break;
+        case '/': subIndex = 5; break;
+        default:  return nullptr;
+    }
+    return std::make_unique<Tile>(TileType::WardPipePiece, x, y, theme, subIndex);
 }
 
 std::unique_ptr<Block> EntityFactory::createBlock(char blockChar, float x, float y, LevelTheme theme) {
