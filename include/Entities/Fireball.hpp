@@ -14,10 +14,14 @@ public:
 
     void onCollision(GameObject& other) override;
 
+    /// Count a solid-surface hit; the fireball disappears after 3 hits.
+    void noteSurfaceHit();
+
 private:
     sf::Sprite      m_sprite;
     float           m_lifetime = 3.0f; // seconds before despawn
     int             m_direction = 1;   // 1=right, -1=left
     float           m_animTimer = 0.0f;
     int             m_animFrame = 0;
+    int             m_surfaceHits = 0;
 };
