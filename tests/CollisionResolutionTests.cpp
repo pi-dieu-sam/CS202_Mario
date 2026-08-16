@@ -300,6 +300,63 @@ static void testAllLuigiSpriteStatesLoad() {
   }
 }
 
+static void testAllMarioSpriteStatesLoad() {
+  const std::vector<PowerUpState> powers = {
+      PowerUpState::Small, PowerUpState::Big, PowerUpState::Fire};
+  const std::vector<SpriteRegistry::PlayerAnim> animations = {
+      SpriteRegistry::PlayerAnim::Idle, SpriteRegistry::PlayerAnim::Walk,
+      SpriteRegistry::PlayerAnim::Jump, SpriteRegistry::PlayerAnim::Fire};
+
+  for (PowerUpState power : powers) {
+    for (SpriteRegistry::PlayerAnim animation : animations) {
+      const int frameCount = SpriteRegistry::playerFrameCount(
+          CharacterId::Mario, power, animation);
+      CHECK(frameCount > 1,
+            "every new Mario animation exposes its multi-frame sheet");
+
+      for (int frame = 0; frame < frameCount; ++frame) {
+        const std::string &path = SpriteRegistry::playerPath(
+            CharacterId::Mario, power, animation, frame);
+        CHECK(std::filesystem::exists(path),
+              "every modeled Mario state has a registered asset file");
+
+        sf::Image image;
+        CHECK(image.loadFromFile(path) && image.getSize().x > 0 &&
+                  image.getSize().y > 0,
+              "every registered Mario asset decodes successfully");
+
+        sf::Sprite sprite;
+        SpriteRegistry::applyPlayerFrame(
+            sprite, CharacterId::Mario, power, animation, frame,
+            sf::FloatRect(0.0f, 0.0f, 32.0f, 32.0f));
+        const sf::IntRect rect = sprite.getTextureRect();
+        CHECK(rect.left >= 0 && rect.top >= 0 &&
+                  rect.left + rect.width <=
+                      static_cast<int>(image.getSize().x) &&
+                  rect.top + rect.height <=
+                      static_cast<int>(image.getSize().y),
+              "Mario animation frame crop stays inside its sheet");
+      }
+    }
+  }
+
+  // Exact frame counts for the new Mario Character/ sheets.
+  for (PowerUpState power : powers) {
+    CHECK(SpriteRegistry::playerFrameCount(
+              CharacterId::Mario, power, SpriteRegistry::PlayerAnim::Idle) == 4,
+          "Mario Stand sheet exposes its 4 idle frames");
+    CHECK(SpriteRegistry::playerFrameCount(
+              CharacterId::Mario, power, SpriteRegistry::PlayerAnim::Walk) == 6,
+          "Mario Walk sheet exposes its 6 walk frames");
+    CHECK(SpriteRegistry::playerFrameCount(
+              CharacterId::Mario, power, SpriteRegistry::PlayerAnim::Jump) == 3,
+          "Mario Jump sheet exposes its 3 jump frames");
+    CHECK(SpriteRegistry::playerFrameCount(
+              CharacterId::Mario, power, SpriteRegistry::PlayerAnim::Fire) == 2,
+          "Mario Fire sheet exposes its 2 shoot frames");
+  }
+}
+
 static void testFlagpoleSlideFramesAndCutscene() {
   const std::string& sheet = SpriteRegistry::playerFlagpoleSlideSheetPath();
   CHECK(std::filesystem::exists(sheet),
@@ -443,6 +500,7 @@ int main() {
   testSweptStompCatchesTunneling();
   testSprintDoesNotCompoundVelocity();
   testAllLuigiSpriteStatesLoad();
+  testAllMarioSpriteStatesLoad();
   testFlagpoleSlideFramesAndCutscene();
   testPlayerDeathAnimationUsesFacingPoses();
 

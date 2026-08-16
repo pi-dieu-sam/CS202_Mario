@@ -12,6 +12,15 @@ constexpr float DEATH_PAUSE_DURATION = 0.35f;
 constexpr float FLAGPOLE_SLIDE_SPEED = 180.0f;
 constexpr float FLAGPOLE_ANIM_SPEED = 0.12f;
 
+// Shoot (Fire) animation: plays once for this long after a fireball is fired,
+// then reverts to the normal Idle/Walk/Jump state.
+constexpr float SHOOT_ANIM_DURATION = 0.35f;
+// Per-animation frame rates (seconds per frame) for the new Mario sheets.
+constexpr float WALK_ANIM_SPEED = 0.08f;
+constexpr float JUMP_ANIM_SPEED = 0.15f;
+constexpr float IDLE_ANIM_SPEED = 0.16f;
+constexpr float FIRE_ANIM_SPEED = 0.12f;
+
 // FlowersBuff parameters
 constexpr float BUFF_DURATION = 40.0f;      // seconds the buff lasts
 constexpr float BUFF_GROW_DURATION = 0.7f;  // seconds to ramp size 1.0 -> 1.5
@@ -110,18 +119,29 @@ void Player::update(float dt) {
 
   // ── Decide animation state ──
   SpriteRegistry::PlayerAnim anim;
-  if (!m_grounded) {
+  float animSpeed = -1.0f;
+  if (m_shootAnimTimer > 0.0f) {
+    // Mario's Fire sheet plays briefly after each shot, even mid-air.
+    m_shootAnimTimer -= dt;
+    anim = SpriteRegistry::PlayerAnim::Fire;
+    animSpeed = FIRE_ANIM_SPEED;
+  } else if (!m_grounded) {
     anim = SpriteRegistry::PlayerAnim::Jump;
+    animSpeed = JUMP_ANIM_SPEED;
   } else if (m_skidding) {
     anim = SpriteRegistry::PlayerAnim::Skid;
+    animSpeed = IDLE_ANIM_SPEED;
   } else if (std::abs(m_velocity.x) > 5.0f) {
     anim = SpriteRegistry::PlayerAnim::Walk;
+    animSpeed = WALK_ANIM_SPEED;
   } else {
     anim = SpriteRegistry::PlayerAnim::Idle;
+    animSpeed = IDLE_ANIM_SPEED;
   }
   m_currentAnim = anim;
   setAnimFrameCount(
-      SpriteRegistry::playerFrameCount(m_characterId, m_powerUp, anim));
+      SpriteRegistry::playerFrameCount(m_characterId, m_powerUp, anim),
+      animSpeed);
 
   updateSprite(dt);
 }
@@ -164,9 +184,11 @@ void Player::draw(sf::RenderWindow &window) {
     tint = sf::Color(r, g, b);
   }
 
-  std::string path = SpriteRegistry::playerPath(m_characterId, m_powerUp,
-                                                 m_currentAnim, m_animFrame);
-  drawSprite(window, path, getBounds(), tint);
+  SpriteRegistry::applyPlayerFrame(m_sprite, m_characterId, m_powerUp,
+                                   m_currentAnim, m_animFrame, getBounds(),
+                                   !m_facingRight);
+  m_sprite.setColor(tint);
+  window.draw(m_sprite);
 }
 
 sf::FloatRect Player::getBounds() const {
@@ -239,6 +261,10 @@ void Player::enableFire() { m_powerUp = PowerUpState::Fire; }
 void Player::shoot() {
   // Fireballs are always available, no Fire power-up required.
   m_wantsToShoot = true;
+  // Only Mario has a dedicated shoot pose (Mario_Fire.png sheet).
+  if (m_characterId == CharacterId::Mario) {
+    m_shootAnimTimer = SHOOT_ANIM_DURATION;
+  }
 }
 
 bool Player::wantsToShoot() const { return m_wantsToShoot; }
