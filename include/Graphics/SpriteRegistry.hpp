@@ -22,7 +22,7 @@ enum class PowerUpState;
 class SpriteRegistry {
 public:
   enum class BlockVisualState { Idle, Hit, Used };
-  enum class PlayerAnim { Idle, Walk, Jump, Skid, FlagpoleSlide };
+  enum class PlayerAnim { Idle, Walk, Jump, Skid, Fire, FlagpoleSlide };
 
   // ── Tiles ──
   static const std::string &tilePath(TileType type, LevelTheme theme);
@@ -44,6 +44,17 @@ public:
   static const std::string &playerDeathPath(CharacterId character);
   static int playerFrameCount(CharacterId character, PowerUpState power,
                                PlayerAnim anim);
+
+  /// Apply the animation frame `frame` for a player character. Mario's Idle /
+  /// Walk / Jump / Fire animations are cropped from his new multi-frame
+  /// sheets under assets/textures/Character/ (frames are unequal-width cells
+  /// on a fixed grid, so each is picked with an sf::IntRect); Luigi keeps the
+  /// old single-sprite-per-state art. Skid falls back to Idle, and the
+  /// flagpole slide keeps its own sheet-based helper.
+  static void applyPlayerFrame(sf::Sprite &sprite, CharacterId character,
+                               PowerUpState power, PlayerAnim anim, int frame,
+                               const sf::FloatRect &box,
+                               bool flip = false);
 
   /// The playable-character reference sheet contains the two original
   /// flag-pole climbing poses for both Mario and Luigi.  Unlike normal player

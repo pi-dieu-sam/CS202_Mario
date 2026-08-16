@@ -119,6 +119,10 @@ protected:
   CharacterId m_characterId = CharacterId::Mario;
   SpriteRegistry::PlayerAnim m_currentAnim = SpriteRegistry::PlayerAnim::Idle;
 
+  // Brief post-shot window during which the Fire (shoot) animation plays
+  // before reverting to the normal state. Only used by Mario.
+  float m_shootAnimTimer = 0.0f;
+
 private:
   enum class DeathAnimationPhase { None, Rising, Falling, Paused, Complete };
   enum class GoalAnimationPhase { None, Sliding, SlideComplete, CastleWalk };
