@@ -121,7 +121,7 @@ void Player::update(float dt) {
   SpriteRegistry::PlayerAnim anim;
   float animSpeed = -1.0f;
   if (m_shootAnimTimer > 0.0f) {
-    // Mario's Fire sheet plays briefly after each shot, even mid-air.
+    // The character's Fire sheet plays briefly after each shot, even mid-air.
     m_shootAnimTimer -= dt;
     anim = SpriteRegistry::PlayerAnim::Fire;
     animSpeed = FIRE_ANIM_SPEED;
@@ -261,10 +261,9 @@ void Player::enableFire() { m_powerUp = PowerUpState::Fire; }
 void Player::shoot() {
   // Fireballs are always available, no Fire power-up required.
   m_wantsToShoot = true;
-  // Only Mario has a dedicated shoot pose (Mario_Fire.png sheet).
-  if (m_characterId == CharacterId::Mario) {
-    m_shootAnimTimer = SHOOT_ANIM_DURATION;
-  }
+  // Both Mario and Luigi now have a dedicated shoot pose (Character/ sheets),
+  // so play the Fire animation for whichever character is active.
+  m_shootAnimTimer = SHOOT_ANIM_DURATION;
 }
 
 bool Player::wantsToShoot() const { return m_wantsToShoot; }

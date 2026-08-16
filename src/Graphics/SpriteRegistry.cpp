@@ -231,6 +231,71 @@ const MarioSheet &marioSheet(SpriteRegistry::PlayerAnim anim) {
     return idle;
   }
 }
+
+// ── New Luigi art ──────────────────────────────────────────────────────
+// Luigi's new look lives in assets/textures/Character/ as horizontal sheets,
+// but unlike Mario's sheets the poses are NOT on a uniform grid — each frame's
+// art block is unevenly wide and unevenly offset, so every frame is cropped
+// with its own explicit sf::IntRect (the art's tight bounds) instead of the
+// frame * frameWidth formula applySheetFrame() uses for Mario.
+struct LuigiSheet {
+  const std::string path;
+  const sf::IntRect *frames; // frameCount entries, tight art bounds
+  int frameCount;
+};
+
+const sf::IntRect LUIGI_STAND_FRAMES[3] = {
+    sf::IntRect(0, 0, 21, 38),
+    sf::IntRect(24, 0, 22, 38),
+    sf::IntRect(49, 1, 22, 37),
+};
+
+const sf::IntRect LUIGI_WALK_FRAMES[8] = {
+    sf::IntRect(2, 1, 19, 37),
+    sf::IntRect(25, 2, 25, 36),
+    sf::IntRect(56, 3, 27, 35),
+    sf::IntRect(88, 2, 21, 36),
+    sf::IntRect(116, 1, 21, 37),
+    sf::IntRect(140, 2, 27, 36),
+    sf::IntRect(171, 3, 28, 35),
+    sf::IntRect(203, 2, 21, 36),
+};
+
+const sf::IntRect LUIGI_JUMP_FRAMES[5] = {
+    sf::IntRect(0, 1, 21, 39),
+    sf::IntRect(24, 0, 25, 39),
+    sf::IntRect(52, 1, 28, 39),
+    sf::IntRect(85, 2, 37, 38),
+    sf::IntRect(124, 1, 37, 39),
+};
+
+const sf::IntRect LUIGI_FIRE_FRAMES[1] = {
+    sf::IntRect(0, 0, 41, 36),
+};
+
+const LuigiSheet &luigiSheet(SpriteRegistry::PlayerAnim anim) {
+  static const LuigiSheet idle = {
+      "assets/textures/Character/Luigi_Stand.png", LUIGI_STAND_FRAMES, 3};
+  static const LuigiSheet walk = {
+      "assets/textures/Character/Luigi_Walk.png", LUIGI_WALK_FRAMES, 8};
+  static const LuigiSheet jump = {
+      "assets/textures/Character/Luigi_Jump.png", LUIGI_JUMP_FRAMES, 5};
+  static const LuigiSheet fire = {
+      "assets/textures/Character/Luigi_Fire.png", LUIGI_FIRE_FRAMES, 1};
+  switch (anim) {
+  case SpriteRegistry::PlayerAnim::Walk:
+    return walk;
+  case SpriteRegistry::PlayerAnim::Jump:
+    return jump;
+  case SpriteRegistry::PlayerAnim::Fire:
+    return fire;
+  case SpriteRegistry::PlayerAnim::Idle:
+  case SpriteRegistry::PlayerAnim::Skid:
+  default:
+    // Skid has no dedicated pose — reuse the idle sheet (same as before).
+    return idle;
+  }
+}
 } // namespace
 
 const std::string &SpriteRegistry::playerPath(CharacterId character,
@@ -252,50 +317,11 @@ const std::string &SpriteRegistry::playerPath(CharacterId character,
     return marioSheet(anim).path;
   }
 
-  // ── Luigi: old single-sprite-per-state art (unchanged) ──
-
-  // Walk needs a small per-combo frame list; everything else is one pose.
-  if (anim == PlayerAnim::Walk) {
-    if (power == PowerUpState::Small || power == PowerUpState::Big) {
-      static const std::string frames[2] = {
-          "assets/textures/SMB_Luigi_Walking_0.png",
-          "assets/textures/SMB_Luigi_Walking_1.png",
-      };
-      return frames[frame % 2];
-    }
-    static const std::string frames[2] = {
-        "assets/textures/SMB_Fire_Luigi_Walking_0.png",
-        "assets/textures/SMB_Fire_Luigi_Walking_1.png",
-    };
-    return frames[frame % 2];
-  }
-
-  if (anim == PlayerAnim::Jump) {
-    if (power == PowerUpState::Small) {
-      static const std::string p = "assets/textures/SMB_Small_Luigi_Jumping.png";
-      return p;
-    }
-    if (power == PowerUpState::Big) {
-      static const std::string p = "assets/textures/SMB_Super_Luigi_Jumping.png";
-      return p;
-    }
-    static const std::string p = "assets/textures/SMB_Fire_Luigi_Jumping.png";
-    return p;
-  }
-
-  // Idle and Skid: no dedicated skid pose in the pack, so Skid falls back
-  // to Idle for every character/power combo (easy to replace once skid art
-  // is sourced — this is the only place that decision needs to change).
-  if (power == PowerUpState::Small) {
-    static const std::string p = "assets/textures/SMB_Small_Luigi_Idle.png";
-    return p;
-  }
-  if (power == PowerUpState::Big) {
-    static const std::string p = "assets/textures/SMB_Super_Luigi_Idle.png";
-    return p;
-  }
-  static const std::string p = "assets/textures/SMB_Fire_Luigi_Idle.png";
-  return p;
+  // Luigi uses the new Character/ sheets for every animation too (Skid falls
+  // back to the Stand sheet). Unlike Mario, each frame is a tight art-bounds
+  // crop rather than a uniform grid cell — applyPlayerFrame() handles that.
+  // Power-up state no longer picks a different file, matching Mario.
+  return luigiSheet(anim).path;
 }
 
 const std::string &SpriteRegistry::playerDeathPath(CharacterId character) {
@@ -316,8 +342,9 @@ int SpriteRegistry::playerFrameCount(CharacterId character, PowerUpState power,
     // sheet, so it shares its frame count).
     return marioSheet(anim).frameCount;
   }
-  // Luigi: two-frame walk, single-pose everything else.
-  return anim == PlayerAnim::Walk ? 2 : 1;
+  // Luigi animates with the new Character/ sheets too; each animation exposes
+  // every pose its sheet holds.
+  return luigiSheet(anim).frameCount;
 }
 
 void SpriteRegistry::applyPlayerFrame(sf::Sprite &sprite, CharacterId character,
@@ -338,8 +365,12 @@ void SpriteRegistry::applyPlayerFrame(sf::Sprite &sprite, CharacterId character,
     return;
   }
 
-  // Luigi keeps the old single-sprite-per-state art.
-  applyFrame(sprite, playerPath(character, power, anim, frame), box, flip);
+  // Luigi's new sheets are not uniform grids (see luigiSheet), so each frame
+  // is cropped with its own tight-art-bounds rect.
+  const LuigiSheet &sheet = luigiSheet(anim);
+  sf::Texture &texture = AssetManager::getInstance().getTexture(sheet.path);
+  applyFrame(sprite, texture,
+             sheet.frames[frame % sheet.frameCount], box, flip);
 }
 
 const std::string &SpriteRegistry::playerFlagpoleSlideSheetPath() {
