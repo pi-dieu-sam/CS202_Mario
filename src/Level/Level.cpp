@@ -601,15 +601,23 @@ void Level::handleCollisions(float dt) {
       auto result = CollisionDetector::checkCollision(*fb, *tile);
       if (result.collided) {
         if (result.side == CollisionDetector::Side::Bottom) {
-          // Bounce
-          sf::Vector2f vel = fb->getVelocity();
-          fb->setVelocity(vel.x, -200.0f);
-          sf::Vector2f pos = fb->getPosition();
-          pos.y -= result.overlap;
-          fb->setPosition(pos);
+          // Bounce off the ground (counts as one surface hit)
+          fb->noteSurfaceHit();
+          if (fb->isActive()) {
+            sf::Vector2f vel = fb->getVelocity();
+            fb->setVelocity(vel.x, -200.0f);
+            sf::Vector2f pos = fb->getPosition();
+            pos.y -= result.overlap;
+            fb->setPosition(pos);
+          }
         } else if (result.side == CollisionDetector::Side::Left ||
                    result.side == CollisionDetector::Side::Right) {
-          fb->setActive(false); // Destroy on wall
+          // Reflect off a wall (counts as one surface hit)
+          fb->noteSurfaceHit();
+          if (fb->isActive()) {
+            sf::Vector2f vel = fb->getVelocity();
+            fb->setVelocity(-vel.x, vel.y);
+          }
         }
       }
     }
