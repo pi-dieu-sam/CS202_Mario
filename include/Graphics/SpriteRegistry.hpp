@@ -65,8 +65,10 @@ public:
   static const std::string &fireFlowerPath(LevelTheme theme);
   static const std::string &starPath(LevelTheme theme, int frame);
   static int starFrameCount();
-  static const std::string &fireballPath(int frame);
+  static const std::string &fireballPath();
   static int fireballFrameCount();
+  static const std::string &flowersBuffPath();
+  static int flowersBuffFrameCount();
 
   /// Shared draw-transform helper: loads `path` through AssetManager, binds
   /// it to the sprite, pivots on bottom-center (so horizontal flip mirrors
@@ -90,4 +92,12 @@ public:
   static void applyGifFrame(sf::Sprite &sprite, const std::string &gifPath,
                              int frame, const sf::FloatRect &box,
                              bool flip = false);
+
+  /// Apply one cell of a horizontal PNG sprite sheet. Each cell is
+  /// `frameWidth` pixels wide and the sheet's full height; cells start at
+  /// x = frame * (frameWidth + gap). Used for sheets like Fire_Ball.png
+  /// (contiguous frames, gap = 0) and FlowersBuff.png (gap = 2).
+  static void applySheetFrame(sf::Sprite &sprite, const std::string &path,
+                              int frame, int frameWidth, int gap,
+                              const sf::FloatRect &box, bool flip = false);
 };

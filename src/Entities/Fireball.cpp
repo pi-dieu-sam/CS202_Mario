@@ -39,8 +39,8 @@ void Fireball::update(float dt) {
 
 void Fireball::draw(sf::RenderWindow& window) {
     if (!m_active) return;
-    SpriteRegistry::applyFrame(m_sprite, SpriteRegistry::fireballPath(m_animFrame),
-                                getBounds());
+    SpriteRegistry::applySheetFrame(m_sprite, SpriteRegistry::fireballPath(),
+                                    m_animFrame, 16, 0, getBounds());
     window.draw(m_sprite);
 }
 
