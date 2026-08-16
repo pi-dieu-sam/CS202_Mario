@@ -27,6 +27,7 @@ public:
   void draw(sf::RenderWindow &window) override;
   sf::FloatRect getBounds() const override;
   float getEffectiveSpeed() const override;
+  void jump() override;
 
   // ── Power-ups ──
   void applyPowerUp(PowerUpState state);
@@ -34,6 +35,14 @@ public:
   void growBig();
   void shrink();
   void enableFire();
+
+  // ── Size buff (FlowersBuff) ──
+  /// Start the temporary 1.5x size / +0.2 speed / +0.2 jump buff.
+  void applySizeBuff();
+  /// Current visual/collision size multiplier (ramps 1.0 -> 1.5 while growing).
+  float getSizeScale() const;
+  /// True while the buff is active (growing or already at full size).
+  bool hasSizeBuff() const;
 
   // ── Shooting ──
   void shoot();
@@ -95,6 +104,12 @@ protected:
   // Star power
   float m_starTimer = 0.0f;
   bool m_starPower = false;
+
+  // FlowersBuff temporary buff
+  float m_sizeScale = 1.0f; ///< size multiplier, ramps 1.0 -> 1.5 over 0.7s
+  bool  m_growing   = false; ///< currently ramping the size up
+  float m_growTimer = 0.0f;  ///< elapsed time in the 0.7s growth animation
+  float m_buffTimer = 0.0f;  ///< remaining buff seconds once fully grown
 
   // Blinking effect during invincibility
   float m_blinkTimer = 0.0f;

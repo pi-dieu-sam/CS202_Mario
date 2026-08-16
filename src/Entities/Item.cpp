@@ -28,6 +28,9 @@ void Item::draw(sf::RenderWindow &window) {
     return;
   if (m_isGif) {
     SpriteRegistry::applyGifFrame(m_sprite, m_texturePath, m_animFrame, getBounds());
+  } else if (m_sheetFrameWidth > 0) {
+    SpriteRegistry::applySheetFrame(m_sprite, m_texturePath, m_animFrame,
+                                    m_sheetFrameWidth, m_sheetGap, getBounds());
   } else {
     SpriteRegistry::applyFrame(m_sprite, m_texturePath, getBounds());
   }

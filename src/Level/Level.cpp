@@ -621,7 +621,7 @@ void Level::handleCollisions(float dt) {
       auto result = CollisionDetector::checkCollision(*fb, *enemy);
       if (result.collided) {
         const sf::Vector2f scorePosition = boundsCenter(*enemy);
-        enemy->onStomped(); // Fireball kills enemy
+        enemy->kill(); // Fireball kills any enemy outright
         fb->setActive(false);
         publishEnemyDefeated(*enemy, scorePosition);
       }

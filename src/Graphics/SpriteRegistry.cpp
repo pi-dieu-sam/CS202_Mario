@@ -3,6 +3,7 @@
 #include "Entities/Block.hpp"
 #include "Entities/Player.hpp"
 #include "Entities/Tile.hpp"
+#include <algorithm>
 #include <iostream>
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -424,13 +425,24 @@ int SpriteRegistry::starFrameCount() {
   return AssetManager::getInstance().getGifFrameCount("assets/textures/Starman.gif");
 }
 
-const std::string &SpriteRegistry::fireballPath(int /*frame*/) {
-  static const std::string p = "assets/textures/SMBFireBall.gif";
+const std::string &SpriteRegistry::fireballPath() {
+  static const std::string p = "assets/textures/Character/Fire_Ball.png";
   return p;
 }
 
 int SpriteRegistry::fireballFrameCount() {
-  return AssetManager::getInstance().getGifFrameCount("assets/textures/SMBFireBall.gif");
+  // Fire_Ball.png is a 64x16 sheet of four contiguous 16x16 frames.
+  return 4;
+}
+
+const std::string &SpriteRegistry::flowersBuffPath() {
+  static const std::string p = "assets/textures/items/FlowersBuff.png";
+  return p;
+}
+
+int SpriteRegistry::flowersBuffFrameCount() {
+  // FlowersBuff.png is a 70x16 sheet: four 16x16 frames spaced 2px apart.
+  return 4;
 }
 
 void SpriteRegistry::applyFrame(sf::Sprite &sprite, const std::string &path,
@@ -474,4 +486,26 @@ void SpriteRegistry::applyGifFrame(sf::Sprite &sprite,
              sf::IntRect(0, 0, static_cast<int>(size.x),
                          static_cast<int>(size.y)),
              box, flip);
+}
+
+void SpriteRegistry::applySheetFrame(sf::Sprite &sprite,
+                                     const std::string &path, int frame,
+                                     int frameWidth, int gap,
+                                     const sf::FloatRect &box, bool flip) {
+  sf::Texture &texture = AssetManager::getInstance().getTexture(path);
+  sf::Vector2u size = texture.getSize();
+  if (size.x == 0 || frameWidth <= 0) return;
+
+  int left = frame * (frameWidth + gap);
+  int width = frameWidth;
+  if (left >= static_cast<int>(size.x)) {
+    // Clamp defensively so an out-of-range frame still draws the last cell.
+    int cellWidth = frameWidth + gap;
+    int lastCell = static_cast<int>(size.x) / cellWidth - 1;
+    left = std::max(0, lastCell * cellWidth);
+  }
+
+  applyFrame(sprite, texture,
+             sf::IntRect(left, 0, width, static_cast<int>(size.y)), box,
+             flip);
 }
