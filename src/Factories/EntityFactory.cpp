@@ -94,23 +94,24 @@ EntityFactory::createForkedPipe(float x, float y, LevelTheme theme) {
     return pieces;
 }
 
-std::vector<std::unique_ptr<Tile>>
-EntityFactory::createCastle(char castleChar, float x, float y, LevelTheme theme) {
-    const TileType type = (castleChar == 'c') ? TileType::CastleSmall
-                                              : TileType::CastleLarge;
-    const int stripCount = (type == TileType::CastleSmall)
-                               ? CASTLE_SMALL_H_TILES
-                               : CASTLE_LARGE_H_TILES;
-
-    // x, y is the bottom-left corner: strip 0 sits on the ground row and
-    // each strip above it stacks upward. subIndex counts up from the bottom.
-    std::vector<std::unique_ptr<Tile>> pieces;
-    pieces.reserve(stripCount);
-    for (int i = 0; i < stripCount; i++) {
-        pieces.push_back(std::make_unique<Tile>(type, x, y - i * TILE_SIZE,
-                                                theme, i));
+std::unique_ptr<Tile>
+EntityFactory::createCastlePiece(char pieceChar, float x, float y, LevelTheme theme) {
+    // Character -> 0-based sheet-cell index (row-major on the 4x2 sheet):
+    //   Q 2 3 4   (top row = cells 0-3)
+    //   6 S 7 5   (bottom row = cells 4-7)
+    int subIndex;
+    switch (pieceChar) {
+        case 'Q': subIndex = 0; break;
+        case '2': subIndex = 1; break;
+        case '3': subIndex = 2; break;
+        case '4': subIndex = 3; break;
+        case '6': subIndex = 4; break;
+        case 'S': subIndex = 5; break;
+        case '7': subIndex = 6; break;
+        case '5': subIndex = 7; break;
+        default:  return nullptr;
     }
-    return pieces;
+    return std::make_unique<Tile>(TileType::CastlePiece, x, y, theme, subIndex);
 }
 
 std::unique_ptr<Block> EntityFactory::createBlock(char blockChar, float x, float y, LevelTheme theme) {
@@ -119,10 +120,7 @@ std::unique_ptr<Block> EntityFactory::createBlock(char blockChar, float x, float
     bool startUsed = false;
 
     switch (blockChar) {
-        case 'S': type = BlockType::Brick;    break;
         case '?': type = BlockType::Question; break;
-        // VGLC's "already-used" question block -- solid, but spent.
-        case 'Q': type = BlockType::Question; startUsed = true; break;
         // Extensions: not part of VGLC's own alphabet, safe to hand-author.
         case 'M': type = BlockType::Question; contained = ObjectType::Mushroom;    break;
         case 'F': type = BlockType::Question; contained = ObjectType::FireFlower;  break;
