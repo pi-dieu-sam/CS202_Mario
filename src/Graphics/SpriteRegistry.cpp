@@ -95,12 +95,11 @@ const std::string &forkedPipePath() {
   return p;
 }
 
-enum class CastleSize { Small, Large };
-
-const std::string &castlePath(CastleSize size) {
-  static const std::string small = "assets/textures/SMB_Fortress.png";
-  static const std::string large = "assets/textures/LargeFortressSMB.png";
-  return (size == CastleSize::Small) ? small : large;
+const std::string &castlePiecePath() {
+  // 4x2 sheet of 16x16 castle tiles with 1px gaps. Each cell is cropped by
+  // Tile (CastlePiece) and scaled to one 32x32 tile.
+  static const std::string p = "assets/textures/items/Castle_piece.png";
+  return p;
 }
 } // namespace
 
@@ -114,10 +113,8 @@ const std::string &SpriteRegistry::tilePath(TileType type, LevelTheme theme) {
   case TileType::ForkedPipeHead:
   case TileType::ForkedPipeBase:
     return forkedPipePath();
-  case TileType::CastleSmall:
-    return castlePath(CastleSize::Small);
-  case TileType::CastleLarge:
-    return castlePath(CastleSize::Large);
+  case TileType::CastlePiece:
+    return castlePiecePath();
   case TileType::Ground:
   case TileType::Underground:
   case TileType::CastleBlock:

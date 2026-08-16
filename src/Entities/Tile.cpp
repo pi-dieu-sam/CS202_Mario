@@ -2,8 +2,6 @@
 #include "Core/AssetManager.hpp"
 #include "Graphics/SpriteRegistry.hpp"
 #include "Physics/PhysicsConstants.hpp"
-#include <algorithm>
-#include <cmath>
 
 Tile::Tile() { m_type = ObjectType::Tile; }
 
@@ -42,33 +40,21 @@ Tile::Tile(TileType tileType, float x, float y, LevelTheme theme,
     return;
   }
 
-  // Castle ('c' small / 'C' large): the sprite fills a (W x H) tile box but
-  // is split into H one-tile-tall solid strips. subIndex counts up from the
-  // bottom strip; each strip crops the matching horizontal slice of the
-  // source image and is scaled to one tile height.
-  if (tileType == TileType::CastleSmall || tileType == TileType::CastleLarge) {
-    const int boxWidth = (tileType == TileType::CastleSmall)
-                             ? CASTLE_SMALL_W_TILES
-                             : CASTLE_LARGE_W_TILES;
-    const int stripCount = (tileType == TileType::CastleSmall)
-                               ? CASTLE_SMALL_H_TILES
-                               : CASTLE_LARGE_H_TILES;
+  // Castle piece: one 16x16 cell cut from the 4x2 Castle_piece.png sheet
+  // (1px gaps between cells), scaled up to a single 32x32 tile. subIndex is
+  // the 0-based sheet-cell index (row-major: 0-3 top row, 4-7 bottom row).
+  if (tileType == TileType::CastlePiece) {
+    constexpr int CELL = 16;
+    constexpr int STEP = CELL + 1; // 16px cell + 1px gap
 
     const std::string& path = SpriteRegistry::tilePath(tileType, theme);
     sf::Texture& tex = AssetManager::getInstance().getTexture(path);
-    sf::Vector2u size = tex.getSize();
 
-    // Source slice for this strip: split the source height into stripCount
-    // equal slices using round-to-nearest boundaries (so the slices tile the
-    // whole image without gaps or overlap).
-    int sliceTop = static_cast<int>(
-        std::lround((stripCount - 1 - subIndex) * size.y / stripCount));
-    int sliceBottom = static_cast<int>(
-        std::lround((stripCount - subIndex) * size.y / stripCount));
-    sf::IntRect crop(0, sliceTop, static_cast<int>(size.x),
-                     std::max(1, sliceBottom - sliceTop));
+    const int cellCol = subIndex % 4;
+    const int cellRow = subIndex / 4;
+    sf::IntRect crop(cellCol * STEP, cellRow * STEP, CELL, CELL);
 
-    m_size = {boxWidth * TILE_SIZE, TILE_SIZE};
+    m_size = {TILE_SIZE, TILE_SIZE};
     SpriteRegistry::applyFrame(m_sprite, tex, crop,
                                sf::FloatRect(x, y, m_size.x, m_size.y));
     return;

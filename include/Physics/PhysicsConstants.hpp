@@ -14,16 +14,6 @@ constexpr float TILE_SIZE        = 32.0f;    // pixels per tile
 // '<>' '[]' sets. Bump this number to make the pipe bigger.
 constexpr float FORKED_PIPE_SCALE = 2.0f;
 
-// ── Castles ('c' small / 'C' large) ──
-// One castle character occupies (W) x (H) tiles. The source sprite is scaled
-// to fill the whole box and split into H one-tile-tall solid strips (so the
-// TileGrid, which keys on a tile's top-left cell, reports collision at every
-// height — a single multi-tile object would let the player fall through).
-constexpr int CASTLE_SMALL_W_TILES = 3;
-constexpr int CASTLE_SMALL_H_TILES = 3;
-constexpr int CASTLE_LARGE_W_TILES = 5;
-constexpr int CASTLE_LARGE_H_TILES = 6;
-
 // ── Player defaults ──
 constexpr float PLAYER_SPEED     = 200.0f;   // pixels/s
 constexpr float PLAYER_JUMP      = -420.0f;  // initial jump velocity (negative = up)

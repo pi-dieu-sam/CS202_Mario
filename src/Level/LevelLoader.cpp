@@ -17,12 +17,13 @@ namespace {
 // the spawn/flagpole auto-placement fallback below, not by the main parse.
 bool isSolidChar(char c) {
     switch (c) {
-        case 'X': case 'Q': case 'S': case '?':
+        case 'X':
         case '<': case '>': case '[': case ']':
         case 'B': case 'b':
         case 'M': case 'F': case 's':
         case 'P':
-        case 'c': case 'C':
+        case 'Q': case '2': case '3': case '4':
+        case '6': case 'S': case '7': case '5':
             return true;
         default:
             return false;
@@ -99,21 +100,19 @@ LevelLoader::LevelData LevelLoader::loadLevel(const std::string& filename,
                     break;
                 }
 
-                // Castle ('c' small / 'C' large) — one char = bottom-left
-                // corner; the factory stacks H one-tile strips upward.
-                case 'c':
-                case 'C':
+                // Castle pieces ('Q','2','3','4','6','S','7','5') — each char
+                // is one 32x32 tile cut from Castle_piece.png. Assemble a
+                // castle with "Q234" above "6S75".
+                case 'Q': case '2': case '3': case '4':
+                case '6': case 'S': case '7': case '5':
                 {
-                    auto pieces = EntityFactory::createCastle(c, x, y, theme);
-                    for (auto& piece : pieces) {
-                        data.tiles.push_back(std::move(piece));
-                    }
-                    data.castleCol = col;
+                    auto piece = EntityFactory::createCastlePiece(c, x, y, theme);
+                    if (piece) data.tiles.push_back(std::move(piece));
                     break;
                 }
 
                 // ── Blocks ──
-                case 'S': case '?': case 'Q': case 'M': case 'F': case 's':
+                case '?': case 'M': case 'F': case 's':
                 {
                     auto block = EntityFactory::createBlock(c, x, y, theme);
                     if (block) data.blocks.push_back(std::move(block));
@@ -154,7 +153,7 @@ LevelLoader::LevelData LevelLoader::loadLevel(const std::string& filename,
                     foundSpawn = true;
                     break;
 
-                case '2': // Player 2 spawn (PvP/Co-op)
+                case '9': // Player 2 spawn (PvP/Co-op)
                     data.player2Spawn = {x, y};
                     data.hasPlayer2Spawn = true;
                     break;
@@ -192,21 +191,15 @@ LevelLoader::LevelData LevelLoader::loadLevel(const std::string& filename,
     if (autoPlaceFlagpole && !data.flagpole) {
         const float flagY =
             static_cast<float>(groundRow - 1 + rowOffset) * TILE_SIZE;
-        if (data.castleCol >= 0) {
-            // Castle present: stand the flagpole 3 tiles before it (the char
-            // marks the castle's bottom-left corner, so this is simply
-            // castleCol - 3, at the same ground level as the castle base).
-            const int flagCol = std::max(0, data.castleCol - 3);
-            data.flagpole = std::make_unique<Flagpole>(
-                static_cast<float>(flagCol) * TILE_SIZE, flagY);
-        } else {
-            const int margin = 3;
-            for (int col = cols - 1 - margin; col > 0; col--) {
-                if (isSolidChar(rowAt(groundRow, col)) && !isSolidChar(rowAt(groundRow - 1, col))) {
-                    data.flagpole = std::make_unique<Flagpole>(
-                        static_cast<float>(col) * TILE_SIZE, flagY);
-                    break;
-                }
+        // Stand the flagpole 5 tiles before the right edge of the map; if that
+        // spot is blocked by a solid object (no open sky above), scan left for
+        // a clear spot with solid ground below and sky above.
+        const int margin = 5;
+        for (int col = cols - 1 - margin; col > 0; col--) {
+            if (isSolidChar(rowAt(groundRow, col)) && !isSolidChar(rowAt(groundRow - 1, col))) {
+                data.flagpole = std::make_unique<Flagpole>(
+                    static_cast<float>(col) * TILE_SIZE, flagY);
+                break;
             }
         }
     }

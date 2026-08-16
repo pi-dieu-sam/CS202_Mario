@@ -20,19 +20,20 @@ enum class TileType {
   /// SMBWarpPipeForked.png sprite.
   ForkedPipeHead,
   ForkedPipeBase,
-  /// Castle ('c' small / 'C' large): rendered as several one-tile-tall solid
-  /// strips stacked vertically (subIndex counts up from the bottom strip) so
-  /// TileGrid collision works at every height.
-  CastleSmall,
-  CastleLarge
+  /// Castle piece: one 16x16 cell cut from Castle_piece.png (4x2 sheet,
+  /// 1px gaps), scaled up to a single 32x32 tile. subIndex selects the sheet
+  /// cell (0..7, reading left-to-right top-to-bottom). A castle is assembled
+  /// in the level file by placing the piece characters Q 2 3 4 / 6 S 7 5
+  /// (top row above bottom row).
+  CastlePiece
 };
 
 /// Tile — static, collidable terrain piece (ground, pipes, etc.).
 class Tile : public GameObject {
 public:
   Tile();
-  /// subIndex selects a vertical slice for multi-piece tiles (castles):
-  /// 0 = bottom strip, rising upward. Ignored by ordinary tiles.
+  /// subIndex selects a sheet cell for CastlePiece (0..7). Ignored by
+  /// ordinary tiles.
   Tile(TileType tileType, float x, float y, LevelTheme theme, int subIndex = 0);
 
   void update(float dt) override;
