@@ -22,7 +22,7 @@ enum class PowerUpState;
 class SpriteRegistry {
 public:
   enum class BlockVisualState { Idle, Hit, Used };
-  enum class PlayerAnim { Idle, Walk, Jump, Skid, FlagpoleSlide };
+  enum class PlayerAnim { Idle, Walk, Jump, Skid, Fire, FlagpoleSlide };
 
   // ── Tiles ──
   static const std::string &tilePath(TileType type, LevelTheme theme);
@@ -45,6 +45,16 @@ public:
   static int playerFrameCount(CharacterId character, PowerUpState power,
                                PlayerAnim anim);
 
+  /// Apply the animation frame `frame` for a player character. Both Mario and
+  /// Luigi use their new multi-frame sheets under assets/textures/Character/
+  /// (Skid falls back to the Idle sheet for both). Mario's frames are uniform-
+  /// width grid cells cropped with applySheetFrame(); Luigi's are unevenly-
+  /// offset art blocks cropped with explicit per-frame sf::IntRects.
+  static void applyPlayerFrame(sf::Sprite &sprite, CharacterId character,
+                               PowerUpState power, PlayerAnim anim, int frame,
+                               const sf::FloatRect &box,
+                               bool flip = false);
+
   /// The playable-character reference sheet contains the two original
   /// flag-pole climbing poses for both Mario and Luigi.  Unlike normal player
   /// art, these frames must be cropped from the sheet and have its lavender
@@ -65,8 +75,10 @@ public:
   static const std::string &fireFlowerPath(LevelTheme theme);
   static const std::string &starPath(LevelTheme theme, int frame);
   static int starFrameCount();
-  static const std::string &fireballPath(int frame);
+  static const std::string &fireballPath();
   static int fireballFrameCount();
+  static const std::string &flowersBuffPath();
+  static int flowersBuffFrameCount();
 
   /// Shared draw-transform helper: loads `path` through AssetManager, binds
   /// it to the sprite, pivots on bottom-center (so horizontal flip mirrors
@@ -90,4 +102,12 @@ public:
   static void applyGifFrame(sf::Sprite &sprite, const std::string &gifPath,
                              int frame, const sf::FloatRect &box,
                              bool flip = false);
+
+  /// Apply one cell of a horizontal PNG sprite sheet. Each cell is
+  /// `frameWidth` pixels wide and the sheet's full height; cells start at
+  /// x = frame * (frameWidth + gap). Used for sheets like Fire_Ball.png
+  /// (contiguous frames, gap = 0) and FlowersBuff.png (gap = 2).
+  static void applySheetFrame(sf::Sprite &sprite, const std::string &path,
+                              int frame, int frameWidth, int gap,
+                              const sf::FloatRect &box, bool flip = false);
 };

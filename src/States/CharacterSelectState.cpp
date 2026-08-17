@@ -65,10 +65,10 @@ void CharacterSelectState::onEnter() {
 
         float centerX = startX + i * (boxW + gap) + boxW / 2.0f;
         CharacterId charId = (i == 0) ? CharacterId::Mario : CharacterId::Luigi;
-        std::string path = SpriteRegistry::playerPath(
-            charId, PowerUpState::Big, SpriteRegistry::PlayerAnim::Idle, 0);
-        SpriteRegistry::applyFrame(m_charSprites[i], path,
-                                    sf::FloatRect(centerX, 120.0f, 0.0f, 95.0f));
+        SpriteRegistry::applyPlayerFrame(
+            m_charSprites[i], charId, PowerUpState::Big,
+            SpriteRegistry::PlayerAnim::Idle, 0,
+            sf::FloatRect(centerX, 120.0f, 0.0f, 95.0f));
     }
 
     m_selected = 0;

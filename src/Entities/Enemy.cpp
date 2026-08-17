@@ -48,6 +48,11 @@ void Enemy::onStomped() {
     m_active = false;
 }
 
+void Enemy::kill() {
+    die();
+    m_active = false;
+}
+
 void Enemy::setStrategy(std::unique_ptr<AIStrategy> strategy) {
     m_strategy = std::move(strategy);
 }
