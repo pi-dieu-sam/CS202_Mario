@@ -187,17 +187,43 @@ void SpriteRegistry::applyGoombaFrame(sf::Sprite &sprite, int frame,
 
 const std::string &SpriteRegistry::koopaWalkPath(LevelTheme /*theme*/,
                                                    int /*walkFrame*/) {
-  // Underground/Castle Koopa art is broken WebP or missing — every theme
-  // reuses the Overworld Koopa (deliberate, see goombaPath note above). Only
-  // one usable file exists, so the walk cycle is a static pose.
-  static const std::string walking = "assets/textures/Green_Koopa_Troopa_SMB.gif";
-  return walking;
+  static const std::string sheet = "assets/textures/Character/Koopa.png";
+  return sheet;
 }
 
 const std::string &SpriteRegistry::koopaShellPath(LevelTheme /*theme*/,
                                                     bool /*spinning*/) {
   static const std::string shell = "assets/textures/SMB_Greenshell.png";
   return shell;
+}
+
+const std::string &SpriteRegistry::koopaDiePath() {
+  static const std::string die = "assets/textures/Character/Koopa_Die.png";
+  return die;
+}
+
+int SpriteRegistry::koopaFrameCount() {
+  return 20;
+}
+
+void SpriteRegistry::applyKoopaFrame(sf::Sprite &sprite, int frame,
+                                     const sf::FloatRect &box, bool flip) {
+  static const std::string path = "assets/textures/Character/Koopa.png";
+  sf::Texture &texture = AssetManager::getInstance().getTexture(path);
+  sf::Vector2u size = texture.getSize();
+  if (size.x == 0 || size.y == 0) return;
+
+  constexpr int cols = 5;
+  constexpr int rows = 4;
+  int cellW = static_cast<int>(size.x) / cols;
+  int cellH = static_cast<int>(size.y) / rows;
+
+  int f = frame % (cols * rows);
+  int col = f % cols;
+  int row = f / cols;
+
+  applyFrame(sprite, texture,
+             sf::IntRect(col * cellW, row * cellH, cellW, cellH), box, flip);
 }
 
 const std::string &SpriteRegistry::piranhaPlantPath(int frame) {

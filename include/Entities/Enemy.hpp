@@ -21,7 +21,11 @@ public:
   /// Instantly defeat this enemy regardless of type (used by fireballs).
   /// Unlike onStomped(), which subclasses may override (Koopa -> shell,
   /// PiranhaPlant -> no effect), kill() always removes the enemy.
-  void kill();
+  virtual void kill();
+
+  /// Returns false when the enemy is in a non-interactive state (e.g. dying
+  /// animation) and should not deal or receive damage.
+  virtual bool isVulnerable() const;
 
   /// Set the AI strategy (Strategy pattern).
   void setStrategy(std::unique_ptr<AIStrategy> strategy);

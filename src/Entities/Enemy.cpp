@@ -57,6 +57,8 @@ void Enemy::kill() {
     m_active = false;
 }
 
+bool Enemy::isVulnerable() const { return true; }
+
 void Enemy::setStrategy(std::unique_ptr<AIStrategy> strategy) {
     m_strategy = std::move(strategy);
 }

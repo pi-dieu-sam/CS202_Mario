@@ -39,6 +39,10 @@ public:
                                const sf::FloatRect &box, bool flip = false);
   static const std::string &koopaWalkPath(LevelTheme theme, int walkFrame);
   static const std::string &koopaShellPath(LevelTheme theme, bool spinning);
+  static const std::string &koopaDiePath();
+  static int koopaFrameCount();
+  static void applyKoopaFrame(sf::Sprite &sprite, int frame,
+                              const sf::FloatRect &box, bool flip = false);
   static const std::string &piranhaPlantPath(int frame);
 
   // ── Player ──
