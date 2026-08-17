@@ -24,6 +24,10 @@ void Enemy::update(float dt) {
         m_active = false;
     }
 
+    // Sync facing direction with movement
+    if (m_velocity.x > 0.0f) m_facingRight = true;
+    else if (m_velocity.x < 0.0f) m_facingRight = false;
+
     updateSprite(dt);
 }
 
