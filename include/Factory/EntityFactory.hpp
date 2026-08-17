@@ -22,7 +22,8 @@ enum class ItemType {
     Coin,
     Mushroom,
     FireFlower,
-    Star
+    Star,
+    FlowersBuff
 };
 
 /// EntityFactory — Factory pattern.

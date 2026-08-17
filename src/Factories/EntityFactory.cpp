@@ -6,6 +6,7 @@
 #include "Entities/Mushroom.hpp"
 #include "Entities/FireFlower.hpp"
 #include "Entities/Star.hpp"
+#include "Entities/FlowersBuff.hpp"
 #include "Entities/Tile.hpp"
 #include "Entities/Block.hpp"
 #include "Entities/Mario.hpp"
@@ -53,6 +54,9 @@ std::unique_ptr<Item> EntityFactory::createItem(ItemType type, sf::Vector2f pos,
             break;
         case ItemType::Star:
             item = std::make_unique<Star>();
+            break;
+        case ItemType::FlowersBuff:
+            item = std::make_unique<FlowersBuff>();
             break;
     }
 

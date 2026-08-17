@@ -18,6 +18,11 @@ public:
   /// Called when the player stomps on this enemy from above.
   virtual void onStomped();
 
+  /// Instantly defeat this enemy regardless of type (used by fireballs).
+  /// Unlike onStomped(), which subclasses may override (Koopa -> shell,
+  /// PiranhaPlant -> no effect), kill() always removes the enemy.
+  void kill();
+
   /// Set the AI strategy (Strategy pattern).
   void setStrategy(std::unique_ptr<AIStrategy> strategy);
 
