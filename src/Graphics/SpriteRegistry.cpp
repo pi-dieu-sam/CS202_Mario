@@ -151,26 +151,38 @@ LevelTheme normalizeGoombaTheme(LevelTheme theme) {
 }
 } // namespace
 
-const std::string &SpriteRegistry::goombaPath(LevelTheme theme, int walkFrame) {
-  if (normalizeGoombaTheme(theme) == LevelTheme::Underground) {
-    // Only one usable Underground Goomba file exists — both walk frames
-    // point at it, so the walk cycle is a static pose rather than missing.
-    static const std::string grey = "assets/textures/GoombaSMBGrey.gif";
-    return grey;
-  }
-  static const std::string frames[2] = {
-      "assets/textures/Goomba_SMB.png",
-      "assets/textures/SMB_Goomba_Sprite.gif",
-  };
-  return frames[walkFrame % 2];
+const std::string &SpriteRegistry::goombaPath(LevelTheme /*theme*/, int /*walkFrame*/) {
+  static const std::string sheet = "assets/textures/Character/Goomba.png";
+  return sheet;
 }
 
-const std::string &SpriteRegistry::goombaSquishPath(LevelTheme theme) {
-  static const std::string overworld = "assets/textures/SMB_Dead_Goomba.png";
-  static const std::string underground =
-      "assets/textures/SMB_Goomba_Underground_Dead.png";
-  return normalizeGoombaTheme(theme) == LevelTheme::Underground ? underground
-                                                                 : overworld;
+const std::string &SpriteRegistry::goombaSquishPath(LevelTheme /*theme*/) {
+  static const std::string die = "assets/textures/Character/Goomba_Die.png";
+  return die;
+}
+
+int SpriteRegistry::goombaFrameCount() {
+  return 16;
+}
+
+void SpriteRegistry::applyGoombaFrame(sf::Sprite &sprite, int frame,
+                                      const sf::FloatRect &box, bool flip) {
+  static const std::string path = "assets/textures/Character/Goomba.png";
+  sf::Texture &texture = AssetManager::getInstance().getTexture(path);
+  sf::Vector2u size = texture.getSize();
+  if (size.x == 0 || size.y == 0) return;
+
+  constexpr int cols = 8;
+  constexpr int rows = 2;
+  int cellW = static_cast<int>(size.x) / cols;
+  int cellH = static_cast<int>(size.y) / rows;
+
+  int f = frame % (cols * rows);
+  int col = f % cols;
+  int row = f / cols;
+
+  applyFrame(sprite, texture,
+             sf::IntRect(col * cellW, row * cellH, cellW, cellH), box, flip);
 }
 
 const std::string &SpriteRegistry::koopaWalkPath(LevelTheme /*theme*/,

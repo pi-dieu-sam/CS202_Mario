@@ -6,14 +6,13 @@ Goomba::Goomba() {
   m_speed = 60.0f;
   m_scoreValue = 100;
   m_velocity.x = -m_speed; // Start walking left
-  // AI strategy is assigned by EntityFactory right after construction.
 
-  setAnimFrameCount(2, 0.3f);
+  setAnimFrameCount(16, 0.08f);
 }
 
 void Goomba::onStomped() {
   m_squished = true;
-  m_deathTimer = 0.5f; // Show squished sprite for 0.5s
+  m_deathTimer = 1.0f; // Show death sprite for 1s
   m_velocity = {0.0f, 0.0f};
 }
 
@@ -34,8 +33,12 @@ void Goomba::draw(sf::RenderWindow &window) {
   if (!m_active)
     return;
 
-  std::string path = m_squished
-                          ? SpriteRegistry::goombaSquishPath(m_theme)
-                          : SpriteRegistry::goombaPath(m_theme, m_animFrame);
-  drawSprite(window, path, getBounds());
+  if (m_squished) {
+    std::string path = SpriteRegistry::goombaSquishPath(m_theme);
+    drawSprite(window, path, getBounds());
+  } else {
+    SpriteRegistry::applyGoombaFrame(m_sprite, m_animFrame, getBounds(),
+                                     !m_facingRight);
+    window.draw(m_sprite);
+  }
 }
