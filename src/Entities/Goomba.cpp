@@ -38,7 +38,7 @@ void Goomba::draw(sf::RenderWindow &window) {
     drawSprite(window, path, getBounds());
   } else {
     SpriteRegistry::applyGoombaFrame(m_sprite, m_animFrame, getBounds(),
-                                     !m_facingRight);
+                                     m_facingRight);
     window.draw(m_sprite);
   }
 }
