@@ -120,20 +120,20 @@ LevelLoader::LevelData LevelLoader::loadLevel(const std::string& filename,
                     break;
                 }
 
-                // ── Enemies ── ('E' is VGLC's generic, type-unspecified enemy)
-                case 'E':
+                // ── Enemies ── ('G' = Goomba)
+                case 'G':
                 {
                     auto enemy = EntityFactory::createEnemy(EnemyType::Goomba, {x, y}, theme);
                     if (enemy) data.enemies.push_back(std::move(enemy));
                     break;
                 }
-                case 'k':
+                case 'K':
                 {
                     auto enemy = EntityFactory::createEnemy(EnemyType::Koopa, {x, y}, theme);
                     if (enemy) data.enemies.push_back(std::move(enemy));
                     break;
                 }
-                case 'r':
+                case 'P':
                 {
                     auto enemy = EntityFactory::createEnemy(EnemyType::PiranhaPlant, {x, y}, theme);
                     if (enemy) data.enemies.push_back(std::move(enemy));
