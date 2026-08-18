@@ -38,6 +38,7 @@ bool Level::loadFromFile(const std::string &filename,
   m_blocks = std::move(data.blocks);
   m_enemies = std::move(data.enemies);
   m_items = std::move(data.items);
+  m_escalaters = std::move(data.escalaters);
   m_flagpole = std::move(data.flagpole);
   m_width = data.width;
   m_height = data.height;
@@ -119,6 +120,12 @@ void Level::update(float dt) {
       block->update(dt);
   }
 
+  // Update escalaters (moving platforms)
+  for (auto &esc : m_escalaters) {
+    if (esc->isActive())
+      esc->update(dt);
+  }
+
   // Update fireballs
   for (auto &fb : m_fireballs) {
     if (fb->isActive())
@@ -157,6 +164,12 @@ void Level::render(sf::RenderWindow &window, float cameraCenterX) {
   // Draw tiles
   for (auto &tile : m_tiles) {
     tile->draw(window);
+  }
+
+  // Draw escalaters (moving platforms)
+  for (auto &esc : m_escalaters) {
+    if (esc->isActive())
+      esc->draw(window);
   }
 
   // Draw blocks
@@ -329,6 +342,21 @@ void Level::handlePlayerCollisions(Player* player, float dt) {
         if (spawnedItem) {
           m_items.push_back(std::move(spawnedItem));
         }
+      }
+    }
+  }
+
+  // Player vs Escalaters (moving platforms)
+  for (auto &esc : m_escalaters) {
+    if (!esc->isActive()) continue;
+    auto result = CollisionDetector::checkCollision(*player, *esc);
+    if (result.collided) {
+      CollisionDetector::resolveCollision(*player, *esc, result);
+      if (result.side == CollisionDetector::Side::Bottom) {
+        player->setGrounded(true);
+        // Transfer the escalater's vertical velocity to the player so they
+        // ride the platform up and down.
+        player->setVelocity(player->getVelocity().x, esc->getVelocity().y);
       }
     }
   }

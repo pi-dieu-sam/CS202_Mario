@@ -110,19 +110,21 @@ CollisionDetector::CollisionResult CollisionDetector::checkCollision(
     // must never win the axis choice just for having a smaller raw number.
     // (vel == 0 falls back to the old either-side comparison, e.g. a
     // stationary object being pushed into from outside.)
-    sf::Vector2f vel = a.getVelocity();
-    float verticalOverlap   = (vel.y > 0.0f)  ? overlapTop
-                             : (vel.y < 0.0f) ? overlapBottom
+    // Use relative velocity (A minus B) so that moving platforms like the
+    // escalater are taken into account when determining collision side.
+    sf::Vector2f relVel = a.getVelocity() - b.getVelocity();
+    float verticalOverlap   = (relVel.y > 0.0f)  ? overlapTop
+                             : (relVel.y < 0.0f) ? overlapBottom
                              : std::min(overlapTop, overlapBottom);
-    float horizontalOverlap = (vel.x > 0.0f)  ? overlapLeft
-                             : (vel.x < 0.0f) ? overlapRight
+    float horizontalOverlap = (relVel.x > 0.0f)  ? overlapLeft
+                             : (relVel.x < 0.0f) ? overlapRight
                              : std::min(overlapLeft, overlapRight);
 
     // A support contact while falling may be a fraction of a pixel deep, so
     // retain a small tolerance only in that direction. Applying it while
     // rising was the source of edge-jump snagging: a shallow side overlap was
     // incorrectly turned into a vertical head/landing collision.
-    const float fallingSupportBias = vel.y > 0.0f ? 4.0f : 0.0f;
+    const float fallingSupportBias = relVel.y > 0.0f ? 4.0f : 0.0f;
     bool horizontalWins = horizontalOverlap < verticalOverlap - fallingSupportBias;
 
     // An upward-moving player can clip a block's lower corner by only a few
@@ -131,7 +133,7 @@ CollisionDetector::CollisionResult CollisionDetector::checkCollision(
     // produces the visible jump snag. Treat this narrow edge band as a wall.
     // A wider overlap still behaves as a normal hit from below.
     constexpr float upwardEdgeOverlap = 6.0f;
-    if (vel.y < 0.0f && horizontalOverlap <= upwardEdgeOverlap) {
+    if (relVel.y < 0.0f && horizontalOverlap <= upwardEdgeOverlap) {
         horizontalWins = true;
     }
 
