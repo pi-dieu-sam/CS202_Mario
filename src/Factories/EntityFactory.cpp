@@ -9,6 +9,7 @@
 #include "Entities/FlowersBuff.hpp"
 #include "Entities/Tile.hpp"
 #include "Entities/Block.hpp"
+#include "Entities/Escalater.hpp"
 #include "Entities/Mario.hpp"
 #include "Entities/Luigi.hpp"
 #include "AI/PatrolStrategy.hpp"
@@ -154,4 +155,8 @@ std::unique_ptr<Player> EntityFactory::createPlayer(const std::string& character
 
     player->setPosition(pos);
     return player;
+}
+
+std::unique_ptr<Escalater> EntityFactory::createEscalater(float x, float y, LevelTheme /*theme*/) {
+    return std::make_unique<Escalater>(x, y);
 }

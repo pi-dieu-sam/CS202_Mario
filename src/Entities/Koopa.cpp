@@ -12,34 +12,55 @@ Koopa::Koopa() {
 }
 
 void Koopa::onStomped() {
-  if (m_koopaState != KoopaState::Walking)
-    return;
+  switch (m_koopaState) {
+  case KoopaState::Walking:
+    m_koopaState = KoopaState::Shell;
+    m_sliding = false;
+    m_dieTimer = 5.0f;
+    m_velocity = {0.0f, 0.0f};
+    m_strategy = nullptr;
+    break;
 
-  m_koopaState = KoopaState::Dying;
-  m_dieTimer = 5.0f;
-  m_velocity = {0.0f, 0.0f};
-  m_strategy = nullptr;
-}
-
-void Koopa::kill() {
-  if (m_koopaState != KoopaState::Walking)
-    return;
-
-  m_koopaState = KoopaState::Dying;
-  m_dieTimer = 5.0f;
-  m_velocity = {0.0f, 0.0f};
-  m_strategy = nullptr;
-  m_dead = false;
-}
-
-void Koopa::update(float dt) {
-  if (m_koopaState == KoopaState::Dying) {
-    m_dieTimer -= dt;
-    if (m_dieTimer <= 0.0f) {
+  case KoopaState::Shell:
+    if (m_sliding) {
+      // Stomp stops a sliding shell
+      m_sliding = false;
+      m_velocity.x = 0.0f;
+      m_dieTimer = 5.0f;
+    } else {
+      // Second stomp on a sitting shell — resume walking
       m_koopaState = KoopaState::Walking;
       m_velocity.x = -m_speed;
       m_facingRight = false;
       setStrategy(std::make_unique<PatrolStrategy>());
+    }
+    break;
+  }
+}
+
+void Koopa::kill() {
+  if (m_koopaState == KoopaState::Walking) {
+    m_koopaState = KoopaState::Shell;
+    m_sliding = false;
+    m_dieTimer = 5.0f;
+    m_velocity = {0.0f, 0.0f};
+    m_strategy = nullptr;
+    m_dead = false;
+  }
+}
+
+void Koopa::update(float dt) {
+  if (m_koopaState == KoopaState::Shell) {
+    if (!m_sliding) {
+      // Sitting shell: count down respawn timer
+      m_dieTimer -= dt;
+      if (m_dieTimer <= 0.0f) {
+        m_koopaState = KoopaState::Walking;
+        m_velocity.x = -m_speed;
+        m_facingRight = false;
+        setStrategy(std::make_unique<PatrolStrategy>());
+        return;
+      }
     }
     applyGravity(dt);
     m_position += m_velocity * dt;
@@ -60,6 +81,7 @@ void Koopa::draw(sf::RenderWindow &window) {
     SpriteRegistry::applyKoopaFrame(m_sprite, m_animFrame, box, m_facingRight);
     window.draw(m_sprite);
   } else {
+    // Shell (sitting or sliding)
     sf::FloatRect box(m_position.x + 1, m_position.y + 3, TILE_SIZE - 2,
                        TILE_SIZE - 4);
     drawSprite(window, SpriteRegistry::koopaDiePath(), box);
@@ -71,3 +93,22 @@ bool Koopa::isVulnerable() const {
 }
 
 KoopaState Koopa::getKoopaState() const { return m_koopaState; }
+
+bool Koopa::isSliding() const { return m_sliding; }
+
+void Koopa::kick(float direction) {
+  if (m_koopaState != KoopaState::Shell || m_sliding)
+    return;
+  m_sliding = true;
+  m_velocity.x = direction * m_shellSpeed;
+  m_facingRight = direction > 0.0f;
+  m_dieTimer = 0.0f;
+}
+
+void Koopa::stopSliding() {
+  if (m_koopaState != KoopaState::Shell || !m_sliding)
+    return;
+  m_sliding = false;
+  m_velocity.x = 0.0f;
+  m_dieTimer = 5.0f;
+}

@@ -5,6 +5,7 @@
 #include "Entities/Enemy.hpp"
 #include "Entities/Item.hpp"
 #include "Entities/Flagpole.hpp"
+#include "Entities/Escalater.hpp"
 #include "Physics/PhysicsConstants.hpp"
 #include <fstream>
 #include <iostream>
@@ -24,6 +25,7 @@ bool isSolidChar(char c) {
         case '(': case '{': case '\\': case ')': case '}': case '/':
         case 'Q': case '2': case '3': case '4':
         case '6': case 'S': case '7': case '5':
+        case 'E':
             return true;
         default:
             return false;
@@ -137,6 +139,14 @@ LevelLoader::LevelData LevelLoader::loadLevel(const std::string& filename,
                 {
                     auto enemy = EntityFactory::createEnemy(EnemyType::PiranhaPlant, {x, y}, theme);
                     if (enemy) data.enemies.push_back(std::move(enemy));
+                    break;
+                }
+
+                // ── Escalater (moving platform) ──
+                case 'E':
+                {
+                    auto esc = EntityFactory::createEscalater(x, y, theme);
+                    if (esc) data.escalaters.push_back(std::move(esc));
                     break;
                 }
 

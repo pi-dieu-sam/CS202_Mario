@@ -90,6 +90,7 @@ public:
   static int fireballFrameCount();
   static const std::string &flowersBuffPath();
   static int flowersBuffFrameCount();
+  static const std::string &escalaterPath();
 
   /// Shared draw-transform helper: loads `path` through AssetManager, binds
   /// it to the sprite, pivots on bottom-center (so horizontal flip mirrors
