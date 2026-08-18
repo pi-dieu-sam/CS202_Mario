@@ -133,7 +133,7 @@ LevelLoader::LevelData LevelLoader::loadLevel(const std::string& filename,
                     if (enemy) data.enemies.push_back(std::move(enemy));
                     break;
                 }
-                case 'r':
+                case 'P':
                 {
                     auto enemy = EntityFactory::createEnemy(EnemyType::PiranhaPlant, {x, y}, theme);
                     if (enemy) data.enemies.push_back(std::move(enemy));

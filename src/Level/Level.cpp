@@ -365,7 +365,7 @@ void Level::handlePlayerCollisions(Player* player, float dt) {
 
   if (firstEnemyHit) {
     if (firstEnemyResult.side == CollisionDetector::Side::Bottom &&
-        player->getVelocity().y > 0) {
+        player->getVelocity().y > 0 && firstEnemyHit->canBeStomped()) {
       CollisionDetector::moveToImpact(*player, firstEnemyResult);
       const sf::Vector2f scorePosition = boundsCenter(*firstEnemyHit);
       firstEnemyHit->onStomped();

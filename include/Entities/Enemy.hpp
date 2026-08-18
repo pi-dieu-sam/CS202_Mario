@@ -27,6 +27,10 @@ public:
   /// animation) and should not deal or receive damage.
   virtual bool isVulnerable() const;
 
+  /// Whether this enemy can be defeated by stomping. PiranhaPlant returns false
+  /// so stomping it always hurts the player instead.
+  virtual bool canBeStomped() const;
+
   /// Set the AI strategy (Strategy pattern).
   void setStrategy(std::unique_ptr<AIStrategy> strategy);
 

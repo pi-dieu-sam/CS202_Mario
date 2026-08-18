@@ -226,12 +226,48 @@ void SpriteRegistry::applyKoopaFrame(sf::Sprite &sprite, int frame,
              sf::IntRect(col * cellW, row * cellH, cellW, cellH), box, flip);
 }
 
-const std::string &SpriteRegistry::piranhaPlantPath(int frame) {
-  static const std::string frames[2] = {
-      "assets/textures/Piranha_Plant_Underwater.png",
-      "assets/textures/SMB_PI~1.GIF",
+const std::string &SpriteRegistry::piranhaPlantPath(int /*frame*/) {
+  static const std::string sheet = "assets/textures/Character/Piranha.png";
+  return sheet;
+}
+
+int SpriteRegistry::piranhaFrameCount() { return 95; }
+
+sf::IntRect SpriteRegistry::piranhaFrameRect(int frame) {
+  static const int WIDTHS[95] = {
+      11,11,11,12,12,13,14,16,16,17,
+      17,17,18,17,17,17,16,16,16,16,
+      17,17,16,17,17,18,19,22,23,24,
+      22,26,26,27,27,27,27,27,27,27,
+      27,27,27,26,26,26,26,26,26,26,
+      25,22,22,26,26,26,27,26,26,24,
+      23,21,20,20,20,20,20,19,18,18,
+      18,19,19,19,18,17,18,17,16,16,
+      15,15,15,15,14,14,14,14,14,13,
+      12,12,12,12,11
   };
-  return frames[frame % 2];
+  static const int GAPS[95] = {
+      1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+      1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+      1, 1, 1, 1, 1, 3, 1, 1, 1, 1,
+      1, 6, 1, 1, 1, 1, 1, 1, 1, 1,
+      1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+      3, 1, 1, 1, 5, 1, 1, 1, 1, 1,
+      1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+      1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+      1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+      1, 1, 1, 1, 1
+  };
+  int f = frame % 95;
+  int x = 0;
+  for (int i = 0; i < f; i++) x += WIDTHS[i] + GAPS[i];
+  return sf::IntRect(x, 0, WIDTHS[f], 66);
+}
+
+void SpriteRegistry::applyPiranhaFrame(sf::Sprite &sprite, int frame,
+                                       const sf::FloatRect &box, bool flip) {
+  sf::Texture &texture = AssetManager::getInstance().getTexture(piranhaPlantPath(0));
+  applyFrame(sprite, texture, piranhaFrameRect(frame), box, flip);
 }
 
 namespace {
