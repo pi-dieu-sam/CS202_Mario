@@ -406,6 +406,16 @@ void Level::handlePlayerCollisions(Player* player, float dt) {
     }
   }
 
+  // Player vs Dying enemies (solid objects like shells)
+  for (auto &enemy : m_enemies) {
+    if (!enemy->isActive() || enemy->isDead() || enemy->isVulnerable())
+      continue;
+    auto result = CollisionDetector::checkCollision(*player, *enemy);
+    if (result.collided) {
+      CollisionDetector::resolveCollision(*player, *enemy, result);
+    }
+  }
+
   if (player->isDead()) return;
 
   // Player vs Items
@@ -587,7 +597,7 @@ void Level::handleCollisions(float dt) {
 
     for (size_t j = i + 1; j < m_enemies.size(); ++j) {
       auto &enemyB = m_enemies[j];
-      if (!enemyB || !enemyB->isActive() || enemyB->isDead() || !enemyB->isVulnerable())
+      if (!enemyB || !enemyB->isActive() || enemyB->isDead())
         continue;
 
       auto result = CollisionDetector::checkCollision(*enemyA, *enemyB);
@@ -634,14 +644,17 @@ void Level::handleCollisions(float dt) {
 
     // Fireball vs Enemies
     for (auto &enemy : m_enemies) {
-      if (!enemy->isActive() || enemy->isDead() || !enemy->isVulnerable())
+      if (!enemy->isActive() || enemy->isDead())
         continue;
       auto result = CollisionDetector::checkCollision(*fb, *enemy);
       if (result.collided) {
-        const sf::Vector2f scorePosition = boundsCenter(*enemy);
-        enemy->kill(); // Fireball kills any enemy outright
+        if (enemy->isVulnerable()) {
+          const sf::Vector2f scorePosition = boundsCenter(*enemy);
+          enemy->kill();
+          publishEnemyDefeated(*enemy, scorePosition);
+        }
         fb->setActive(false);
-        publishEnemyDefeated(*enemy, scorePosition);
+        break;
       }
     }
   }
