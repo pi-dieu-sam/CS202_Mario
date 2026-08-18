@@ -9,3 +9,4 @@
 - 2026-08-18: Adjust layout in notes
 - 2026-08-18: Review and clean code
 - 2026-08-19: Refactor variable names in notes
+- 2026-08-19: Update project structure docs
