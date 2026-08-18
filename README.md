@@ -28,6 +28,7 @@ Mỗi ký tự đại diện cho **một ô vuông 32×32 pixel** trong map.
 | `?` | Block có chứa xu (Coin) |
 | `M` | Block có chứa Nấm (Mushroom) |
 | `F` | Block có chứa Hoa lửa (Fire Flower) |
+| `E` | Escalater
 | `s` | Block có chứa Sao (Star) |
 | `Q` | Block đã dùng hết (cứng, không còn item) |
 | `o` | Xu (Coin) |

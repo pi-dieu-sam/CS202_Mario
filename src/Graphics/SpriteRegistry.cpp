@@ -548,6 +548,11 @@ int SpriteRegistry::flowersBuffFrameCount() {
   return 4;
 }
 
+const std::string &SpriteRegistry::escalaterPath() {
+  static const std::string p = "assets/textures/items/Escalater.png";
+  return p;
+}
+
 void SpriteRegistry::applyFrame(sf::Sprite &sprite, const std::string &path,
                                  const sf::FloatRect &box, bool flip) {
   sf::Texture &texture = AssetManager::getInstance().getTexture(path);
