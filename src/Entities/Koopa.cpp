@@ -7,60 +7,40 @@ Koopa::Koopa() {
   m_speed = 60.0f;
   m_scoreValue = 200;
   m_velocity.x = -m_speed;
-  // Initial AI strategy is assigned by EntityFactory right after
-  // construction; PatrolStrategy is re-applied below when the shell
-  // recovers from its stunned state at runtime.
 
-  setAnimFrameCount(2, 0.3f);
+  setAnimFrameCount(20, 0.08f);
 }
 
 void Koopa::onStomped() {
-  switch (m_koopaState) {
-  case KoopaState::Walking:
-    m_koopaState = KoopaState::Shell;
-    m_velocity = {0.0f, 0.0f};
-    m_shellTimer = 8.0f;  // Recovers after 8 seconds
-    m_strategy = nullptr; // No AI in shell state
-    break;
+  if (m_koopaState != KoopaState::Walking)
+    return;
 
-  case KoopaState::Shell:
-    // Kick the shell in the direction the player was facing
-    kickShell(1); // Default kick right
-    break;
-
-  case KoopaState::Sliding:
-    // Stop the shell
-    m_koopaState = KoopaState::Shell;
-    m_velocity = {0.0f, 0.0f};
-    m_shellTimer = 8.0f;
-    break;
-  }
+  m_koopaState = KoopaState::Dying;
+  m_dieTimer = 5.0f;
+  m_velocity = {0.0f, 0.0f};
+  m_strategy = nullptr;
 }
 
-void Koopa::kickShell(int direction) {
-  m_koopaState = KoopaState::Sliding;
-  m_velocity.x = direction * 300.0f; // Fast shell slide
+void Koopa::kill() {
+  if (m_koopaState != KoopaState::Walking)
+    return;
+
+  m_koopaState = KoopaState::Dying;
+  m_dieTimer = 5.0f;
+  m_velocity = {0.0f, 0.0f};
+  m_strategy = nullptr;
+  m_dead = false;
 }
 
 void Koopa::update(float dt) {
-  if (m_dead)
-    return;
-
-  if (m_koopaState == KoopaState::Shell) {
-    // Timer to recover from shell
-    m_shellTimer -= dt;
-    if (m_shellTimer <= 0.0f) {
+  if (m_koopaState == KoopaState::Dying) {
+    m_dieTimer -= dt;
+    if (m_dieTimer <= 0.0f) {
       m_koopaState = KoopaState::Walking;
       m_velocity.x = -m_speed;
+      m_facingRight = false;
       setStrategy(std::make_unique<PatrolStrategy>());
     }
-    applyGravity(dt);
-    m_position += m_velocity * dt;
-    return;
-  }
-
-  if (m_koopaState == KoopaState::Sliding) {
-    // Shell slides — no AI, just move
     applyGravity(dt);
     m_position += m_velocity * dt;
     return;
@@ -77,13 +57,17 @@ void Koopa::draw(sf::RenderWindow &window) {
   if (m_koopaState == KoopaState::Walking) {
     sf::FloatRect box(m_position.x + 1, m_position.y - TILE_SIZE * 0.5f + 1,
                        TILE_SIZE - 2, TILE_SIZE * 1.5f - 2);
-    drawSprite(window, SpriteRegistry::koopaWalkPath(m_theme, m_animFrame), box);
+    SpriteRegistry::applyKoopaFrame(m_sprite, m_animFrame, box, m_facingRight);
+    window.draw(m_sprite);
   } else {
     sf::FloatRect box(m_position.x + 1, m_position.y + 3, TILE_SIZE - 2,
                        TILE_SIZE - 4);
-    bool spinning = (m_koopaState == KoopaState::Sliding);
-    drawSprite(window, SpriteRegistry::koopaShellPath(m_theme, spinning), box);
+    drawSprite(window, SpriteRegistry::koopaDiePath(), box);
   }
+}
+
+bool Koopa::isVulnerable() const {
+  return m_koopaState == KoopaState::Walking;
 }
 
 KoopaState Koopa::getKoopaState() const { return m_koopaState; }

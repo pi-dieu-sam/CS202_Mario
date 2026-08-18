@@ -128,29 +128,36 @@ static void testMushroomReversesInsteadOfStopping() {
   }
 }
 
-static void testSlidingKoopaShellBouncesBothDirections() {
+static void testKoopaDyingAndRespawn() {
   {
     Koopa koopa;
-    koopa.onStomped(); // Walking -> Shell
-    koopa.onStomped(); // Shell -> Sliding (kickShell(1), vel.x = +300)
-    CHECK(koopa.getKoopaState() == KoopaState::Sliding,
-          "Koopa reaches Sliding state after two stomps");
-    Tile wall;
-    placeWallRightOf(koopa, wall);
-    bounceOnce(koopa, wall, koopa.getSpeed());
-    CHECK(koopa.getVelocity().x == -300.0f,
-          "Sliding shell bounces off right wall at -300 (not stopping)");
+    CHECK(koopa.getKoopaState() == KoopaState::Walking,
+          "Koopa starts in Walking state");
+    CHECK(koopa.isVulnerable() == true,
+          "Walking Koopa is vulnerable");
+
+    koopa.onStomped();
+    CHECK(koopa.getKoopaState() == KoopaState::Dying,
+          "Koopa enters Dying state after stomp");
+    CHECK(koopa.isVulnerable() == false,
+          "Dying Koopa is not vulnerable");
+
+    // Simulate 5 seconds of update
+    for (int i = 0; i < 500; i++) koopa.update(0.01f);
+    CHECK(koopa.getKoopaState() == KoopaState::Walking,
+          "Koopa respawns to Walking after 5 seconds");
+    CHECK(koopa.isVulnerable() == true,
+          "Respawned Koopa is vulnerable again");
   }
   {
     Koopa koopa;
-    koopa.onStomped();
-    koopa.onStomped();
-    koopa.kickShell(-1); // force leftward slide, vel.x = -300
-    Tile wall;
-    placeWallLeftOf(koopa, wall);
-    bounceOnce(koopa, wall, koopa.getSpeed());
-    CHECK(koopa.getVelocity().x == 300.0f,
-          "Sliding shell bounces off left wall at +300 (not stopping)");
+    koopa.kill();
+    CHECK(koopa.getKoopaState() == KoopaState::Dying,
+          "Koopa enters Dying state after kill()");
+    CHECK(koopa.isActive() == true,
+          "Dying Koopa remains active (to show death sprite)");
+    CHECK(koopa.isDead() == false,
+          "Dying Koopa is not dead (will respawn)");
   }
 }
 
@@ -520,7 +527,7 @@ int main() {
   testReflectHelperPure();
   testGoombaBouncesBothDirections();
   testMushroomReversesInsteadOfStopping();
-  testSlidingKoopaShellBouncesBothDirections();
+  testKoopaDyingAndRespawn();
   testResolveCollisionAloneStillZeroesVelocity();
   testTileGridExcludesDistantTiles();
   testUpwardEdgeHitResolvesAsWall();
