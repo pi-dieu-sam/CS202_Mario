@@ -44,6 +44,10 @@ public:
   static void applyKoopaFrame(sf::Sprite &sprite, int frame,
                               const sf::FloatRect &box, bool flip = false);
   static const std::string &piranhaPlantPath(int frame);
+  static int piranhaFrameCount();
+  static sf::IntRect piranhaFrameRect(int frame);
+  static void applyPiranhaFrame(sf::Sprite &sprite, int frame,
+                                const sf::FloatRect &box, bool flip = false);
 
   // ── Player ──
   static const std::string &playerPath(CharacterId character, PowerUpState power,
