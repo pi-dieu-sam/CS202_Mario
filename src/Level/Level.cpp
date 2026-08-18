@@ -406,13 +406,19 @@ void Level::handlePlayerCollisions(Player* player, float dt) {
     }
   }
 
-  // Player vs Dying enemies (solid objects like shells)
+  // Player vs Shell enemies (kickable / solid)
   for (auto &enemy : m_enemies) {
     if (!enemy->isActive() || enemy->isDead() || enemy->isVulnerable())
       continue;
     auto result = CollisionDetector::checkCollision(*player, *enemy);
     if (result.collided) {
       CollisionDetector::resolveCollision(*player, *enemy, result);
+      // Kick the shell if it's sitting still
+      auto *koopa = dynamic_cast<Koopa*>(enemy.get());
+      if (koopa && koopa->getKoopaState() == KoopaState::Shell && !koopa->isSliding()) {
+        float kickDir = (result.side == CollisionDetector::Side::Left) ? -1.0f : 1.0f;
+        koopa->kick(kickDir);
+      }
     }
   }
 
@@ -526,12 +532,18 @@ void Level::handleCollisions(float dt) {
         }
         if (result.side == CollisionDetector::Side::Left ||
             result.side == CollisionDetector::Side::Right) {
-          // Reverse direction using the pre-collision velocity — resolveCollision()
-          // zeroes vel.x (needed for the player's wall-stop), so reading it after
-          // the call would always negate zero.
-          float newVx = CollisionDetector::reflectHorizontalVelocity(
-              preVel.x, result.side, enemy->getSpeed());
-          enemy->setVelocity(newVx, enemy->getVelocity().y);
+          auto *koopa = dynamic_cast<Koopa*>(enemy.get());
+          if (koopa && koopa->getKoopaState() == KoopaState::Shell && koopa->isSliding()) {
+            // Sliding shell stops when hitting a wall
+            koopa->stopSliding();
+          } else {
+            // Reverse direction using the pre-collision velocity — resolveCollision()
+            // zeroes vel.x (needed for the player's wall-stop), so reading it after
+            // the call would always negate zero.
+            float newVx = CollisionDetector::reflectHorizontalVelocity(
+                preVel.x, result.side, enemy->getSpeed());
+            enemy->setVelocity(newVx, enemy->getVelocity().y);
+          }
         }
       }
     }
@@ -548,9 +560,14 @@ void Level::handleCollisions(float dt) {
         }
         if (result.side == CollisionDetector::Side::Left ||
             result.side == CollisionDetector::Side::Right) {
-          float newVx = CollisionDetector::reflectHorizontalVelocity(
-              preVel.x, result.side, enemy->getSpeed());
-          enemy->setVelocity(newVx, enemy->getVelocity().y);
+          auto *koopa = dynamic_cast<Koopa*>(enemy.get());
+          if (koopa && koopa->getKoopaState() == KoopaState::Shell && koopa->isSliding()) {
+            koopa->stopSliding();
+          } else {
+            float newVx = CollisionDetector::reflectHorizontalVelocity(
+                preVel.x, result.side, enemy->getSpeed());
+            enemy->setVelocity(newVx, enemy->getVelocity().y);
+          }
         }
       }
     }
@@ -558,9 +575,11 @@ void Level::handleCollisions(float dt) {
     // Edge guard: a grounded enemy walking toward a pit (or the end of the
     // map) turns around instead of stepping off and falling. Probes a small
     // column just past the leading edge, at foot level, for any solid tile
-    // or active block.
+    // or active block. Sliding shells skip this so they can fall into pits.
+    auto *koopaEdge = dynamic_cast<Koopa*>(enemy.get());
+    bool isSlidingShell = koopaEdge && koopaEdge->getKoopaState() == KoopaState::Shell && koopaEdge->isSliding();
     sf::Vector2f enemyVel = enemy->getVelocity();
-    if (enemy->isGrounded() && enemyVel.x != 0.0f) {
+    if (!isSlidingShell && enemy->isGrounded() && enemyVel.x != 0.0f) {
       const sf::FloatRect bounds = enemy->getBounds();
       constexpr float PROBE_WIDTH = 8.0f;
       const sf::FloatRect probe(
@@ -592,7 +611,7 @@ void Level::handleCollisions(float dt) {
   // Enemy vs Enemy
   for (size_t i = 0; i < m_enemies.size(); ++i) {
     auto &enemyA = m_enemies[i];
-    if (!enemyA || !enemyA->isActive() || enemyA->isDead() || !enemyA->isVulnerable())
+    if (!enemyA || !enemyA->isActive() || enemyA->isDead())
       continue;
 
     for (size_t j = i + 1; j < m_enemies.size(); ++j) {
@@ -604,10 +623,36 @@ void Level::handleCollisions(float dt) {
       if (!result.collided)
         continue;
 
-      const sf::Vector2f velA = enemyA->getVelocity();
-      const sf::Vector2f velB = enemyB->getVelocity();
-      enemyA->setVelocity(-velA.x, velA.y);
-      enemyB->setVelocity(-velB.x, velB.y);
+      auto *koopaA = dynamic_cast<Koopa*>(enemyA.get());
+      auto *koopaB = dynamic_cast<Koopa*>(enemyB.get());
+      bool shellA = koopaA && koopaA->getKoopaState() == KoopaState::Shell && koopaA->isSliding();
+      bool shellB = koopaB && koopaB->getKoopaState() == KoopaState::Shell && koopaB->isSliding();
+
+      if (shellA && !shellB) {
+        // Sliding shell A kills/hits enemy B
+        if (enemyB->isVulnerable()) {
+          const sf::Vector2f pos = boundsCenter(*enemyB);
+          enemyB->kill();
+          publishEnemyDefeated(*enemyB, pos);
+        } else if (koopaB && koopaB->getKoopaState() == KoopaState::Walking) {
+          koopaB->onStomped();
+        }
+      } else if (shellB && !shellA) {
+        // Sliding shell B kills/hits enemy A
+        if (enemyA->isVulnerable()) {
+          const sf::Vector2f pos = boundsCenter(*enemyA);
+          enemyA->kill();
+          publishEnemyDefeated(*enemyA, pos);
+        } else if (koopaA && koopaA->getKoopaState() == KoopaState::Walking) {
+          koopaA->onStomped();
+        }
+      } else {
+        // Both not sliding shells: bounce off each other
+        const sf::Vector2f velA = enemyA->getVelocity();
+        const sf::Vector2f velB = enemyB->getVelocity();
+        enemyA->setVelocity(-velA.x, velA.y);
+        enemyB->setVelocity(-velB.x, velB.y);
+      }
     }
   }
 

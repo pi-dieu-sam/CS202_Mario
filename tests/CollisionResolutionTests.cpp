@@ -137,10 +137,10 @@ static void testKoopaDyingAndRespawn() {
           "Walking Koopa is vulnerable");
 
     koopa.onStomped();
-    CHECK(koopa.getKoopaState() == KoopaState::Dying,
-          "Koopa enters Dying state after stomp");
+    CHECK(koopa.getKoopaState() == KoopaState::Shell,
+          "Koopa enters Shell state after stomp");
     CHECK(koopa.isVulnerable() == false,
-          "Dying Koopa is not vulnerable");
+          "Shell Koopa is not vulnerable");
 
     // Simulate 5 seconds of update
     for (int i = 0; i < 500; i++) koopa.update(0.01f);
@@ -152,12 +152,12 @@ static void testKoopaDyingAndRespawn() {
   {
     Koopa koopa;
     koopa.kill();
-    CHECK(koopa.getKoopaState() == KoopaState::Dying,
-          "Koopa enters Dying state after kill()");
+    CHECK(koopa.getKoopaState() == KoopaState::Shell,
+          "Koopa enters Shell state after kill()");
     CHECK(koopa.isActive() == true,
-          "Dying Koopa remains active (to show death sprite)");
+          "Shell Koopa remains active");
     CHECK(koopa.isDead() == false,
-          "Dying Koopa is not dead (will respawn)");
+          "Shell Koopa is not dead (will respawn)");
   }
 }
 
