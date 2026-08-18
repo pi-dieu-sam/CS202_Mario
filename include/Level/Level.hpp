@@ -37,8 +37,9 @@ public:
   /// Render all entities. cameraCenterX drives the parallax background.
   void render(sf::RenderWindow &window, float cameraCenterX);
 
-  /// Get the player pointer (owned by this level).
+  /// Get the player pointers (owned by this level).
   Player *getPlayer() const;
+  Player *getPlayer2() const;
   Flagpole *getFlagpole() const;
 
   /// Get level dimensions in pixels.
@@ -61,10 +62,13 @@ public:
   bool isComplete() const;
 
 private:
+  /// Main collision loop.
   void handleCollisions(float dt);
+  void handlePlayerCollisions(Player* player, float dt);
   void removeInactiveEntities();
 
   std::unique_ptr<Player> m_player;
+  std::unique_ptr<Player> m_player2;
   std::vector<std::unique_ptr<Tile>> m_tiles;
   TileGrid m_tileGrid;
   std::vector<std::unique_ptr<Block>> m_blocks;
