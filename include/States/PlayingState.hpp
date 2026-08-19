@@ -32,6 +32,7 @@ public:
 
     void onEnter() override;
     void onExit() override;
+    void onPause() override;
     void onResume() override;
     void handleEvent(const sf::Event& event) override;
     void update(float dt) override;

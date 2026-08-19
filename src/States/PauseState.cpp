@@ -1,10 +1,9 @@
 #include "States/PauseState.hpp"
-#include "States/MenuState.hpp"
+#include "States/Navigator.hpp"
 #include "Core/Game.hpp"
 #include "Core/AssetManager.hpp"
 #include "Core/SaveManager.hpp"
 #include "Core/SoundManager.hpp"
-#include "States/StateManager.hpp"
 #include "Physics/PhysicsConstants.hpp"
 
 PauseState::PauseState() {}
@@ -189,12 +188,14 @@ void PauseState::handleEvent(const sf::Event& event) {
             if (m_options[i].getGlobalBounds().contains(mousePos)) {
                 m_selected = i;
                 if (m_selected == 0) {
-                    Game::getInstance().getStateManager().popState();
+                    Navigator::apply(ScreenFlow::onPauseOption(0),
+                                      Game::getInstance().getStateManager(),
+                                      Game::getInstance().getProgress().getGameMode());
                 } else {
                     SaveManager::saveGame();
-                    Game::getInstance().getStateManager().clearStates();
-                    Game::getInstance().getStateManager().pushState(
-                        std::make_unique<MenuState>());
+                    Navigator::apply(ScreenFlow::onPauseOption(1),
+                                      Game::getInstance().getStateManager(),
+                                      Game::getInstance().getProgress().getGameMode());
                 }
                 return;
             }
@@ -236,7 +237,9 @@ void PauseState::handleEvent(const sf::Event& event) {
     if (event.type == sf::Event::KeyPressed) {
         switch (event.key.code) {
             case sf::Keyboard::Escape:
-                Game::getInstance().getStateManager().popState();
+                Navigator::apply(ScreenFlow::onPauseOption(0),
+                                  Game::getInstance().getStateManager(),
+                                  Game::getInstance().getProgress().getGameMode());
                 break;
 
             case sf::Keyboard::Up:
@@ -281,12 +284,14 @@ void PauseState::handleEvent(const sf::Event& event) {
             case sf::Keyboard::Return:
             case sf::Keyboard::Space:
                 if (m_selected == 0) {
-                    Game::getInstance().getStateManager().popState();
+                    Navigator::apply(ScreenFlow::onPauseOption(0),
+                                      Game::getInstance().getStateManager(),
+                                      Game::getInstance().getProgress().getGameMode());
                 } else {
                     SaveManager::saveGame();
-                    Game::getInstance().getStateManager().clearStates();
-                    Game::getInstance().getStateManager().pushState(
-                        std::make_unique<MenuState>());
+                    Navigator::apply(ScreenFlow::onPauseOption(1),
+                                      Game::getInstance().getStateManager(),
+                                      Game::getInstance().getProgress().getGameMode());
                 }
                 break;
 
