@@ -31,6 +31,11 @@ public:
   /// so stomping it always hurts the player instead.
   virtual bool canBeStomped() const;
 
+  /// Whether Level should apply walking-enemy tile/block collision response.
+  /// Stationary hazards anchored inside terrain, such as PiranhaPlant, opt out
+  /// so the collision resolver cannot displace their scripted position.
+  virtual bool usesTerrainCollisions() const;
+
   /// Set the AI strategy (Strategy pattern).
   void setStrategy(std::unique_ptr<AIStrategy> strategy);
 

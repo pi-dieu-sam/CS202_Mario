@@ -3,7 +3,7 @@
 
 /// PiranhaPlant — stationary enemy that emerges from pipes periodically.
 /// Two independent systems:
-/// - Sprite animation: 95-frame cycle (head movement), runs continuously
+/// - Sprite animation: two fixed-size mouth poses while the plant is visible
 /// - Vertical movement: HIDDEN → EMERGING → WAITING → RETRACTING → HIDDEN
 /// Clipping hides the portion below the pipe mouth.
 /// Cannot be stomped; only fireballs and star power can kill it.
@@ -20,6 +20,7 @@ public:
     void onStomped() override;
     void kill() override;
     bool canBeStomped() const override;
+    bool usesTerrainCollisions() const override;
 
 private:
     State m_state = State::HIDDEN;

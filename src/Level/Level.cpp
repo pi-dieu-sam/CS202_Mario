@@ -521,6 +521,11 @@ void Level::handleCollisions(float dt) {
   for (auto &enemy : m_enemies) {
     if (!enemy->isActive() || enemy->isDead())
       continue;
+    // Pipe-anchored hazards intentionally overlap solid terrain. Resolving
+    // that overlap would push their scripted position out of the pipe and
+    // prevent their emergence/retraction cycle from reaching its endpoints.
+    if (!enemy->usesTerrainCollisions())
+      continue;
     enemy->setGrounded(false);
     for (Tile *tile : m_tileGrid.query(enemy->getBounds())) {
       auto result = CollisionDetector::checkCollision(*enemy, *tile);
