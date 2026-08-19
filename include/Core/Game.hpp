@@ -27,6 +27,11 @@ public:
     /// Start the game loop. Blocks until window closes.
     void run();
 
+    /// The only intended way to end the game loop from outside a window-close
+    /// event (e.g. the menu's Exit option). Popping/clearing the state stack
+    /// down to empty is treated as an error, not a way to quit — see run().
+    void requestExit();
+
     /// Access the render window.
     sf::RenderWindow& getWindow();
 
