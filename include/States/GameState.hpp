@@ -13,8 +13,16 @@ public:
     /// Called when this state is removed.
     virtual void onExit() = 0;
 
+    /// Called when another state is pushed on top of this one, covering it.
+    virtual void onPause() {}
+
     /// Called when a stacked state on top of this state is popped.
     virtual void onResume() {}
+
+    /// Whether the state below this one in the stack should still be
+    /// rendered (e.g. a pause overlay drawn over the frozen gameplay).
+    /// Most states are opaque and fully cover whatever is beneath them.
+    virtual bool isTransparent() const { return false; }
 
     /// Handle SFML events (key presses, window close, etc.).
     virtual void handleEvent(const sf::Event& event) = 0;
