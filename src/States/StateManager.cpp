@@ -80,22 +80,25 @@ void StateManager::update(float dt) {
     }
 }
 
-void StateManager::render(sf::RenderWindow& window) {
-    if (m_states.empty()) return;
-
+std::size_t StateManager::renderStartIndex() const {
     // Find the topmost opaque state — everything below it is fully covered
     // and doesn't need to render. States above it (e.g. a transparent pause
     // overlay) are drawn afterwards, bottom to top, so they can see what's
-    // beneath them.
-    std::size_t start = 0;
+    // beneath them. Kept separate from render() so this selection logic can
+    // be unit-tested without needing a real render window (see
+    // tests/NavigationTests.cpp).
     for (std::size_t i = m_states.size(); i-- > 0;) {
         if (!m_states[i]->isTransparent()) {
-            start = i;
-            break;
+            return i;
         }
     }
+    return 0;
+}
 
-    for (std::size_t i = start; i < m_states.size(); ++i) {
+void StateManager::render(sf::RenderWindow& window) {
+    if (m_states.empty()) return;
+
+    for (std::size_t i = renderStartIndex(); i < m_states.size(); ++i) {
         m_states[i]->render(window);
     }
 }

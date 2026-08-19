@@ -42,6 +42,11 @@ public:
     /// Number of states currently on the stack (ignores pending changes).
     std::size_t depth() const;
 
+    /// Index of the topmost opaque state — render() draws from here to the
+    /// top. Exposed separately so the isTransparent() selection logic is
+    /// unit-testable without constructing a real sf::RenderWindow.
+    std::size_t renderStartIndex() const;
+
 private:
     std::vector<std::unique_ptr<GameState>> m_states;
 
