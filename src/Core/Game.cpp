@@ -37,6 +37,12 @@ void Game::run() {
         m_stateManager->processPending();
 
         if (m_stateManager->isEmpty()) {
+            // StateManager::popState() refuses to empty the stack, so this
+            // should be unreachable in normal play — it means every state
+            // was removed via clearStates() without pushing a new root.
+            // Treat it as a bug, not a valid way to quit: requestExit() (or
+            // the window-close event) is the only intended exit path.
+            std::cerr << "Game: state stack became empty; forcing exit.\n";
             m_running = false;
             break;
         }
@@ -53,6 +59,10 @@ void Game::run() {
     }
 
     m_window.close();
+}
+
+void Game::requestExit() {
+    m_running = false;
 }
 
 void Game::processEvents() {

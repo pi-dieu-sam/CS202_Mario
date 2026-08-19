@@ -213,7 +213,7 @@ void MenuState::handleEvent(const sf::Event& event) {
                         }
                         break;
                     case 4: // Exit
-                        Game::getInstance().getStateManager().clearStates();
+                        Game::getInstance().requestExit();
                         break;
                 }
                 return;
@@ -263,7 +263,7 @@ void MenuState::handleEvent(const sf::Event& event) {
                         }
                         break;
                     case 4: // Exit
-                        Game::getInstance().getStateManager().clearStates();
+                        Game::getInstance().requestExit();
                         break;
                 }
                 break;
