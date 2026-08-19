@@ -61,6 +61,8 @@ bool Enemy::isVulnerable() const { return true; }
 
 bool Enemy::canBeStomped() const { return true; }
 
+bool Enemy::usesTerrainCollisions() const { return true; }
+
 void Enemy::setStrategy(std::unique_ptr<AIStrategy> strategy) {
     m_strategy = std::move(strategy);
 }
