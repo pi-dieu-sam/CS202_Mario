@@ -3,6 +3,7 @@
 #include "States/PlayingState.hpp"
 #include "Core/Game.hpp"
 #include "Core/AssetManager.hpp"
+#include "Core/PlayerProgress.hpp"
 #include "Core/SaveManager.hpp"
 #include "Core/SoundManager.hpp"
 #include "States/StateManager.hpp"
@@ -140,8 +141,8 @@ void MenuState::onEnter() {
     setupHudText(m_topScoreText, "TOP-000000", 330.0f, 452.0f, 18);
 
     // Menu options.
-    std::string labels[] = {"1 PLAYER GAME", "2 PLAYER CO-OP", "LOAD GAME", "EXIT"};
-    for (int i = 0; i < 4; i++) {
+    std::string labels[] = {"1 PLAYER GAME", "2 PLAYER CO-OP", "2 PLAYER PvP", "LOAD GAME", "EXIT"};
+    for (int i = 0; i < 5; i++) {
         m_options[i].setFont(font);
         m_options[i].setString(labels[i]);
         m_options[i].setCharacterSize(24);
@@ -149,7 +150,7 @@ void MenuState::onEnter() {
         m_options[i].setOutlineThickness(2.0f);
         auto bounds = m_options[i].getLocalBounds();
         m_options[i].setOrigin(bounds.width / 2.0f, bounds.height / 2.0f);
-        m_options[i].setPosition(WINDOW_WIDTH / 2.0f, 310.0f + i * 40.0f);
+        m_options[i].setPosition(WINDOW_WIDTH / 2.0f, 300.0f + i * 38.0f);
     }
 
     m_cursor.setRadius(6.0f);
@@ -181,7 +182,7 @@ void MenuState::handleEvent(const sf::Event& event) {
 
     if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left) {
         sf::Vector2f mousePos = window.mapPixelToCoords({event.mouseButton.x, event.mouseButton.y});
-        for (int i = 0; i < 4; i++) {
+        for (int i = 0; i < 5; i++) {
             if (m_options[i].getGlobalBounds().contains(mousePos)) {
                 m_selectedOption = i;
                 updateOptionVisuals();
@@ -189,23 +190,29 @@ void MenuState::handleEvent(const sf::Event& event) {
                 switch (m_selectedOption) {
                     case 0: // 1 Player Game
                         Game::getInstance().getProgress().resetGameData();
-                        Game::getInstance().getProgress().setCoop(false);
+                        Game::getInstance().getProgress().setGameMode(GameMode::SinglePlayer);
                         Game::getInstance().getStateManager().changeState(
                             std::make_unique<CharacterSelectState>());
                         break;
                     case 1: // 2 Player Co-op
                         Game::getInstance().getProgress().resetGameData();
-                        Game::getInstance().getProgress().setCoop(true);
+                        Game::getInstance().getProgress().setGameMode(GameMode::Coop);
                         Game::getInstance().getStateManager().changeState(
                             std::make_unique<CharacterSelectState>());
                         break;
-                    case 2: // Load Game
+                    case 2: // 2 Player PvP
+                        Game::getInstance().getProgress().resetGameData();
+                        Game::getInstance().getProgress().setGameMode(GameMode::PvP);
+                        Game::getInstance().getStateManager().changeState(
+                            std::make_unique<CharacterSelectState>());
+                        break;
+                    case 3: // Load Game
                         if (SaveManager::loadGame()) {
                             Game::getInstance().getStateManager().changeState(
                                 std::make_unique<PlayingState>());
                         }
                         break;
-                    case 3: // Exit
+                    case 4: // Exit
                         Game::getInstance().getStateManager().clearStates();
                         break;
                 }
@@ -218,13 +225,13 @@ void MenuState::handleEvent(const sf::Event& event) {
         switch (event.key.code) {
             case sf::Keyboard::Up:
             case sf::Keyboard::W:
-                m_selectedOption = (m_selectedOption - 1 + 4) % 4;
+                m_selectedOption = (m_selectedOption - 1 + 5) % 5;
                 updateOptionVisuals();
                 break;
 
             case sf::Keyboard::Down:
             case sf::Keyboard::S:
-                m_selectedOption = (m_selectedOption + 1) % 4;
+                m_selectedOption = (m_selectedOption + 1) % 5;
                 updateOptionVisuals();
                 break;
 
@@ -233,23 +240,29 @@ void MenuState::handleEvent(const sf::Event& event) {
                 switch (m_selectedOption) {
                     case 0: // 1 Player Game
                         Game::getInstance().getProgress().resetGameData();
-                        Game::getInstance().getProgress().setCoop(false);
+                        Game::getInstance().getProgress().setGameMode(GameMode::SinglePlayer);
                         Game::getInstance().getStateManager().changeState(
                             std::make_unique<CharacterSelectState>());
                         break;
                     case 1: // 2 Player Co-op
                         Game::getInstance().getProgress().resetGameData();
-                        Game::getInstance().getProgress().setCoop(true);
+                        Game::getInstance().getProgress().setGameMode(GameMode::Coop);
                         Game::getInstance().getStateManager().changeState(
                             std::make_unique<CharacterSelectState>());
                         break;
-                    case 2: // Load Game
+                    case 2: // 2 Player PvP
+                        Game::getInstance().getProgress().resetGameData();
+                        Game::getInstance().getProgress().setGameMode(GameMode::PvP);
+                        Game::getInstance().getStateManager().changeState(
+                            std::make_unique<CharacterSelectState>());
+                        break;
+                    case 3: // Load Game
                         if (SaveManager::loadGame()) {
                             Game::getInstance().getStateManager().changeState(
                                 std::make_unique<PlayingState>());
                         }
                         break;
-                    case 3: // Exit
+                    case 4: // Exit
                         Game::getInstance().getStateManager().clearStates();
                         break;
                 }
@@ -289,7 +302,7 @@ void MenuState::render(sf::RenderWindow& window) {
 
     window.draw(m_copyrightText);
 
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < 5; i++) {
         window.draw(m_options[i]);
     }
     window.draw(m_cursor);
@@ -298,7 +311,7 @@ void MenuState::render(sf::RenderWindow& window) {
 }
 
 void MenuState::updateOptionVisuals() {
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < 5; i++) {
         if (i == m_selectedOption) {
             m_options[i].setFillColor(sf::Color(255, 220, 100));
         } else {
