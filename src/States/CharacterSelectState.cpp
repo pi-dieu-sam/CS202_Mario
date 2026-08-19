@@ -1,12 +1,10 @@
 #include "States/CharacterSelectState.hpp"
-#include "States/LevelSelectState.hpp"
-#include "States/PlayingState.hpp"
+#include "States/Navigator.hpp"
 #include "Core/Game.hpp"
 #include "Core/AssetManager.hpp"
 #include "Core/SoundManager.hpp"
 #include "Entities/Player.hpp"
 #include "Graphics/SpriteRegistry.hpp"
-#include "States/StateManager.hpp"
 #include "Physics/PhysicsConstants.hpp"
 #include <iomanip>
 #include <sstream>
@@ -230,8 +228,11 @@ void CharacterSelectState::handleEvent(const sf::Event& event) {
                 m_selected = i;
                 std::string charName = (m_selected == 0) ? "Mario" : "Luigi";
                 Game::getInstance().getProgress().setSelectedCharacter(charName);
-                Game::getInstance().getStateManager().changeState(
-                    std::make_unique<LevelSelectState>());
+                Navigator::apply(
+                    ScreenFlow::onConfirm(ScreenFlow::Screen::CharacterSelect,
+                                          Game::getInstance().getProgress().getGameMode()),
+                    Game::getInstance().getStateManager(),
+                    Game::getInstance().getProgress().getGameMode());
                 return;
             }
         }
@@ -314,13 +315,18 @@ void CharacterSelectState::handleEvent(const sf::Event& event) {
             case sf::Keyboard::Space: {
                 std::string charName = (m_selected == 0) ? "Mario" : "Luigi";
                 Game::getInstance().getProgress().setSelectedCharacter(charName);
-                Game::getInstance().getStateManager().changeState(
-                    std::make_unique<LevelSelectState>());
+                Navigator::apply(
+                    ScreenFlow::onConfirm(ScreenFlow::Screen::CharacterSelect,
+                                          Game::getInstance().getProgress().getGameMode()),
+                    Game::getInstance().getStateManager(),
+                    Game::getInstance().getProgress().getGameMode());
                 break;
             }
 
             case sf::Keyboard::Escape:
-                Game::getInstance().getStateManager().popState();
+                Navigator::apply(ScreenFlow::onBack(ScreenFlow::Screen::CharacterSelect),
+                                  Game::getInstance().getStateManager(),
+                                  Game::getInstance().getProgress().getGameMode());
                 break;
 
             default:
