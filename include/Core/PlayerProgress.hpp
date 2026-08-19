@@ -1,6 +1,13 @@
 #pragma once
 #include <string>
 
+/// GameMode — describes how many players and what rules apply.
+enum class GameMode {
+    SinglePlayer, ///< Classic 1-player game
+    Coop,         ///< 2 players cooperate; no friendly fire
+    PvP           ///< 2 players compete; stomping and fireballs deal damage
+};
+
 /// PlayerProgress — holds player-progression data (score, lives, coins,
 /// current level, selected character) and the business rules around them.
 /// Deliberately has no SFML/window/singleton dependency so it can be
@@ -33,19 +40,24 @@ public:
     void setCoins(int coins);
 
     const std::string& getSelectedCharacter() const;
-    void                setSelectedCharacter(const std::string& name);
+    void               setSelectedCharacter(const std::string& name);
 
     /// Reset all progress data to defaults.
     void resetGameData();
 
-    bool isCoop() const { return m_isCoop; }
-    void setCoop(bool coop) { m_isCoop = coop; }
+    GameMode getGameMode() const { return m_gameMode; }
+    void     setGameMode(GameMode mode) { m_gameMode = mode; }
+
+    /// Convenience helpers
+    bool isCoop() const { return m_gameMode == GameMode::Coop; }
+    bool isPvP()  const { return m_gameMode == GameMode::PvP;  }
+    bool isMultiplayer() const { return m_gameMode != GameMode::SinglePlayer; }
 
 private:
-    int         m_score         = 0;
-    int         m_lives         = 3;
-    int         m_coins         = 0;
-    int         m_currentLevel  = 1;
-    std::string m_selectedChar  = "Mario";
-    bool        m_isCoop        = false;
+    int         m_score        = 0;
+    int         m_lives        = 3;
+    int         m_coins        = 0;
+    int         m_currentLevel = 1;
+    std::string m_selectedChar = "Mario";
+    GameMode    m_gameMode     = GameMode::SinglePlayer;
 };
