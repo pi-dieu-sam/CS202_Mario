@@ -8,10 +8,12 @@
 
 #include "Physics/CollisionDetector.hpp"
 #include "Physics/PhysicsConstants.hpp"
+#include "Core/AssetManager.hpp"
 #include "Graphics/SpriteRegistry.hpp"
 #include "Level/TileGrid.hpp"
 #include "Entities/Goomba.hpp"
 #include "Entities/Koopa.hpp"
+#include "Entities/PiranhaPlant.hpp"
 #include "Entities/Luigi.hpp"
 #include "Entities/Mario.hpp"
 #include "Entities/Mushroom.hpp"
@@ -391,6 +393,81 @@ static void testAllMarioSpriteStatesLoad() {
   }
 }
 
+static void testPiranhaFramesAndEmergenceStayStable() {
+  const std::string &path = SpriteRegistry::piranhaPlantPath(0);
+  CHECK(std::filesystem::exists(path),
+        "Piranha animation uses a checked-in asset");
+
+  const auto &frames = AssetManager::getInstance().getGifFrames(path);
+  CHECK(SpriteRegistry::piranhaFrameCount() == 2 && frames.size() == 2,
+        "Piranha animation exposes the two mouth poses from its GIF");
+
+  for (int frame = 0; frame < SpriteRegistry::piranhaFrameCount(); ++frame) {
+    const sf::IntRect rect = SpriteRegistry::piranhaFrameRect(frame);
+    const sf::Vector2u size = frames[static_cast<size_t>(frame)].getSize();
+    CHECK(rect.left == 0 && rect.top == 0 && rect.width == 16 &&
+              rect.height == 24,
+          "each Piranha pose is a fixed-size 16x24 source frame");
+    CHECK(rect.left + rect.width <= static_cast<int>(size.x) &&
+              rect.top + rect.height <= static_cast<int>(size.y),
+          "every Piranha frame rectangle stays inside its texture");
+
+    sf::Sprite sprite;
+    SpriteRegistry::applyPiranhaFrame(
+        sprite, frame, sf::FloatRect(0.0f, 0.0f, 32.0f, 48.0f));
+    CHECK(sprite.getTextureRect() == rect,
+          "Piranha rendering selects exactly one decoded GIF frame");
+    CHECK(std::abs(sprite.getScale().x - 2.0f) < 0.001f &&
+              std::abs(sprite.getScale().y - 2.0f) < 0.001f,
+          "Piranha poses render at a stable NES 2x scale");
+  }
+
+  PiranhaPlant plant;
+  plant.setPosition(64.0f, 64.0f);
+  plant.update(0.0f); // capture the pipe-relative base position
+  CHECK(!plant.usesTerrainCollisions(),
+        "pipe-anchored Piranha opts out of walking-enemy terrain response");
+  CHECK(plant.getBounds().width == 0.0f,
+        "Piranha starts fully hidden inside the pipe");
+
+  plant.update(2.0f); // hidden -> emerging
+  float previousHeight = 0.0f;
+  for (int step = 0; step < 6; ++step) {
+    plant.update(0.1f);
+    const float height = plant.getBounds().height;
+    CHECK(height >= previousHeight && height <= 48.0f,
+          "Piranha emergence grows monotonically to its fixed height");
+    previousHeight = height;
+  }
+  CHECK(std::abs(previousHeight - 48.0f) < 0.001f &&
+            std::abs(plant.getBounds().width - 28.0f) < 0.001f,
+        "fully emerged Piranha has a stable 32x48 visual and inset hitbox");
+  const sf::FloatRect emergedBounds = plant.getBounds();
+  CHECK(std::abs(emergedBounds.left + emergedBounds.width / 2.0f - 96.0f) <
+            0.001f,
+        "Piranha stays centered over the two-tile pipe anchored at x=64");
+
+  plant.update(1.0f);
+  CHECK(std::abs(plant.getBounds().height - 48.0f) < 0.001f,
+        "mouth animation does not move the plant while it waits");
+
+  plant.update(1.5f); // waiting -> retracting
+  plant.update(0.1f);
+  CHECK(plant.getBounds().height < 48.0f,
+        "Piranha retracts only through its movement state machine");
+
+  for (int step = 0; step < 5; ++step) plant.update(0.1f);
+  CHECK(plant.getBounds().width == 0.0f,
+        "Piranha becomes fully hidden after retracting");
+
+  plant.update(2.0f); // hidden -> emerging again
+  plant.update(0.1f);
+  CHECK(plant.getBounds().height > 0.0f &&
+            std::abs(plant.getBounds().left + plant.getBounds().width / 2.0f -
+                     96.0f) < 0.001f,
+        "Piranha begins the next emergence cycle at the same pipe center");
+}
+
 static void testFlagpoleSlideFramesAndCutscene() {
   const std::string& sheet = SpriteRegistry::playerFlagpoleSlideSheetPath();
   CHECK(std::filesystem::exists(sheet),
@@ -535,6 +612,7 @@ int main() {
   testSprintDoesNotCompoundVelocity();
   testAllLuigiSpriteStatesLoad();
   testAllMarioSpriteStatesLoad();
+  testPiranhaFramesAndEmergenceStayStable();
   testFlagpoleSlideFramesAndCutscene();
   testPlayerDeathAnimationUsesFacingPoses();
 
