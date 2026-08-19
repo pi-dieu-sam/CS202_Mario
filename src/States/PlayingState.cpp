@@ -112,6 +112,12 @@ void PlayingState::onExit() {
     SoundManager::getInstance().stopMusic();
 }
 
+void PlayingState::onPause() {
+    // PauseState is being pushed on top of us — matches the sound handling
+    // onResume() undoes below.
+    SoundManager::getInstance().pauseMusic();
+}
+
 void PlayingState::onResume() {
     SoundManager::getInstance().resumeMusic();
     // While paused the state receives no events, so re-sync the held-key
@@ -139,7 +145,8 @@ void PlayingState::handleEvent(const sf::Event& event) {
     if (event.type == sf::Event::KeyPressed) {
         if (event.key.code == sf::Keyboard::Escape) {
             SoundManager::getInstance().playSound(SoundID::Pause);
-            SoundManager::getInstance().pauseMusic();
+            // pauseMusic() happens in onPause(), called by StateManager as
+            // part of pushing PauseState on top of us.
             Game::getInstance().getStateManager().pushState(
                 std::make_unique<PauseState>());
             return;

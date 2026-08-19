@@ -12,7 +12,11 @@ public:
     /// Push a new state on top of the stack.
     void pushState(std::unique_ptr<GameState> state);
 
-    /// Pop the topmost state.
+    /// Pop the topmost state. No-op when only one state remains — popping
+    /// the last state would leave the stack empty, which Game::run() treats
+    /// as an error condition, not a way to exit. Use Game::requestExit()
+    /// (or clearStates() + push a fresh root state) to actually leave a
+    /// screen with nothing behind it.
     void popState();
 
     /// Replace the topmost state (pop + push).
@@ -34,6 +38,14 @@ public:
 
     /// Get current (topmost) state.
     GameState* currentState() const;
+
+    /// Number of states currently on the stack (ignores pending changes).
+    std::size_t depth() const;
+
+    /// Index of the topmost opaque state — render() draws from here to the
+    /// top. Exposed separately so the isTransparent() selection logic is
+    /// unit-testable without constructing a real sf::RenderWindow.
+    std::size_t renderStartIndex() const;
 
 private:
     std::vector<std::unique_ptr<GameState>> m_states;
