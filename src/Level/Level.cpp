@@ -43,6 +43,11 @@ bool Level::loadFromFile(const std::string &filename,
   m_width = data.width;
   m_height = data.height;
 
+  // Set map bounds on escalaters so they reverse at level edges
+  for (auto &esc : m_escalaters) {
+    esc->setMapBounds(0.0f, m_height);
+  }
+
   // Create player at spawn point
   m_player = EntityFactory::createPlayer(characterName, data.playerSpawn);
   if (m_player) m_player->setPlayerId(1);
@@ -124,6 +129,20 @@ void Level::update(float dt) {
   for (auto &esc : m_escalaters) {
     if (esc->isActive())
       esc->update(dt);
+  }
+
+  // Escalater vs Tile collisions — reverse direction on contact
+  for (auto &esc : m_escalaters) {
+    if (!esc->isActive()) continue;
+    auto nearTiles = m_tileGrid.query(esc->getBounds());
+    for (auto *tile : nearTiles) {
+      if (!tile->isActive()) continue;
+      auto result = CollisionDetector::checkCollision(*esc, *tile);
+      if (result.collided) {
+        esc->reverseDirection();
+        break;
+      }
+    }
   }
 
   // Update fireballs

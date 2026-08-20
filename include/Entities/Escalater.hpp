@@ -19,6 +19,10 @@ public:
   void setRange(float range);
   /// Movement speed in pixels/s (default: 60).
   void setSpeed(float speed);
+  /// Reverse the current movement direction.
+  void reverseDirection();
+  /// Set the map vertical bounds (top and bottom in pixels).
+  void setMapBounds(float top, float bottom);
 
 private:
   sf::Vector2f m_size = {TILE_SIZE, TILE_SIZE};
@@ -29,4 +33,6 @@ private:
   float m_range     = 3.0f * TILE_SIZE;  // 96px up and down
   float m_speed     = 60.0f;             // pixels/s
   float m_direction = -1.0f;             // -1 = up, +1 = down
+  float m_mapTop    = 0.0f;             // top boundary of the map
+  float m_mapBottom = 0.0f;             // bottom boundary of the map
 };
