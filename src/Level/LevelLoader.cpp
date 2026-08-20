@@ -86,6 +86,7 @@ LevelLoader::LevelData LevelLoader::loadLevel(const std::string& filename,
                 // ── Tiles ──
                 case 'X': case '<': case '>': case '[': case ']':
                 case 'B': case 'b':
+                case 'L': case 'l':
                 {
                     auto tile = EntityFactory::createTile(c, x, y, theme);
                     if (tile) data.tiles.push_back(std::move(tile));

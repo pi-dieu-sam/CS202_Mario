@@ -6,9 +6,9 @@ X-----------------------------------------------------XX--XXXXXX--XXXX--G---XXXX
 X----------------------------------------oooo-------XX--------XX---X----XX----------oooooo-------------------------------------------------------------------EEE----------[]XXXXXXX-------------XX
 X-----------------------------o---------------------XX--------XX---X----XX------------------------------------------------------------------------------------------------[]XXXXXXX-------------XX
 X--------------------------------------X-XXXX-X-----XX--------XX---X----XX----------XXXXXX-----------------------------------------------------------K--------------------[]XXXXXXX-------------XX
-X------------W---------------X---------XoX--XoX-----XX----ooooXX---Xo??-XX---G------XXXXXX--------------------G------------------------------------XXXXX??--------------({\]XXXXXXX-------------XX
-X---------QQ?QQ--------XXXX------------XXX--XXX-----XXXX--XXXXXX---XX---XX--XXXX------------------------G----<>-------------------------XXX-----------------------------)}/]XXXXXXX-------------XX
+X---@-------------------------X---------XoX--XoX-----XX----ooooXX---Xo??-XX---G------XXXXXX--------------------G------------------------------------XXXXX??--------------({\]XXXXXXX-------------XX
+X---------------------XXXX------------XXX--XXX-----XXXX--XXXXXX---XX---XX--XXXX------------------------G----<>-------------------------XXX-----------------------------)}/]XXXXXXX-------------XX
 X--------------------XXXXXXXX--XX---------------------XX-----------------------------------------------<>----[]-----G-----XX-----------GXXX--EEE------------------XXXXXXXXXXXXXXXXX-------------XX
-X------------------XXXXXXXXXX--XXXX--------------------------------------------------------------------[]----[]----<>-----XX---------GXXXXX-----------------------XXXXXXXXXXXXXXXXX-<>--<>--<>--XX
-X--------------G-XXXXXXXXXXXXG-XXXX------------------G------K--G-----------------------W--------G-GG---[]----[]--G-[]-----XX---------XXXXXX----------G-------EEE--XXXXXXXXXXXXXXXXX-[]--[]--[]--XX
-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX---XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX--XX--XXXXXXXXXXXXX--------XXXXXXXX-------XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+XXXXXXXXXXXXXXXXXllllXXXXXXXX--XXXX--------------------------------------------------------------------[]----[]----<>-----XX---------GXXXXX-----------------------XXXXXXXXXXXXXXXXX-<>--<>--<>--XX
+XXXXXXXXXXXXXXXXXLLLLXXXXXXXXG-XXXX------------------G------K--G-----------------------W--------G-GG---[]----[]--G-[]-----XX---------XXXXXX----------G-------EEE--XXXXXXXXXXXXXXXXX-[]--[]--[]--XX
+XXXXXXXXXXXXXXXXXLLLLXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX---XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX--XX--XXXXXXXXXXXXX--------XXXXXXXX-------XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
