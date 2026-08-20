@@ -15,12 +15,24 @@ Escalater::Escalater(float x, float y) {
 void Escalater::update(float dt) {
   m_position.y += m_speed * m_direction * dt;
 
+  // Check range-based limits
   if (m_position.y < m_centerY - m_range) {
     m_position.y = m_centerY - m_range;
     m_direction = 1.0f;
   } else if (m_position.y > m_centerY + m_range) {
     m_position.y = m_centerY + m_range;
     m_direction = -1.0f;
+  }
+
+  // Check map boundaries
+  if (m_mapBottom > m_mapTop) {
+    if (m_position.y < m_mapTop) {
+      m_position.y = m_mapTop;
+      m_direction = 1.0f;
+    } else if (m_position.y + m_size.y > m_mapBottom) {
+      m_position.y = m_mapBottom - m_size.y;
+      m_direction = -1.0f;
+    }
   }
 
   m_velocity.y = m_speed * m_direction;
@@ -40,3 +52,13 @@ sf::FloatRect Escalater::getBounds() const {
 
 void Escalater::setRange(float range) { m_range = range; }
 void Escalater::setSpeed(float speed) { m_speed = speed; }
+
+void Escalater::reverseDirection() {
+  m_direction = -m_direction;
+  m_velocity.y = m_speed * m_direction;
+}
+
+void Escalater::setMapBounds(float top, float bottom) {
+  m_mapTop = top;
+  m_mapBottom = bottom;
+}
