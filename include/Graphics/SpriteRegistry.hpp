@@ -95,6 +95,8 @@ public:
   // ── Hazards ──
   static const std::string &lavaPath();
   static const std::string &flamePath();
+  static const std::string &fireBarBlockPath();
+  static const std::string &fireBarSegmentPath();
 
   /// Shared draw-transform helper: loads `path` through AssetManager, binds
   /// it to the sprite, pivots on bottom-center (so horizontal flip mirrors

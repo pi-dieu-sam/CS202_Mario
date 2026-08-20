@@ -15,7 +15,8 @@ enum class ObjectType {
     Fireball,
     Flagpole,
     Pipe,
-    FlowersBuff
+    FlowersBuff,
+    FireBar
 };
 
 /// GameObject — Abstract base class for ALL entities in the game.

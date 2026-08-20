@@ -39,6 +39,7 @@ bool Level::loadFromFile(const std::string &filename,
   m_enemies = std::move(data.enemies);
   m_items = std::move(data.items);
   m_escalaters = std::move(data.escalaters);
+  m_fireBars = std::move(data.fireBars);
   m_flagpole = std::move(data.flagpole);
   m_width = data.width;
   m_height = data.height;
@@ -137,6 +138,12 @@ void Level::update(float dt) {
       tile->update(dt);
   }
 
+  // Update fire bars (rotating hazards)
+  for (auto &fb : m_fireBars) {
+    if (fb->isActive())
+      fb->update(dt);
+  }
+
   // Escalater vs Tile collisions — reverse direction on contact
   for (auto &esc : m_escalaters) {
     if (!esc->isActive()) continue;
@@ -224,6 +231,14 @@ void Level::render(sf::RenderWindow &window, float cameraCenterX) {
   // Draw flagpole
   if (m_flagpole)
     m_flagpole->draw(window);
+
+  // Fire bars are drawn above the map. Their fire passes through every map
+  // object visually and physically; only a player touching a fire segment is
+  // affected.
+  for (auto &fb : m_fireBars) {
+    if (fb->isActive())
+      fb->draw(window);
+  }
 
   // Draw player last (on top)
   if (m_player)
@@ -388,6 +403,19 @@ void Level::handlePlayerCollisions(Player* player, float dt) {
         // Transfer the escalater's vertical velocity to the player so they
         // ride the platform up and down.
         player->setVelocity(player->getVelocity().x, esc->getVelocity().y);
+      }
+    }
+  }
+
+  // Player vs FireBars (lethal rotating hazard)
+  for (auto &fb : m_fireBars) {
+    if (!fb->isActive()) continue;
+
+    for (int i = 0; i < fb->getSegmentCount(); ++i) {
+      sf::FloatRect segBounds = fb->getSegmentBounds(i);
+      if (player->getBounds().intersects(segBounds)) {
+        player->die();
+        return;
       }
     }
   }
