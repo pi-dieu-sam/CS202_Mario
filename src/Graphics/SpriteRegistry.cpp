@@ -540,6 +540,16 @@ const std::string &SpriteRegistry::escalaterPath() {
   return p;
 }
 
+const std::string &SpriteRegistry::lavaPath() {
+  static const std::string p = "assets/textures/lava.png";
+  return p;
+}
+
+const std::string &SpriteRegistry::flamePath() {
+  static const std::string p = "assets/textures/items/flame.png";
+  return p;
+}
+
 void SpriteRegistry::applyFrame(sf::Sprite &sprite, const std::string &path,
                                  const sf::FloatRect &box, bool flip) {
   sf::Texture &texture = AssetManager::getInstance().getTexture(path);

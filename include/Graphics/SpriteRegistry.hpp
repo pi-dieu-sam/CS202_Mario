@@ -92,6 +92,9 @@ public:
   static const std::string &flowersBuffPath();
   static int flowersBuffFrameCount();
   static const std::string &escalaterPath();
+  // ── Hazards ──
+  static const std::string &lavaPath();
+  static const std::string &flamePath();
 
   /// Shared draw-transform helper: loads `path` through AssetManager, binds
   /// it to the sprite, pivots on bottom-center (so horizontal flip mirrors

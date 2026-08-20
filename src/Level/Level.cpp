@@ -131,6 +131,12 @@ void Level::update(float dt) {
       esc->update(dt);
   }
 
+  // Update tiles (flame animation)
+  for (auto &tile : m_tiles) {
+    if (tile->isActive())
+      tile->update(dt);
+  }
+
   // Escalater vs Tile collisions — reverse direction on contact
   for (auto &esc : m_escalaters) {
     if (!esc->isActive()) continue;
@@ -338,6 +344,12 @@ void Level::handlePlayerCollisions(Player* player, float dt) {
   for (Tile *tile : m_tileGrid.query(player->getBounds())) {
     auto result = CollisionDetector::checkCollision(*player, *tile);
     if (result.collided) {
+      // Lava and flame are lethal hazards — kill on contact, no physics resolve.
+      TileType tt = tile->getTileType();
+      if (tt == TileType::Lava || tt == TileType::Flame) {
+        player->die();
+        return;
+      }
       CollisionDetector::resolveCollision(*player, *tile, result);
       if (result.side == CollisionDetector::Side::Bottom) {
         player->setGrounded(true);
