@@ -6,6 +6,7 @@
 #include "Entities/Item.hpp"
 #include "Entities/Flagpole.hpp"
 #include "Entities/Escalater.hpp"
+#include "Entities/FireBar.hpp"
 #include "Physics/PhysicsConstants.hpp"
 #include <fstream>
 #include <iostream>
@@ -148,6 +149,13 @@ LevelLoader::LevelData LevelLoader::loadLevel(const std::string& filename,
                 {
                     auto esc = EntityFactory::createEscalater(x, y, theme);
                     if (esc) data.escalaters.push_back(std::move(esc));
+                    break;
+                }
+
+                // ── FireBar (rotating fire hazard) ──
+                case 'O':
+                {
+                    data.fireBars.push_back(std::make_unique<FireBar>(x, y));
                     break;
                 }
 

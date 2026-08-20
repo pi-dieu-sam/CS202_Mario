@@ -12,6 +12,7 @@ class Item;
 class Flagpole;
 class Player;
 class Escalater;
+class FireBar;
 
 /// LevelLoader — parses VGLC-format ("Video Game Level Corpus") text level
 /// files (see https://github.com/TheVGLC/TheVGLC) and creates entities via
@@ -37,6 +38,7 @@ class Escalater;
 /// - 'f' = explicit flagpole
 /// - 'k' = Koopa (override for 'E')   'r' = Piranha Plant (override for 'E')
 /// - 'M' = question block w/ Mushroom   'F' = w/ Fire Flower   's' = w/ Star
+/// - 'O' = fire-bar anchor with eight rotating, lethal fireballs
 ///
 /// VGLC has no notion of a spawn point or a flagpole. If a file has no '@'
 /// or 'f', LevelLoader places them automatically: spawn near the left edge,
@@ -50,6 +52,7 @@ public:
         std::vector<std::unique_ptr<Enemy>>  enemies;
         std::vector<std::unique_ptr<Item>>   items;
         std::vector<std::unique_ptr<Escalater>> escalaters;
+        std::vector<std::unique_ptr<FireBar>>   fireBars;
         std::unique_ptr<Flagpole>            flagpole;
         sf::Vector2f                         playerSpawn  = {100.0f, 100.0f};
         sf::Vector2f                         player2Spawn = {200.0f, 100.0f}; ///< P2 spawn ('9' in map)
