@@ -123,9 +123,14 @@ LevelLoader::LevelData LevelLoader::loadLevel(const std::string& filename,
                 }
 
                 // ── Special (extensions -- not part of VGLC's own alphabet) ──
-                case '@': // Player spawn
+                case '@': // Player 1 spawn
                     data.playerSpawn = {x, y};
                     foundSpawn = true;
+                    break;
+
+                case '2': // Player 2 spawn (PvP/Co-op)
+                    data.player2Spawn = {x, y};
+                    data.hasPlayer2Spawn = true;
                     break;
 
                 case 'f': // Flagpole (end of level)
