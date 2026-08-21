@@ -30,6 +30,7 @@ Mỗi ký tự đại diện cho **một ô vuông 32×32 pixel** trong map.
 | `F` | Block có chứa Hoa lửa (Fire Flower) |
 | `E` | Escalater
 | `O` | Fire Bar: block 32px và 8 cầu lửa liên tục quay xuyên map (lửa chạm vào sẽ chết) |
+| `i` | Lớp mặt dung nham có cầu lửa: bắn lên, rơi xuống, ẩn 3 giây rồi lặp lại |
 | `s` | Block có chứa Sao (Star) |
 | `Q` | Block đã dùng hết (cứng, không còn item) |
 | `o` | Xu (Coin) |

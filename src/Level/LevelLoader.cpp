@@ -7,6 +7,7 @@
 #include "Entities/Flagpole.hpp"
 #include "Entities/Escalater.hpp"
 #include "Entities/FireBar.hpp"
+#include "Entities/LavaFireball.hpp"
 #include "Physics/PhysicsConstants.hpp"
 #include <fstream>
 #include <iostream>
@@ -73,6 +74,10 @@ LevelLoader::LevelData LevelLoader::loadLevel(const std::string& filename,
     data.height = std::max(rows + rowOffset, targetRows) * TILE_SIZE;
 
     bool foundSpawn = false;
+    // Pipe launchers are deliberately a Level 2-only set piece. Other
+    // levels keep their ordinary pipe behaviour.
+    const bool level2PipeLaunchers =
+        filename == "assets/levels/level2.txt";
 
     for (int row = 0; row < rows; row++) {
         for (int col = 0; col < static_cast<int>(lines[row].size()); col++) {
@@ -91,6 +96,18 @@ LevelLoader::LevelData LevelLoader::loadLevel(const std::string& filename,
                 {
                     auto tile = EntityFactory::createTile(c, x, y, theme);
                     if (tile) data.tiles.push_back(std::move(tile));
+
+                    // A pipe is two tiles wide. Spawn only from its left
+                    // mouth piece (<) so each <> pair gets one fireball at
+                    // the middle of the opening. This applies only to the
+                    // main Level 2 map.
+                    if (level2PipeLaunchers && c == '<' &&
+                        col + 1 < static_cast<int>(lines[row].size()) &&
+                        lines[row][col + 1] == '>') {
+                        data.lavaFireballs.push_back(
+                            std::make_unique<LavaFireball>(
+                                x + TILE_SIZE * 0.5f, y));
+                    }
                     break;
                 }
 
@@ -156,6 +173,19 @@ LevelLoader::LevelData LevelLoader::loadLevel(const std::string& filename,
                 case 'O':
                 {
                     data.fireBars.push_back(std::make_unique<FireBar>(x, y));
+                    break;
+                }
+
+                // ── LavaFireball (vertical lava hazard) ──
+                case 'i':
+                {
+                    // i occupies the animated top lava layer as well as
+                    // launching the vertical hazard, so it replaces an l
+                    // without making a visual/physical hole in that layer.
+                    auto lava = EntityFactory::createTile('l', x, y, theme);
+                    if (lava) data.tiles.push_back(std::move(lava));
+                    data.lavaFireballs.push_back(
+                        std::make_unique<LavaFireball>(x, y));
                     break;
                 }
 
