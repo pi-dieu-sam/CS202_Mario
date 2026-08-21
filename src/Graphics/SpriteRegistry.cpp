@@ -55,17 +55,19 @@ int themeIndex(LevelTheme theme) { return static_cast<int>(theme); }
 const std::string &groundPath(LevelTheme theme) {
   static const std::string paths[THEME_COUNT] = {
       "assets/textures/SMB_Ground.png",             // Overworld
-      "assets/textures/SMB_Ground_Underground.png", // Underground
+      "assets/textures/block_lava.png",              // Underground
       "assets/textures/SMB_Ground_Castle.png",       // Castle
   };
   return paths[themeIndex(theme)];
 }
 
-const std::string &pipePath(LevelTheme /*theme*/) {
-  // All themes share the green Overworld pipe so pipes look the same in every
-  // level (Underground/Castle had gray/orange variants).
-  static const std::string green = "assets/textures/Warp_Pipe_SMB.png";
-  return green;
+const std::string &pipePath(LevelTheme theme) {
+  static const std::string paths[THEME_COUNT] = {
+      "assets/textures/Warp_Pipe_SMB.png",          // Overworld
+      "assets/textures/Warp_Pipe_Gray_SMB.png",     // Underground
+      "assets/textures/Warp_Pipe_Orange_SMB.png",   // Castle
+  };
+  return paths[themeIndex(theme)];
 }
 
 const std::string &brickPath(LevelTheme theme) {
@@ -535,6 +537,31 @@ int SpriteRegistry::flowersBuffFrameCount() {
 
 const std::string &SpriteRegistry::escalaterPath() {
   static const std::string p = "assets/textures/items/Escalater.png";
+  return p;
+}
+
+const std::string &SpriteRegistry::lavaPath() {
+  static const std::string p = "assets/textures/lava.png";
+  return p;
+}
+
+const std::string &SpriteRegistry::flamePath() {
+  static const std::string p = "assets/textures/items/flame.png";
+  return p;
+}
+
+const std::string &SpriteRegistry::fireBarBlockPath() {
+  static const std::string p = "assets/textures/items/blockbarfire.png";
+  return p;
+}
+
+const std::string &SpriteRegistry::fireBarSegmentPath() {
+  static const std::string p = "assets/textures/items/FireBarWithoutBlock.png";
+  return p;
+}
+
+const std::string &SpriteRegistry::lavaFireballPath() {
+  static const std::string p = "assets/textures/items/FireDownUP.png";
   return p;
 }
 

@@ -18,7 +18,8 @@ void Goomba::onStomped() {
   // bounds as a solid enemy. Keep it active only as a render-only corpse.
   die();
   m_squished = true;
-  m_deathTimer = 0.5f;
+  m_deathTimer = 0.5f; // Show death sprite for 0.5s
+  m_velocity = {0.0f, 0.0f};
 }
 
 void Goomba::update(float dt) {
