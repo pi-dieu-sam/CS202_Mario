@@ -26,7 +26,13 @@ enum class TileType {
   /// cell (0..5, reading left-to-right top-to-bottom). A pipe is assembled in
   /// the level file by placing the piece characters ( { \ (top row) above
   /// ) } / (bottom row).
-  WardPipePiece
+  WardPipePiece,
+  /// Lava tile — a 16x16 hazard texture scaled to 32x32. Kills the player
+  /// on contact (not solid — the player falls through and dies).
+  Lava,
+  /// Flame tile — 4 animated frames (16x16 each) from flame.png (64x16 sheet),
+  /// scaled to 32x32. Kills the player on contact.
+  Flame
 };
 
 /// Tile — static, collidable terrain piece (ground, pipes, etc.).
@@ -47,4 +53,6 @@ private:
   TileType m_tileType = TileType::Empty;
   sf::Vector2f m_size = {TILE_SIZE, TILE_SIZE};
   sf::Sprite m_sprite;
+  float m_flameAnimTimer = 0.0f;
+  int   m_flameAnimFrame = 0;
 };
