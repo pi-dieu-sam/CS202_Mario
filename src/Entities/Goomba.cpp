@@ -12,7 +12,7 @@ Goomba::Goomba() {
 
 void Goomba::onStomped() {
   m_squished = true;
-  m_deathTimer = 1.0f; // Show death sprite for 1s
+  m_deathTimer = 0.5f; // Show death sprite for 1s
   m_velocity = {0.0f, 0.0f};
 }
 

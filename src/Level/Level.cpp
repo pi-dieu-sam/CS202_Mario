@@ -39,9 +39,16 @@ bool Level::loadFromFile(const std::string &filename,
   m_enemies = std::move(data.enemies);
   m_items = std::move(data.items);
   m_escalaters = std::move(data.escalaters);
+  m_fireBars = std::move(data.fireBars);
+  m_lavaFireballs = std::move(data.lavaFireballs);
   m_flagpole = std::move(data.flagpole);
   m_width = data.width;
   m_height = data.height;
+
+  // Set map bounds on escalaters so they reverse at level edges
+  for (auto &esc : m_escalaters) {
+    esc->setMapBounds(0.0f, m_height);
+  }
 
   // Create player at spawn point
   m_player = EntityFactory::createPlayer(characterName, data.playerSpawn);
@@ -126,6 +133,38 @@ void Level::update(float dt) {
       esc->update(dt);
   }
 
+  // Update tiles (flame animation)
+  for (auto &tile : m_tiles) {
+    if (tile->isActive())
+      tile->update(dt);
+  }
+
+  // Update fire bars (rotating hazards)
+  for (auto &fb : m_fireBars) {
+    if (fb->isActive())
+      fb->update(dt);
+  }
+
+  // Update lava fireballs (vertical hazards)
+  for (auto &lavaFireball : m_lavaFireballs) {
+    if (lavaFireball->isActive())
+      lavaFireball->update(dt);
+  }
+
+  // Escalater vs Tile collisions — reverse direction on contact
+  for (auto &esc : m_escalaters) {
+    if (!esc->isActive()) continue;
+    auto nearTiles = m_tileGrid.query(esc->getBounds());
+    for (auto *tile : nearTiles) {
+      if (!tile->isActive()) continue;
+      auto result = CollisionDetector::checkCollision(*esc, *tile);
+      if (result.collided) {
+        esc->reverseDirection();
+        break;
+      }
+    }
+  }
+
   // Update fireballs
   for (auto &fb : m_fireballs) {
     if (fb->isActive())
@@ -199,6 +238,19 @@ void Level::render(sf::RenderWindow &window, float cameraCenterX) {
   // Draw flagpole
   if (m_flagpole)
     m_flagpole->draw(window);
+
+  // Fire bars are drawn above the map. Their fire passes through every map
+  // object visually and physically; only a player touching a fire segment is
+  // affected.
+  for (auto &fb : m_fireBars) {
+    if (fb->isActive())
+      fb->draw(window);
+  }
+
+  for (auto &lavaFireball : m_lavaFireballs) {
+    if (lavaFireball->isActive())
+      lavaFireball->draw(window);
+  }
 
   // Draw player last (on top)
   if (m_player)
@@ -319,6 +371,12 @@ void Level::handlePlayerCollisions(Player* player, float dt) {
   for (Tile *tile : m_tileGrid.query(player->getBounds())) {
     auto result = CollisionDetector::checkCollision(*player, *tile);
     if (result.collided) {
+      // Lava and flame are lethal hazards — kill on contact, no physics resolve.
+      TileType tt = tile->getTileType();
+      if (tt == TileType::Lava || tt == TileType::Flame) {
+        player->die();
+        return;
+      }
       CollisionDetector::resolveCollision(*player, *tile, result);
       if (result.side == CollisionDetector::Side::Bottom) {
         player->setGrounded(true);
@@ -358,6 +416,29 @@ void Level::handlePlayerCollisions(Player* player, float dt) {
         // ride the platform up and down.
         player->setVelocity(player->getVelocity().x, esc->getVelocity().y);
       }
+    }
+  }
+
+  // Player vs FireBars (lethal rotating hazard)
+  for (auto &fb : m_fireBars) {
+    if (!fb->isActive()) continue;
+
+    for (int i = 0; i < fb->getSegmentCount(); ++i) {
+      sf::FloatRect segBounds = fb->getSegmentBounds(i);
+      if (player->getBounds().intersects(segBounds)) {
+        player->die();
+        return;
+      }
+    }
+  }
+
+  // Lava fireballs pass through level geometry and kill only on player
+  // contact while their launch/fall animation is visible.
+  for (auto &lavaFireball : m_lavaFireballs) {
+    if (lavaFireball->isActive() && lavaFireball->isVisible() &&
+        player->getBounds().intersects(lavaFireball->getBounds())) {
+      player->die();
+      return;
     }
   }
 

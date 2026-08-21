@@ -57,6 +57,23 @@ Tile::Tile(TileType tileType, float x, float y, LevelTheme theme,
     return;
   }
 
+  // Lava: a 16x16 texture scaled up to fill the 32x32 tile.
+  if (tileType == TileType::Lava) {
+    m_size = {TILE_SIZE, TILE_SIZE};
+    SpriteRegistry::applyFrame(m_sprite, SpriteRegistry::lavaPath(),
+                               sf::FloatRect(x, y, TILE_SIZE, TILE_SIZE));
+    return;
+  }
+
+  // Flame: 4 frames of 16x16 from flame.png (64x16 sheet), scaled to 32x32.
+  if (tileType == TileType::Flame) {
+    m_size = {TILE_SIZE, TILE_SIZE};
+    SpriteRegistry::applySheetFrame(m_sprite, SpriteRegistry::flamePath(),
+                                    0, 16, 0,
+                                    sf::FloatRect(x, y, TILE_SIZE, TILE_SIZE));
+    return;
+  }
+
   // Pipe tiles each represent one quadrant of the assembled pipe texture.
   // Loading the whole texture and selecting only the correct sub-rect avoids
   // the "bundle of 4" bug where 4 full-sized pipes overlapped each other.
@@ -92,12 +109,25 @@ Tile::Tile(TileType tileType, float x, float y, LevelTheme theme,
 }
 
 void Tile::update(float dt) {
-  // Static — no updates needed
+  if (m_tileType == TileType::Flame) {
+    constexpr float FLAME_FRAME_TIME = 0.12f;
+    m_flameAnimTimer += dt;
+    if (m_flameAnimTimer >= FLAME_FRAME_TIME) {
+      m_flameAnimTimer = 0.0f;
+      m_flameAnimFrame = (m_flameAnimFrame + 1) % 4;
+    }
+  }
 }
 
 void Tile::draw(sf::RenderWindow &window) {
   if (!m_active || m_tileType == TileType::Empty)
     return;
+  if (m_tileType == TileType::Flame) {
+    SpriteRegistry::applySheetFrame(m_sprite, SpriteRegistry::flamePath(),
+                                    m_flameAnimFrame, 16, 0,
+                                    sf::FloatRect(m_position.x, m_position.y,
+                                                  TILE_SIZE, TILE_SIZE));
+  }
   window.draw(m_sprite);
 }
 

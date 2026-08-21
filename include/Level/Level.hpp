@@ -10,6 +10,8 @@
 #include "../Entities/Player.hpp"
 #include "../Entities/Tile.hpp"
 #include "../Entities/Escalater.hpp"
+#include "../Entities/FireBar.hpp"
+#include "../Entities/LavaFireball.hpp"
 #include <optional>
 #include <memory>
 #include <string>
@@ -76,7 +78,9 @@ private:
   std::vector<std::unique_ptr<Enemy>> m_enemies;
   std::vector<std::unique_ptr<Item>> m_items;
   std::vector<std::unique_ptr<Fireball>> m_fireballs;
-  std::vector<std::unique_ptr<Escalater>> m_escalaters;
+  std::vector<std::unique_ptr<Escalater>>  m_escalaters;
+  std::vector<std::unique_ptr<FireBar>>    m_fireBars;
+  std::vector<std::unique_ptr<LavaFireball>> m_lavaFireballs;
   std::unique_ptr<Flagpole> m_flagpole;
 
   float m_width = 0.0f;
