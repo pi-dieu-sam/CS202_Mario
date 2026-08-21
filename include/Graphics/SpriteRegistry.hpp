@@ -97,6 +97,7 @@ public:
   static const std::string &flamePath();
   static const std::string &fireBarBlockPath();
   static const std::string &fireBarSegmentPath();
+  static const std::string &lavaFireballPath();
 
   /// Shared draw-transform helper: loads `path` through AssetManager, binds
   /// it to the sprite, pivots on bottom-center (so horizontal flip mirrors

@@ -560,6 +560,11 @@ const std::string &SpriteRegistry::fireBarSegmentPath() {
   return p;
 }
 
+const std::string &SpriteRegistry::lavaFireballPath() {
+  static const std::string p = "assets/textures/items/FireDownUP.png";
+  return p;
+}
+
 void SpriteRegistry::applyFrame(sf::Sprite &sprite, const std::string &path,
                                  const sf::FloatRect &box, bool flip) {
   sf::Texture &texture = AssetManager::getInstance().getTexture(path);

@@ -40,6 +40,7 @@ bool Level::loadFromFile(const std::string &filename,
   m_items = std::move(data.items);
   m_escalaters = std::move(data.escalaters);
   m_fireBars = std::move(data.fireBars);
+  m_lavaFireballs = std::move(data.lavaFireballs);
   m_flagpole = std::move(data.flagpole);
   m_width = data.width;
   m_height = data.height;
@@ -144,6 +145,12 @@ void Level::update(float dt) {
       fb->update(dt);
   }
 
+  // Update lava fireballs (vertical hazards)
+  for (auto &lavaFireball : m_lavaFireballs) {
+    if (lavaFireball->isActive())
+      lavaFireball->update(dt);
+  }
+
   // Escalater vs Tile collisions — reverse direction on contact
   for (auto &esc : m_escalaters) {
     if (!esc->isActive()) continue;
@@ -238,6 +245,11 @@ void Level::render(sf::RenderWindow &window, float cameraCenterX) {
   for (auto &fb : m_fireBars) {
     if (fb->isActive())
       fb->draw(window);
+  }
+
+  for (auto &lavaFireball : m_lavaFireballs) {
+    if (lavaFireball->isActive())
+      lavaFireball->draw(window);
   }
 
   // Draw player last (on top)
@@ -417,6 +429,16 @@ void Level::handlePlayerCollisions(Player* player, float dt) {
         player->die();
         return;
       }
+    }
+  }
+
+  // Lava fireballs pass through level geometry and kill only on player
+  // contact while their launch/fall animation is visible.
+  for (auto &lavaFireball : m_lavaFireballs) {
+    if (lavaFireball->isActive() && lavaFireball->isVisible() &&
+        player->getBounds().intersects(lavaFireball->getBounds())) {
+      player->die();
+      return;
     }
   }
 
