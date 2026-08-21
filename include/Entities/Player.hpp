@@ -26,6 +26,10 @@ public:
   void update(float dt) override;
   void draw(sf::RenderWindow &window) override;
   sf::FloatRect getBounds() const override;
+  /// Compact, feet-anchored body used only for interactive block collisions.
+  /// This keeps low question blocks usable while a power-up enlarges the
+  /// player's visual/terrain body.
+  sf::FloatRect getBlockInteractionBounds() const;
   float getEffectiveSpeed() const override;
   void jump() override;
 

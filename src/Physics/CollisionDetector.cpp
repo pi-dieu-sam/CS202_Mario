@@ -86,10 +86,15 @@ SweepResult sweepAabb(const sf::FloatRect& aPrevious,
 CollisionDetector::CollisionResult CollisionDetector::checkCollision(
     const GameObject& a, const GameObject& b)
 {
-    CollisionResult result;
+    return checkCollision(a.getBounds(), a.getVelocity(), b.getBounds(),
+                          b.getVelocity());
+}
 
-    sf::FloatRect boundsA = a.getBounds();
-    sf::FloatRect boundsB = b.getBounds();
+CollisionDetector::CollisionResult CollisionDetector::checkCollision(
+    const sf::FloatRect& boundsA, const sf::Vector2f& velocityA,
+    const sf::FloatRect& boundsB, const sf::Vector2f& velocityB)
+{
+    CollisionResult result;
 
     if (!boundsA.intersects(boundsB)) {
         return result; // No collision
@@ -112,7 +117,7 @@ CollisionDetector::CollisionResult CollisionDetector::checkCollision(
     // stationary object being pushed into from outside.)
     // Use relative velocity (A minus B) so that moving platforms like the
     // escalater are taken into account when determining collision side.
-    sf::Vector2f relVel = a.getVelocity() - b.getVelocity();
+    sf::Vector2f relVel = velocityA - velocityB;
     float verticalOverlap   = (relVel.y > 0.0f)  ? overlapTop
                              : (relVel.y < 0.0f) ? overlapBottom
                              : std::min(overlapTop, overlapBottom);

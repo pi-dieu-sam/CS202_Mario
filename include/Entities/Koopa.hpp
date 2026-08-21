@@ -25,7 +25,10 @@ public:
 
     /// Kick the shell in the given direction (-1 = left, +1 = right).
     void kick(float direction);
-    /// Stop the sliding shell (e.g. when it hits a wall).
+    /// Reverse a sliding shell after a horizontal collision. The incoming
+    /// velocity is captured before collision resolution clears it.
+    void bounce(float incomingVelocity);
+    /// Stop the sliding shell (for example, when the player stomps it).
     void stopSliding();
 
 private:

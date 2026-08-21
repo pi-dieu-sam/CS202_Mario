@@ -203,6 +203,16 @@ sf::FloatRect Player::getBounds() const {
   return sf::FloatRect(left, top, w, h - 2);
 }
 
+sf::FloatRect Player::getBlockInteractionBounds() const {
+  // Use the original small-player body, anchored to the same feet as the
+  // enlarged player. Question and brick blocks can therefore still be hit in
+  // one-tile clearances, without changing collisions against terrain.
+  constexpr float bodyWidth = TILE_SIZE - 4.0f;
+  constexpr float bodyHeight = TILE_SIZE - 2.0f;
+  const float feet = m_position.y + TILE_SIZE * 2.0f - 2.0f;
+  return {m_position.x + 2.0f, feet - bodyHeight, bodyWidth, bodyHeight};
+}
+
 float Player::getEffectiveSpeed() const {
   float base = m_sprinting ? m_speed * PLAYER_SPRINT : m_speed;
   if (hasSizeBuff()) {
