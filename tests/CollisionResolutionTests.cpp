@@ -13,6 +13,7 @@
 #include "Level/TileGrid.hpp"
 #include "Entities/Goomba.hpp"
 #include "Entities/Koopa.hpp"
+#include "Entities/Block.hpp"
 #include "Entities/PiranhaPlant.hpp"
 #include "Entities/Luigi.hpp"
 #include "Entities/Mario.hpp"
@@ -153,6 +154,17 @@ static void testKoopaDyingAndRespawn() {
   }
   {
     Koopa koopa;
+    koopa.onStomped();
+    koopa.kick(1.0f);
+    const float incomingVx = koopa.getVelocity().x;
+    koopa.bounce(incomingVx);
+    CHECK(koopa.isSliding(),
+          "a shell remains sliding after it hits a horizontal obstacle");
+    CHECK(koopa.getVelocity().x == -incomingVx,
+          "a sliding shell reverses direction after hitting an obstacle");
+  }
+  {
+    Koopa koopa;
     koopa.kill();
     CHECK(koopa.getKoopaState() == KoopaState::Shell,
           "Koopa enters Shell state after kill()");
@@ -161,6 +173,59 @@ static void testKoopaDyingAndRespawn() {
     CHECK(koopa.isDead() == false,
           "Shell Koopa is not dead (will respawn)");
   }
+}
+
+static void testGoombaStompDisablesCollisionImmediately() {
+  Goomba goomba;
+  goomba.onStomped();
+  CHECK(goomba.isActive(),
+        "a squished Goomba remains active only for its death sprite");
+  CHECK(goomba.isDead(), "a stomped Goomba is marked dead immediately");
+  CHECK(!goomba.isVulnerable(),
+        "a squished Goomba is excluded from collision damage immediately");
+
+  goomba.update(0.2f);
+  CHECK(goomba.isActive(), "the squished sprite remains visible during its timer");
+  goomba.update(0.4f);
+  CHECK(!goomba.isActive(),
+        "the Goomba is removed after its squished sprite timer expires");
+}
+
+static void testEnlargedPlayersCanHitBlocksWithCompactBody() {
+  Block block(BlockType::Question, 100.0f, 128.0f,
+              LevelTheme::Overworld);
+
+  auto checkHeadHit = [&](Player& player, const char* form) {
+    // The compact body is just one pixel into the underside of the block.
+    // A Fire player's full body would already overlap most of the block here.
+    player.setPosition(100.0f, 127.0f);
+    player.setVelocity(0.0f, PLAYER_JUMP);
+    const auto result = CollisionDetector::checkCollision(
+        player.getBlockInteractionBounds(), player.getVelocity(),
+        block.getBounds(), block.getVelocity());
+    CHECK(result.collided && result.side == CollisionDetector::Side::Top,
+          form);
+    CHECK(player.getBlockInteractionBounds().height == TILE_SIZE - 2.0f,
+          "enlarged players retain the compact question-block interaction body");
+  };
+
+  Mario fireMario;
+  fireMario.enableFire();
+  CHECK(fireMario.getBounds().height > fireMario.getBlockInteractionBounds().height,
+        "Fire Mario has an enlarged terrain/render body");
+  checkHeadHit(fireMario,
+               "Fire Mario's compact body reports a hit from below");
+
+  Luigi buffLuigi;
+  buffLuigi.applySizeBuff();
+  for (int frame = 0; frame < 5; ++frame) {
+    buffLuigi.update(0.15f);
+  }
+  CHECK(buffLuigi.getBounds().height >
+            buffLuigi.getBlockInteractionBounds().height,
+        "FlowersBuff Luigi has an enlarged terrain/render body");
+  checkHeadHit(buffLuigi,
+               "FlowersBuff Luigi's compact body reports a hit from below");
 }
 
 // Confirms resolveCollision() itself is unchanged: the player's wall-stop
@@ -605,6 +670,8 @@ int main() {
   testGoombaBouncesBothDirections();
   testMushroomReversesInsteadOfStopping();
   testKoopaDyingAndRespawn();
+  testGoombaStompDisablesCollisionImmediately();
+  testEnlargedPlayersCanHitBlocksWithCompactBody();
   testResolveCollisionAloneStillZeroesVelocity();
   testTileGridExcludesDistantTiles();
   testUpwardEdgeHitResolvesAsWall();

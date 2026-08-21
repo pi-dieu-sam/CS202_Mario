@@ -315,22 +315,53 @@ void Level::handlePlayerCollisions(Player* player, float dt) {
 
   player->setGrounded(false);
 
-  // Player vs Tiles
-  for (Tile *tile : m_tileGrid.query(player->getBounds())) {
-    auto result = CollisionDetector::checkCollision(*player, *tile);
-    if (result.collided) {
-      CollisionDetector::resolveCollision(*player, *tile, result);
-      if (result.side == CollisionDetector::Side::Bottom) {
-        player->setGrounded(true);
-      }
-    }
-  }
-
   // Player vs Blocks
+  // Resolve block contacts before terrain. An enlarged player can overlap a
+  // low block with its upper body, and terrain resolution would otherwise
+  // zero the jump or push the player sideways before the block sees the hit.
+  const bool enlargedPlayer =
+      player->getPowerUpState() != PowerUpState::Small ||
+      player->hasSizeBuff();
   for (auto &block : m_blocks) {
     if (!block->isActive())
       continue;
-    auto result = CollisionDetector::checkCollision(*player, *block);
+
+    const sf::FloatRect interactionBounds =
+        player->getBlockInteractionBounds();
+    const sf::FloatRect blockBounds = block->getBounds();
+    const auto result = CollisionDetector::checkCollision(
+        interactionBounds, player->getVelocity(), blockBounds,
+        block->getVelocity());
+
+    // The generic AABB side choice intentionally treats a very shallow
+    // upward corner overlap as a wall. For a player whose centre is inside
+    // the block's width, however, an upward overlap is a head hit even when
+    // horizontal movement makes that generic result report Left/Right.
+    const float playerCenterX =
+        interactionBounds.left + interactionBounds.width * 0.5f;
+    const float blockBottom = blockBounds.top + blockBounds.height;
+    const bool centeredUnderBlock =
+        playerCenterX > blockBounds.left &&
+        playerCenterX < blockBounds.left + blockBounds.width;
+    const bool risingHeadHit =
+        result.collided && player->getVelocity().y < 0.0f &&
+        centeredUnderBlock && interactionBounds.top >= blockBounds.top &&
+        interactionBounds.top < blockBottom;
+
+    if (risingHeadHit) {
+      sf::Vector2f position = player->getPosition();
+      position.y += blockBottom - interactionBounds.top;
+      player->setPosition(position);
+      player->setVelocity(player->getVelocity().x, 0.0f);
+
+      auto spawnedItem =
+          block->hit(player->getPowerUpState() != PowerUpState::Small);
+      if (spawnedItem) {
+        m_items.push_back(std::move(spawnedItem));
+      }
+      continue;
+    }
+
     if (result.collided) {
       CollisionDetector::resolveCollision(*player, *block, result);
       if (result.side == CollisionDetector::Side::Bottom) {
@@ -343,6 +374,32 @@ void Level::handlePlayerCollisions(Player* player, float dt) {
           m_items.push_back(std::move(spawnedItem));
         }
       }
+    }
+  }
+
+  // Player vs Tiles
+  for (Tile *tile : m_tileGrid.query(player->getBounds())) {
+    auto result = CollisionDetector::checkCollision(*player, *tile);
+    if (!result.collided)
+      continue;
+
+    if (enlargedPlayer) {
+      const sf::FloatRect interactionBounds =
+          player->getBlockInteractionBounds();
+      const sf::FloatRect tileBounds = tile->getBounds();
+      const auto compactResult = CollisionDetector::checkCollision(
+          interactionBounds, player->getVelocity(), tileBounds,
+          tile->getVelocity());
+      const bool enlargedOnlyOverlap =
+          !compactResult.collided &&
+          tileBounds.top + tileBounds.height <= interactionBounds.top + 0.01f;
+      if (enlargedOnlyOverlap)
+        continue;
+    }
+
+    CollisionDetector::resolveCollision(*player, *tile, result);
+    if (result.side == CollisionDetector::Side::Bottom) {
+      player->setGrounded(true);
     }
   }
 
@@ -363,6 +420,7 @@ void Level::handlePlayerCollisions(Player* player, float dt) {
 
   // Player vs Enemies
   Enemy *firstEnemyHit = nullptr;
+  Enemy *stompedEnemy = nullptr;
   CollisionDetector::CollisionResult firstEnemyResult;
   float firstImpactTime = 2.0f;
   for (auto &enemy : m_enemies) {
@@ -397,6 +455,10 @@ void Level::handlePlayerCollisions(Player* player, float dt) {
       CollisionDetector::moveToImpact(*player, firstEnemyResult);
       const sf::Vector2f scorePosition = boundsCenter(*firstEnemyHit);
       firstEnemyHit->onStomped();
+      // A walking Koopa becomes a shell here. Do not immediately process that
+      // newly-created shell as a second collision in the same frame, or the
+      // shell resolver would cancel the player's stomp bounce.
+      stompedEnemy = firstEnemyHit;
       const float bounceVelocity =
           player->isJumpHeld() ? player->getJumpForce() : -250.0f;
       player->setVelocity(player->getVelocity().x, bounceVelocity);
@@ -410,16 +472,54 @@ void Level::handlePlayerCollisions(Player* player, float dt) {
   for (auto &enemy : m_enemies) {
     if (!enemy->isActive() || enemy->isDead() || enemy->isVulnerable())
       continue;
+    if (enemy.get() == stompedEnemy)
+      continue;
+
     auto result = CollisionDetector::checkCollision(*player, *enemy);
-    if (result.collided) {
-      CollisionDetector::resolveCollision(*player, *enemy, result);
-      // Kick the shell if it's sitting still
-      auto *koopa = dynamic_cast<Koopa*>(enemy.get());
-      if (koopa && koopa->getKoopaState() == KoopaState::Shell && !koopa->isSliding()) {
-        float kickDir = (result.side == CollisionDetector::Side::Left) ? -1.0f : 1.0f;
+    if (!result.collided)
+      continue;
+
+    auto *koopa = dynamic_cast<Koopa*>(enemy.get());
+    if (koopa && koopa->getKoopaState() == KoopaState::Shell) {
+      if (result.side == CollisionDetector::Side::Bottom) {
+        const bool wasFalling = player->getVelocity().y > 0.0f;
+        CollisionDetector::resolveCollision(*player, *enemy, result);
+        if (wasFalling) {
+          const bool wasSliding = koopa->isSliding();
+          const float playerCenter =
+              player->getBounds().left + player->getBounds().width * 0.5f;
+          const float shellCenter =
+              enemy->getBounds().left + enemy->getBounds().width * 0.5f;
+          if (wasSliding) {
+            koopa->stopSliding();
+          } else {
+            koopa->kick(playerCenter < shellCenter ? 1.0f : -1.0f);
+          }
+          const float bounceVelocity =
+              player->isJumpHeld() ? player->getJumpForce() : -250.0f;
+          player->setVelocity(player->getVelocity().x, bounceVelocity);
+          player->setGrounded(false);
+        } else {
+          // A resting player must be grounded on a sitting shell so jump()
+          // remains available on the next input frame.
+          player->setGrounded(true);
+        }
+        continue;
+      }
+
+      if (!koopa->isSliding() &&
+          (result.side == CollisionDetector::Side::Left ||
+           result.side == CollisionDetector::Side::Right)) {
+        CollisionDetector::resolveCollision(*player, *enemy, result);
+        const float kickDir = result.side == CollisionDetector::Side::Left
+                                  ? -1.0f
+                                  : 1.0f;
         koopa->kick(kickDir);
+        continue;
       }
     }
+
+    CollisionDetector::resolveCollision(*player, *enemy, result);
   }
 
   if (player->isDead()) return;
@@ -539,8 +639,7 @@ void Level::handleCollisions(float dt) {
             result.side == CollisionDetector::Side::Right) {
           auto *koopa = dynamic_cast<Koopa*>(enemy.get());
           if (koopa && koopa->getKoopaState() == KoopaState::Shell && koopa->isSliding()) {
-            // Sliding shell stops when hitting a wall
-            koopa->stopSliding();
+            koopa->bounce(preVel.x);
           } else {
             // Reverse direction using the pre-collision velocity — resolveCollision()
             // zeroes vel.x (needed for the player's wall-stop), so reading it after
@@ -567,7 +666,7 @@ void Level::handleCollisions(float dt) {
             result.side == CollisionDetector::Side::Right) {
           auto *koopa = dynamic_cast<Koopa*>(enemy.get());
           if (koopa && koopa->getKoopaState() == KoopaState::Shell && koopa->isSliding()) {
-            koopa->stopSliding();
+            koopa->bounce(preVel.x);
           } else {
             float newVx = CollisionDetector::reflectHorizontalVelocity(
                 preVel.x, result.side, enemy->getSpeed());

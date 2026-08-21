@@ -2,6 +2,7 @@
 #include "AI/PatrolStrategy.hpp"
 #include "Graphics/SpriteRegistry.hpp"
 #include "Physics/PhysicsConstants.hpp"
+#include <cmath>
 
 Koopa::Koopa() {
   m_speed = 60.0f;
@@ -103,6 +104,17 @@ void Koopa::kick(float direction) {
   m_velocity.x = direction * m_shellSpeed;
   m_facingRight = direction > 0.0f;
   m_dieTimer = 0.0f;
+}
+
+void Koopa::bounce(float incomingVelocity) {
+  if (m_koopaState != KoopaState::Shell || !m_sliding)
+    return;
+
+  const float speed = std::abs(incomingVelocity) > 0.0f
+                          ? std::abs(incomingVelocity)
+                          : m_shellSpeed;
+  m_velocity.x = incomingVelocity >= 0.0f ? -speed : speed;
+  m_facingRight = m_velocity.x > 0.0f;
 }
 
 void Koopa::stopSliding() {
