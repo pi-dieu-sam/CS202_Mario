@@ -1,4 +1,5 @@
 #pragma once
+#include <SFML/Graphics/Rect.hpp>
 #include <SFML/System/Vector2.hpp>
 #include <vector>
 #include <memory>
@@ -24,6 +25,14 @@ public:
 
     /// Check AABB overlap between two objects.
     static CollisionResult checkCollision(const GameObject& a, const GameObject& b);
+
+    /// Check AABB overlap for explicit collision bodies. This is useful when
+    /// an object has a specialized interaction body, such as the player's
+    /// compact block-hit body.
+    static CollisionResult checkCollision(const sf::FloatRect& boundsA,
+                                          const sf::Vector2f& velocityA,
+                                          const sf::FloatRect& boundsB,
+                                          const sf::Vector2f& velocityB);
 
     /// Detect the first AABB contact during the most recent simulation step.
     /// This catches objects that pass through each other between two frames and

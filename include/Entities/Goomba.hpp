@@ -9,9 +9,11 @@ public:
     void onStomped() override;
     void update(float dt) override;
     void draw(sf::RenderWindow& window) override;
+    bool isVulnerable() const override;
 
 private:
-    // Squish animation on death
+    // Keep the squished sprite drawable for a short time while the Goomba is
+    // already dead and excluded from every collision path.
     float m_deathTimer = 0.0f;
-    bool  m_squished   = false;
+    bool  m_squished = false;
 };
