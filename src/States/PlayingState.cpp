@@ -14,6 +14,7 @@
 #include "Observers/EventManager.hpp"
 #include "UI/HUD.hpp"
 #include <algorithm>
+#include <algorithm>
 #include <iostream>
 #include <sstream>
 
@@ -298,12 +299,22 @@ void PlayingState::loadLevel(int levelNumber) {
     m_mainLevelNumber = levelNumber;
     m_inSecretRoom = false;
 
-    std::string filename = getLevelPath(levelNumber, false);
-    std::string charName = Game::getInstance().getProgress().getSelectedCharacter();
+    PlayerProgress& progress = Game::getInstance().getProgress();
+    std::string charName = progress.getSelectedCharacter();
 
-    LevelTheme theme = getLevelTheme(levelNumber, false);
+    std::string filename;
+    LevelTheme theme;
 
-    if (!m_level->loadFromFile(filename, charName, theme)) {
+    if (progress.isPvP()) {
+        // PvP always loads the dedicated arena — no level progression
+        filename = "assets/levels/pvp_arena.txt";
+        theme    = LevelTheme::Overworld;
+    } else {
+        filename = getLevelPath(levelNumber, false);
+        theme    = getLevelTheme(levelNumber, false);
+    }
+
+    if (!m_level->loadFromFile(filename, charName, theme, /*autoPlaceFlagpole=*/!progress.isPvP())) {
         std::cerr << "[PlayingState] Failed to load level: " << filename << std::endl;
         return;
     }
@@ -582,6 +593,32 @@ void PlayingState::beginPlayerDeath() {
 
 void PlayingState::finishPlayerDeath() {
     Game& game = Game::getInstance();
+
+    // PvP: whoever is still alive wins — no lives system
+    if (game.getProgress().isPvP()) {
+        bool p1Dead = !m_player || m_player->isDead();
+        bool p2Dead = !m_player2 || m_player2->isDead();
+
+        if (p1Dead && !p2Dead) {
+            // P2 wins
+            std::string winner = (game.getProgress().getSelectedCharacter() == "Mario") ? "LUIGI" : "MARIO";
+            game.getStateManager().changeState(
+                std::make_unique<GameOverState>(GameResult::P2Won, winner));
+        } else if (p2Dead && !p1Dead) {
+            // P1 wins
+            std::string winner = game.getProgress().getSelectedCharacter();
+            std::transform(winner.begin(), winner.end(), winner.begin(), ::toupper);
+            game.getStateManager().changeState(
+                std::make_unique<GameOverState>(GameResult::P1Won, winner));
+        } else {
+            // Both dead simultaneously = draw
+            game.getStateManager().changeState(
+                std::make_unique<GameOverState>(GameResult::Lost));
+        }
+        return;
+    }
+
+    // Normal / Co-op: classic lives system
     game.getProgress().loseLife();
     m_hud->setLives(game.getProgress().getLives());
 
