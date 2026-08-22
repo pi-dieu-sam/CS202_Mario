@@ -67,7 +67,13 @@ void PlayingState::onEnter() {
     m_playerDiedSub = ScopedEventSubscription(EventType::PlayerDied, [this](const GameEvent& e) {
         SoundManager::getInstance().stopMusic();
         SoundManager::getInstance().playSound(SoundID::PlayerDeath);
-        beginPlayerDeath();
+        // In PvP, only trigger the death transition once (first player to die wins the sequence)
+        if (Game::getInstance().getProgress().isPvP()) {
+            // Mark who died; finishPlayerDeath() reads isDead() directly
+            beginPlayerDeath();
+        } else {
+            beginPlayerDeath();
+        }
     });
 
     m_powerUpSub = ScopedEventSubscription(EventType::PowerUpCollected, [this](const GameEvent& e) {
@@ -163,12 +169,15 @@ void PlayingState::update(float dt) {
             // The player owns the arc and pause timing. Keep the level alive
             // until that animation reports completion.
             m_level->update(dt);
-            if (m_player2 && !m_player->isDead()) {
+            if (m_player2 && !m_player2->isDead()) {
                 m_camera.update(m_player->getPosition(), m_player2->getPosition());
-            } else {
+            } else if (!m_player->isDead()) {
                 m_camera.update(m_player->getPosition());
             }
-            if (m_player->isDeathAnimationComplete() || (m_player2 && m_player2->isDeathAnimationComplete())) {
+            // In PvP: wait for the dying player's animation to complete
+            bool p1AnimDone = m_player->isDead() && m_player->isDeathAnimationComplete();
+            bool p2AnimDone = m_player2 && m_player2->isDead() && m_player2->isDeathAnimationComplete();
+            if (p1AnimDone || p2AnimDone) {
                 finishPlayerDeath();
             }
             return;
@@ -227,12 +236,14 @@ void PlayingState::update(float dt) {
     m_level->update(dt);
 
     if (m_transitionStage == LevelTransitionStage::DeathAnimation) {
-        if (m_player2 && !m_player->isDead()) {
+        if (m_player2 && !m_player2->isDead()) {
             m_camera.update(m_player->getPosition(), m_player2->getPosition());
-        } else {
+        } else if (!m_player->isDead()) {
             m_camera.update(m_player->getPosition());
         }
-        if (m_player->isDeathAnimationComplete() || (m_player2 && m_player2->isDeathAnimationComplete())) {
+        bool p1AnimDone = m_player->isDead() && m_player->isDeathAnimationComplete();
+        bool p2AnimDone = m_player2 && m_player2->isDead() && m_player2->isDeathAnimationComplete();
+        if (p1AnimDone || p2AnimDone) {
             finishPlayerDeath();
         }
         return;
