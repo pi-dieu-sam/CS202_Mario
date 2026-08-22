@@ -44,6 +44,7 @@ bool Level::loadFromFile(const std::string &filename,
 
   // Create player at spawn point
   m_player = EntityFactory::createPlayer(characterName, data.playerSpawn);
+  if (m_player) m_player->setPlayerId(1);
 
   if (Game::getInstance().getProgress().isMultiplayer()) {
       std::string char2 = (characterName == "Mario") ? "Luigi" : "Mario";
@@ -52,6 +53,7 @@ bool Level::loadFromFile(const std::string &filename,
                               ? data.player2Spawn
                               : sf::Vector2f(data.playerSpawn.x - 24.0f, data.playerSpawn.y);
       m_player2 = EntityFactory::createPlayer(char2, spawn2);
+      if (m_player2) m_player2->setPlayerId(2);
   }
 
   if (!m_player)
