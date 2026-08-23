@@ -88,6 +88,20 @@ const std::string &questionIdlePath(LevelTheme theme) {
   };
   return paths[themeIndex(theme)];
 }
+
+const std::string &forkedPipePath() {
+  // Single 64x64 fork/warp-pipe sprite shared across all themes.
+  static const std::string p = "assets/textures/SMBWarpPipeForked.png";
+  return p;
+}
+
+enum class CastleSize { Small, Large };
+
+const std::string &castlePath(CastleSize size) {
+  static const std::string small = "assets/textures/SMB_Fortress.png";
+  static const std::string large = "assets/textures/LargeFortressSMB.png";
+  return (size == CastleSize::Small) ? small : large;
+}
 } // namespace
 
 const std::string &SpriteRegistry::tilePath(TileType type, LevelTheme theme) {
@@ -97,6 +111,13 @@ const std::string &SpriteRegistry::tilePath(TileType type, LevelTheme theme) {
   case TileType::PipeBodyLeft:
   case TileType::PipeBodyRight:
     return pipePath(theme);
+  case TileType::ForkedPipeHead:
+  case TileType::ForkedPipeBase:
+    return forkedPipePath();
+  case TileType::CastleSmall:
+    return castlePath(CastleSize::Small);
+  case TileType::CastleLarge:
+    return castlePath(CastleSize::Large);
   case TileType::Ground:
   case TileType::Underground:
   case TileType::CastleBlock:
