@@ -55,9 +55,11 @@ private:
 
     std::unique_ptr<Level>  m_level;
     Player*                 m_player = nullptr; // owned by m_level
+    Player*                 m_player2 = nullptr; // owned by m_level
     std::unique_ptr<HUD>    m_hud;
     ScorePopupManager       m_scorePopups;
-    InputHandler            m_input;
+    InputHandler            m_inputP1;
+    InputHandler            m_inputP2;
     Camera                  m_camera;
 
     ScopedEventSubscription m_coinSub;
@@ -84,4 +86,5 @@ private:
     bool m_inSecretRoom = false;
     sf::Vector2f m_pipeReturnPosition = {0.0f, 0.0f};
     PowerUpState m_pipeReturnPowerUp = PowerUpState::Small;
+    PowerUpState m_pipeReturnPowerUp2 = PowerUpState::Small;
 };

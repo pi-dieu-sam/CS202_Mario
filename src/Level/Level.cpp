@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <cmath>
 #include <optional>
+#include "Core/Game.hpp"
 
 namespace {
 sf::Vector2f boundsCenter(const GameObject& object) {
@@ -43,6 +44,17 @@ bool Level::loadFromFile(const std::string &filename,
 
   // Create player at spawn point
   m_player = EntityFactory::createPlayer(characterName, data.playerSpawn);
+  if (m_player) m_player->setPlayerId(1);
+
+  if (Game::getInstance().getProgress().isMultiplayer()) {
+      std::string char2 = (characterName == "Mario") ? "Luigi" : "Mario";
+      // Use explicit P2 spawn if the map defines one ('2'), otherwise offset from P1
+      sf::Vector2f spawn2 = data.hasPlayer2Spawn
+                              ? data.player2Spawn
+                              : sf::Vector2f(data.playerSpawn.x - 24.0f, data.playerSpawn.y);
+      m_player2 = EntityFactory::createPlayer(char2, spawn2);
+      if (m_player2) m_player2->setPlayerId(2);
+  }
 
   if (!m_player)
     return false;
@@ -56,19 +68,30 @@ void Level::update(float dt) {
   if (!m_player)
     return;
 
-  // Update player
-  m_player->update(dt);
+  // Update players
+  bool anyDead = (m_player && m_player->isDead()) || (m_player2 && m_player2->isDead());
+  
+  if (m_player) {
+      if (m_player->isDead() || !anyDead) m_player->update(dt);
+  }
+  if (m_player2) {
+      if (m_player2->isDead() || !anyDead) m_player2->update(dt);
+  }
 
   // Use level height instead of a hardcoded world-space Y to decide abyss death.
   if (!m_player->isDead() &&
       m_player->getBounds().top > m_height + PLAYER_FALL_DEATH_MARGIN) {
     m_player->die();
   }
+  if (m_player2 && !m_player2->isDead() &&
+      m_player2->getBounds().top > m_height + PLAYER_FALL_DEATH_MARGIN) {
+    m_player2->die();
+  }
 
   // During the visible death sequence, Mario/Luigi is the only entity that
   // advances. Freezing the rest of the level keeps enemies, items, fireballs,
   // and block animations at their exact death-frame positions until respawn.
-  if (m_player->isDead()) {
+  if (m_player->isDead() || (m_player2 && m_player2->isDead())) {
     return;
   }
 
@@ -79,6 +102,7 @@ void Level::update(float dt) {
 
     // Feed chase strategies the player position (ignored by strategies
     // that don't use it, e.g. PatrolStrategy).
+    // Note: for simplicity in co-op, enemies will just track m_player.
     enemy->updatePlayerPosition(m_player->getPosition());
     enemy->update(dt);
   }
@@ -121,6 +145,7 @@ void Level::updateCompletion(float dt) {
   // normal update path run would re-enable gravity, enemy contacts, pickups,
   // and tile collision responses partway through the flag-pole sequence.
   m_player->update(dt);
+  if (m_player2) m_player2->update(dt);
   if (m_flagpole) {
     m_flagpole->update(dt);
   }
@@ -165,9 +190,12 @@ void Level::render(sf::RenderWindow &window, float cameraCenterX) {
   // Draw player last (on top)
   if (m_player)
     m_player->draw(window);
+  if (m_player2)
+    m_player2->draw(window);
 }
 
 Player *Level::getPlayer() const { return m_player.get(); }
+Player *Level::getPlayer2() const { return m_player2.get(); }
 Flagpole *Level::getFlagpole() const { return m_flagpole.get(); }
 float Level::getWidth() const { return m_width; }
 float Level::getHeight() const { return m_height; }
@@ -269,20 +297,18 @@ Level::getTouchedPipeBounds(const Player &player) const {
 
 bool Level::isComplete() const { return m_flagpole && m_flagpole->isReached(); }
 
-void Level::handleCollisions(float dt) {
-  if (!m_player || m_player->isDead())
-    return;
+void Level::handlePlayerCollisions(Player* player, float dt) {
+  if (!player || player->isDead()) return;
 
-  // Reset grounded state each frame
-  m_player->setGrounded(false);
+  player->setGrounded(false);
 
   // Player vs Tiles
-  for (Tile *tile : m_tileGrid.query(m_player->getBounds())) {
-    auto result = CollisionDetector::checkCollision(*m_player, *tile);
+  for (Tile *tile : m_tileGrid.query(player->getBounds())) {
+    auto result = CollisionDetector::checkCollision(*player, *tile);
     if (result.collided) {
-      CollisionDetector::resolveCollision(*m_player, *tile, result);
+      CollisionDetector::resolveCollision(*player, *tile, result);
       if (result.side == CollisionDetector::Side::Bottom) {
-        m_player->setGrounded(true);
+        player->setGrounded(true);
       }
     }
   }
@@ -291,16 +317,15 @@ void Level::handleCollisions(float dt) {
   for (auto &block : m_blocks) {
     if (!block->isActive())
       continue;
-    auto result = CollisionDetector::checkCollision(*m_player, *block);
+    auto result = CollisionDetector::checkCollision(*player, *block);
     if (result.collided) {
-      CollisionDetector::resolveCollision(*m_player, *block, result);
+      CollisionDetector::resolveCollision(*player, *block, result);
       if (result.side == CollisionDetector::Side::Bottom) {
-        m_player->setGrounded(true);
+        player->setGrounded(true);
       }
       if (result.side == CollisionDetector::Side::Top) {
-        // Hit block from below
         auto spawnedItem =
-            block->hit(m_player->getPowerUpState() != PowerUpState::Small);
+            block->hit(player->getPowerUpState() != PowerUpState::Small);
         if (spawnedItem) {
           m_items.push_back(std::move(spawnedItem));
         }
@@ -316,27 +341,20 @@ void Level::handleCollisions(float dt) {
     if (!enemy->isActive() || enemy->isDead())
       continue;
 
-    // Prefer the time-of-impact result for a new player/enemy contact. A
-    // final-frame overlap can be deep enough to make a legitimate stomp look
-    // like a side collision, and can miss an enemy entirely at higher speed.
-    auto result = CollisionDetector::checkSweptCollision(*m_player, *enemy, dt);
+    auto result = CollisionDetector::checkSweptCollision(*player, *enemy, dt);
     if (!result.collided) {
-      result = CollisionDetector::checkCollision(*m_player, *enemy);
+      result = CollisionDetector::checkCollision(*player, *enemy);
     }
     if (!result.collided)
       continue;
 
-    if (m_player->hasStarPower()) {
-      // Star power kills every enemy it touches this frame.
+    if (player->hasStarPower()) {
       const sf::Vector2f scorePosition = boundsCenter(*enemy);
       enemy->onStomped();
       publishEnemyDefeated(*enemy, scorePosition);
       continue;
     }
 
-    // Resolve only the first contact in the step. This makes a cluster
-    // deterministic and avoids evaluating later enemies after a stomp has
-    // already moved the player back to its impact point and reversed vy.
     const float impactTime = result.swept ? result.timeOfImpact : 1.0f;
     if (impactTime < firstImpactTime) {
       firstEnemyHit = enemy.get();
@@ -347,43 +365,112 @@ void Level::handleCollisions(float dt) {
 
   if (firstEnemyHit) {
     if (firstEnemyResult.side == CollisionDetector::Side::Bottom &&
-        m_player->getVelocity().y > 0) {
-      // Stomp from above
-      CollisionDetector::moveToImpact(*m_player, firstEnemyResult);
+        player->getVelocity().y > 0) {
+      CollisionDetector::moveToImpact(*player, firstEnemyResult);
       const sf::Vector2f scorePosition = boundsCenter(*firstEnemyHit);
       firstEnemyHit->onStomped();
       const float bounceVelocity =
-          m_player->isJumpHeld() ? m_player->getJumpForce() : -250.0f;
-      m_player->setVelocity(m_player->getVelocity().x, bounceVelocity);
+          player->isJumpHeld() ? player->getJumpForce() : -250.0f;
+      player->setVelocity(player->getVelocity().x, bounceVelocity);
       publishEnemyDefeated(*firstEnemyHit, scorePosition);
     } else {
-      // Side collision — player takes damage
-      m_player->takeDamage();
+      player->takeDamage();
     }
   }
 
-  if (m_player->isDead()) {
-    return;
-  }
+  if (player->isDead()) return;
 
   // Player vs Items
   for (auto &item : m_items) {
-    if (!item->isActive())
-      continue;
-    auto result = CollisionDetector::checkCollision(*m_player, *item);
+    if (!item->isActive()) continue;
+    auto result = CollisionDetector::checkCollision(*player, *item);
     if (result.collided) {
-      item->collect(*m_player);
+      item->collect(*player);
     }
   }
 
   // Player vs Flagpole
   if (m_flagpole && !m_flagpole->isReached()) {
-    auto result = CollisionDetector::checkCollision(*m_player, *m_flagpole);
+    auto result = CollisionDetector::checkCollision(*player, *m_flagpole);
     if (result.collided) {
       m_flagpole->setReached(true);
-      int bonus = m_flagpole->calculateScore(m_player->getPosition().y);
+      int bonus = m_flagpole->calculateScore(player->getPosition().y);
       EventManager::getInstance().publish({EventType::LevelCompleted, bonus});
     }
+  }
+}
+
+void Level::handleCollisions(float dt) {
+  // Player 1 and Player 2 collisions with level
+  if (m_player) handlePlayerCollisions(m_player.get(), dt);
+  if (m_player2) handlePlayerCollisions(m_player2.get(), dt);
+
+  // Player vs Player collisions (only when 2 players exist)
+  if (m_player && !m_player->isDead() && m_player2 && !m_player2->isDead()) {
+    bool pvp = Game::getInstance().getProgress().isPvP();
+    auto result = CollisionDetector::checkSweptCollision(*m_player, *m_player2, dt);
+    if (!result.collided) result = CollisionDetector::checkCollision(*m_player, *m_player2);
+    if (result.collided) {
+        if (pvp && result.side == CollisionDetector::Side::Bottom && m_player->getVelocity().y > 0) {
+            // PvP: P1 stomped P2
+            CollisionDetector::moveToImpact(*m_player, result);
+            const float bounceVelocity = m_player->isJumpHeld() ? m_player->getJumpForce() : -250.0f;
+            m_player->setVelocity(m_player->getVelocity().x, bounceVelocity);
+            m_player2->takeDamage();
+        } else if (pvp && result.side == CollisionDetector::Side::Top && m_player2->getVelocity().y > 0) {
+            // PvP: P2 stomped P1
+            CollisionDetector::CollisionResult res2 = result;
+            res2.side = CollisionDetector::Side::Bottom;
+            CollisionDetector::moveToImpact(*m_player2, res2);
+            const float bounceVelocity = m_player2->isJumpHeld() ? m_player2->getJumpForce() : -250.0f;
+            m_player2->setVelocity(m_player2->getVelocity().x, bounceVelocity);
+            m_player->takeDamage();
+        } else {
+            // Co-op or side collision: push them apart equally
+            float pushAmount = result.overlap / 2.0f;
+            sf::Vector2f pos1 = m_player->getPosition();
+            sf::Vector2f pos2 = m_player2->getPosition();
+            if (result.side == CollisionDetector::Side::Left) {
+                m_player->setPosition(pos1 + sf::Vector2f(pushAmount, 0));
+                m_player2->setPosition(pos2 - sf::Vector2f(pushAmount, 0));
+            } else if (result.side == CollisionDetector::Side::Right) {
+                m_player->setPosition(pos1 - sf::Vector2f(pushAmount, 0));
+                m_player2->setPosition(pos2 + sf::Vector2f(pushAmount, 0));
+            } else if (result.side == CollisionDetector::Side::Top) {
+                m_player->setPosition(pos1 + sf::Vector2f(0, pushAmount));
+                m_player2->setPosition(pos2 - sf::Vector2f(0, pushAmount));
+            } else if (result.side == CollisionDetector::Side::Bottom) {
+                m_player->setPosition(pos1 - sf::Vector2f(0, pushAmount));
+                m_player2->setPosition(pos2 + sf::Vector2f(0, pushAmount));
+            }
+            // Stop horizontal velocity if colliding horizontally
+            if (result.side == CollisionDetector::Side::Left || result.side == CollisionDetector::Side::Right) {
+                m_player->setVelocity(0.0f, m_player->getVelocity().y);
+                m_player2->setVelocity(0.0f, m_player2->getVelocity().y);
+            }
+        }
+    }
+  }
+
+  // Fireballs vs Players (only in PvP)
+  if (Game::getInstance().getProgress().isPvP()) {
+      for (auto& fb : m_fireballs) {
+          if (!fb->isActive()) continue;
+          if (m_player && !m_player->isDead()) {
+              auto result = CollisionDetector::checkCollision(*fb, *m_player);
+              if (result.collided) {
+                  m_player->takeDamage();
+                  fb->setActive(false);
+              }
+          }
+          if (m_player2 && !m_player2->isDead()) {
+              auto result = CollisionDetector::checkCollision(*fb, *m_player2);
+              if (result.collided) {
+                  m_player2->takeDamage();
+                  fb->setActive(false);
+              }
+          }
+      }
   }
 
   // Enemy vs Tiles (for patrol direction reversal)
