@@ -47,6 +47,13 @@ protected:
     /// applyFrame(m_texturePath).
     bool m_isGif = false;
 
+    /// Optional horizontal PNG sprite sheet support. When m_sheetFrameWidth
+    /// is > 0, draw() crops cell `m_animFrame` (each cell m_sheetFrameWidth
+    /// wide, cells m_sheetGap px apart) via applySheetFrame instead of
+    /// drawing the whole image.
+    int m_sheetFrameWidth = 0;
+    int m_sheetGap = 0;
+
     // Animation
     float m_animTimer = 0.0f;
     int   m_animFrame = 0;

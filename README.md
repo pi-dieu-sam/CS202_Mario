@@ -24,8 +24,6 @@ Mỗi ký tự đại diện cho **một ô vuông 32×32 pixel** trong map.
 | `[` `]` | Thân ống (body-left / body-right) |
 | `(` `{` `\` | Ống Ward (ward pipe) — **mảnh hàng trên** (xếp chồng lên mảnh dưới) |
 | `)` `}` `/` | Ống Ward (ward pipe) — **mảnh hàng dưới** |
-| `c` | Lâu đài nhỏ — **1 ký tự = góc dưới-trái, chiếm 3×3 ô** |
-| `C` | Lâu đài lớn — **1 ký tự = góc dưới-trái, chiếm 5×6 ô** |
 | `S` | Gạch vỡ (Brick, phá được khi Mario to) |
 | `?` | Block có chứa xu (Coin) |
 | `M` | Block có chứa Nấm (Mushroom) |

@@ -11,6 +11,25 @@ constexpr float DEATH_OFFSCREEN_MARGIN = TILE_SIZE;
 constexpr float DEATH_PAUSE_DURATION = 0.35f;
 constexpr float FLAGPOLE_SLIDE_SPEED = 180.0f;
 constexpr float FLAGPOLE_ANIM_SPEED = 0.12f;
+
+// Shoot (Fire) animation: plays once for this long after a fireball is fired,
+// then reverts to the normal Idle/Walk/Jump state.
+constexpr float SHOOT_ANIM_DURATION = 0.35f;
+// Per-animation frame rates (seconds per frame) for the new Mario sheets.
+constexpr float WALK_ANIM_SPEED = 0.08f;
+constexpr float JUMP_ANIM_SPEED = 0.15f;
+constexpr float IDLE_ANIM_SPEED = 0.16f;
+constexpr float FIRE_ANIM_SPEED = 0.12f;
+
+// FlowersBuff parameters
+constexpr float BUFF_DURATION = 40.0f;      // seconds the buff lasts
+constexpr float BUFF_GROW_DURATION = 0.7f;  // seconds to ramp size 1.0 -> 1.5
+constexpr float BUFF_SCALE_MAX = 1.5f;      // final size multiplier
+constexpr float BUFF_SCALE_STEP = 0.1f;     // 1.1, 1.2, 1.3, 1.4, 1.5
+constexpr float BUFF_STEP_INTERVAL =
+    BUFF_GROW_DURATION / ((BUFF_SCALE_MAX - 1.0f) / BUFF_SCALE_STEP);
+constexpr float BUFF_SPEED_BONUS = 0.2f;    // +0.2 to the speed multiplier
+constexpr float BUFF_JUMP_BONUS = 0.2f;     // +0.2 to the jump multiplier
 }
 
 Player::Player() {
@@ -42,6 +61,26 @@ void Player::update(float dt) {
   if (m_goalAnimationPhase == GoalAnimationPhase::CastleWalk) {
     updateFlagpoleCastleWalk(dt);
     return;
+  }
+
+  // FlowersBuff: ramp size 1.0 -> 1.5 in 0.1 steps over 0.7s, then count
+  // down the 40s duration and revert to normal size when it expires.
+  if (m_growing) {
+    m_growTimer += dt;
+    int step = static_cast<int>(m_growTimer / BUFF_STEP_INTERVAL);
+    if (step >= static_cast<int>((BUFF_SCALE_MAX - 1.0f) / BUFF_SCALE_STEP)) {
+      m_growing = false;
+      m_sizeScale = BUFF_SCALE_MAX;
+      m_buffTimer = BUFF_DURATION;
+    } else {
+      m_sizeScale = 1.0f + BUFF_SCALE_STEP * step;
+    }
+  } else if (m_buffTimer > 0.0f) {
+    m_buffTimer -= dt;
+    if (m_buffTimer <= 0.0f) {
+      m_buffTimer = 0.0f;
+      m_sizeScale = 1.0f;
+    }
   }
 
   // Apply gravity
@@ -80,18 +119,29 @@ void Player::update(float dt) {
 
   // ── Decide animation state ──
   SpriteRegistry::PlayerAnim anim;
-  if (!m_grounded) {
+  float animSpeed = -1.0f;
+  if (m_shootAnimTimer > 0.0f) {
+    // The character's Fire sheet plays briefly after each shot, even mid-air.
+    m_shootAnimTimer -= dt;
+    anim = SpriteRegistry::PlayerAnim::Fire;
+    animSpeed = FIRE_ANIM_SPEED;
+  } else if (!m_grounded) {
     anim = SpriteRegistry::PlayerAnim::Jump;
+    animSpeed = JUMP_ANIM_SPEED;
   } else if (m_skidding) {
     anim = SpriteRegistry::PlayerAnim::Skid;
+    animSpeed = IDLE_ANIM_SPEED;
   } else if (std::abs(m_velocity.x) > 5.0f) {
     anim = SpriteRegistry::PlayerAnim::Walk;
+    animSpeed = WALK_ANIM_SPEED;
   } else {
     anim = SpriteRegistry::PlayerAnim::Idle;
+    animSpeed = IDLE_ANIM_SPEED;
   }
   m_currentAnim = anim;
   setAnimFrameCount(
-      SpriteRegistry::playerFrameCount(m_characterId, m_powerUp, anim));
+      SpriteRegistry::playerFrameCount(m_characterId, m_powerUp, anim),
+      animSpeed);
 
   updateSprite(dt);
 }
@@ -134,21 +184,58 @@ void Player::draw(sf::RenderWindow &window) {
     tint = sf::Color(r, g, b);
   }
 
-  std::string path = SpriteRegistry::playerPath(m_characterId, m_powerUp,
-                                                 m_currentAnim, m_animFrame);
-  drawSprite(window, path, getBounds(), tint);
+  SpriteRegistry::applyPlayerFrame(m_sprite, m_characterId, m_powerUp,
+                                   m_currentAnim, m_animFrame, getBounds(),
+                                   !m_facingRight);
+  m_sprite.setColor(tint);
+  window.draw(m_sprite);
 }
 
 sf::FloatRect Player::getBounds() const {
-  float height = (m_powerUp == PowerUpState::Small) ? TILE_SIZE : TILE_SIZE * 2;
-  return sf::FloatRect(m_position.x + 2,
-                       m_position.y + (TILE_SIZE * 2 - height), TILE_SIZE - 4,
-                       height - 2);
+  float baseHeight = (m_powerUp == PowerUpState::Small) ? TILE_SIZE : TILE_SIZE * 2;
+  float baseWidth = TILE_SIZE - 4;
+  float h = baseHeight * m_sizeScale;
+  float w = baseWidth * m_sizeScale;
+  // Keep the feet anchored where they were pre-buff (m_position.y + 2*TILE - 2)
+  // and center the growth horizontally so the box scales "literally".
+  float top = m_position.y + TILE_SIZE * 2 - h;
+  float left = m_position.x + 2 - (w - baseWidth) / 2.0f;
+  return sf::FloatRect(left, top, w, h - 2);
 }
 
 float Player::getEffectiveSpeed() const {
-  return m_sprinting ? m_speed * PLAYER_SPRINT : m_speed;
+  float base = m_sprinting ? m_speed * PLAYER_SPRINT : m_speed;
+  if (hasSizeBuff()) {
+    base += PLAYER_SPEED * BUFF_SPEED_BONUS; // +0.2 speed multiplier
+  }
+  return base;
 }
+
+void Player::jump() {
+  if (m_grounded) {
+    m_velocity.y = m_jumpForce;
+    if (hasSizeBuff()) {
+      m_velocity.y += PLAYER_JUMP * BUFF_JUMP_BONUS; // +0.2 jump multiplier
+    }
+    m_grounded = false;
+  }
+}
+
+// ── Size buff (FlowersBuff) ──
+void Player::applySizeBuff() {
+  if (m_growing)
+    return; // already ramping up
+  if (m_buffTimer > 0.0f) {
+    m_buffTimer = BUFF_DURATION; // refresh the remaining duration
+    return;
+  }
+  m_growing = true;
+  m_growTimer = 0.0f;
+}
+
+float Player::getSizeScale() const { return m_sizeScale; }
+
+bool Player::hasSizeBuff() const { return m_growing || m_buffTimer > 0.0f; }
 
 // ── Power-ups ──
 void Player::applyPowerUp(PowerUpState state) { m_powerUp = state; }
@@ -172,9 +259,11 @@ void Player::enableFire() { m_powerUp = PowerUpState::Fire; }
 
 // ── Shooting ──
 void Player::shoot() {
-  if (m_powerUp == PowerUpState::Fire) {
-    m_wantsToShoot = true;
-  }
+  // Fireballs are always available, no Fire power-up required.
+  m_wantsToShoot = true;
+  // Both Mario and Luigi now have a dedicated shoot pose (Character/ sheets),
+  // so play the Fire animation for whichever character is active.
+  m_shootAnimTimer = SHOOT_ANIM_DURATION;
 }
 
 bool Player::wantsToShoot() const { return m_wantsToShoot; }
@@ -256,6 +345,11 @@ void Player::die() {
   m_grounded = false;
   m_sprinting = false;
   m_visible = true;
+  // FlowersBuff does not survive death/respawn.
+  m_growing = false;
+  m_growTimer = 0.0f;
+  m_buffTimer = 0.0f;
+  m_sizeScale = 1.0f;
   m_deathAnimationPhase = DeathAnimationPhase::Rising;
   m_deathPauseTimer = 0.0f;
   // The camera is vertically fixed, so this world-space target puts the

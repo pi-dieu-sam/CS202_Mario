@@ -148,6 +148,13 @@ LevelLoader::LevelData LevelLoader::loadLevel(const std::string& filename,
                     break;
                 }
 
+                case 'W': // FlowersBuff (size/speed/jump buff)
+                {
+                    auto item = EntityFactory::createItem(ItemType::FlowersBuff, {x, y}, theme);
+                    if (item) data.items.push_back(std::move(item));
+                    break;
+                }
+
                 // ── Special (extensions -- not part of VGLC's own alphabet) ──
                 case '@': // Player 1 spawn
                     data.playerSpawn = {x, y};

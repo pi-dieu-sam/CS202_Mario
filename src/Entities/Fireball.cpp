@@ -39,13 +39,20 @@ void Fireball::update(float dt) {
 
 void Fireball::draw(sf::RenderWindow& window) {
     if (!m_active) return;
-    SpriteRegistry::applyFrame(m_sprite, SpriteRegistry::fireballPath(m_animFrame),
-                                getBounds());
+    SpriteRegistry::applySheetFrame(m_sprite, SpriteRegistry::fireballPath(),
+                                    m_animFrame, 16, 0, getBounds());
     window.draw(m_sprite);
 }
 
 sf::FloatRect Fireball::getBounds() const {
-    return sf::FloatRect(m_position.x, m_position.y, 10.0f, 10.0f);
+    return sf::FloatRect(m_position.x, m_position.y, 20.0f, 20.0f);
+}
+
+void Fireball::noteSurfaceHit() {
+    ++m_surfaceHits;
+    if (m_surfaceHits >= 3) {
+        m_active = false;
+    }
 }
 
 void Fireball::onCollision(GameObject& other) {
