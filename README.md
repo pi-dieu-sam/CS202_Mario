@@ -31,11 +31,11 @@ Mỗi ký tự đại diện cho **một ô vuông 32×32 pixel** trong map.
 | `s` | Block có chứa Sao (Star) |
 | `Q` | Block đã dùng hết (cứng, không còn item) |
 | `o` | Xu (Coin) |
-| `E` | Goomba |
-| `k` | Koopa |
-| `r` | Piranha Plant |
+| `G` | Goomba |
+| `K` | Koopa |
+| `P` | Piranha Plant (đặt ngay phía trên nửa trái miệng ống `<`) |
 | `@` | Điểm spawn Player 1 |
-| `2` | Điểm spawn Player 2 (PvP / Co-op) |
+| `9` | Điểm spawn Player 2 (PvP / Co-op) |
 | `f` | Cột cờ (đích của level) |
 |`Q` `2` `3` `4`| Castle
 |`6` `S` `7` `5`|
@@ -43,6 +43,19 @@ Mỗi ký tự đại diện cho **một ô vuông 32×32 pixel** trong map.
 
 **Lưu ý:**
 - Ống (`<>` / `[]`) cần xếp thành khối 2 ô ngang × 2 ô dọc để hiển thị đúng (xem ví dụ trong `level1.txt`).
+- Cây Piranha: dùng `P` ở ô **ngay trên** ký tự `<`. `P` không phải tile
+  rắn; nó là điểm neo để cây xuất phát bên trong miệng ống, trồi lên, chờ,
+  rồi chui xuống. Ví dụ ống cao 3 hàng:
+
+  ```text
+  --P--
+  --<>-
+  --[]-
+  --[]-
+  ```
+
+  Không đặt `P` giữa `<` và `>`: cây sẽ lấy tâm của cả miệng ống từ vị trí
+  `P`, nên phải luôn canh thẳng cột với `<`.
 - Lâu đài (`c` / `C`): đặt ký tự **ngay hàng mặt đất** — ký tự là ô góc dưới-trái, lâu đài tự mọc lên trên (`c` = 3×3 ô, `C` = 5×6 ô). Là khối đặc; kích thước chỉnh bằng `CASTLE_*_TILES` trong `include/Physics/PhysicsConstants.hpp`.
 - Flagpole tự động: khi level có lâu đài, cột cờ tự đặt **3 ô trước lâu đài** (`c`/`C`); không có lâu đài thì mới đặt gần mép phải như cũ. Có thể ghi đè bằng ký tự `f`.
 - Map VGLC chuẩn 14 dòng; LevelLoader tự căn level xuống đáy màn hình (19 dòng), 5 dòng trên cùng là trời.

@@ -338,7 +338,7 @@ void Level::handlePlayerCollisions(Player* player, float dt) {
   CollisionDetector::CollisionResult firstEnemyResult;
   float firstImpactTime = 2.0f;
   for (auto &enemy : m_enemies) {
-    if (!enemy->isActive() || enemy->isDead())
+    if (!enemy->isActive() || enemy->isDead() || !enemy->isVulnerable())
       continue;
 
     auto result = CollisionDetector::checkSweptCollision(*player, *enemy, dt);
@@ -365,7 +365,7 @@ void Level::handlePlayerCollisions(Player* player, float dt) {
 
   if (firstEnemyHit) {
     if (firstEnemyResult.side == CollisionDetector::Side::Bottom &&
-        player->getVelocity().y > 0) {
+        player->getVelocity().y > 0 && firstEnemyHit->canBeStomped()) {
       CollisionDetector::moveToImpact(*player, firstEnemyResult);
       const sf::Vector2f scorePosition = boundsCenter(*firstEnemyHit);
       firstEnemyHit->onStomped();
@@ -554,40 +554,22 @@ void Level::handleCollisions(float dt) {
   // Enemy vs Enemy
   for (size_t i = 0; i < m_enemies.size(); ++i) {
     auto &enemyA = m_enemies[i];
-    if (!enemyA || !enemyA->isActive() || enemyA->isDead())
+    if (!enemyA || !enemyA->isActive() || enemyA->isDead() || !enemyA->isVulnerable())
       continue;
 
     for (size_t j = i + 1; j < m_enemies.size(); ++j) {
       auto &enemyB = m_enemies[j];
-      if (!enemyB || !enemyB->isActive() || enemyB->isDead())
+      if (!enemyB || !enemyB->isActive() || enemyB->isDead() || !enemyB->isVulnerable())
         continue;
 
       auto result = CollisionDetector::checkCollision(*enemyA, *enemyB);
       if (!result.collided)
         continue;
 
-      auto *koopaA = dynamic_cast<Koopa *>(enemyA.get());
-      auto *koopaB = dynamic_cast<Koopa *>(enemyB.get());
-      const bool aIsSlidingShell = koopaA && koopaA->getKoopaState() == KoopaState::Sliding;
-      const bool bIsSlidingShell = koopaB && koopaB->getKoopaState() == KoopaState::Sliding;
-
-      if (aIsSlidingShell || bIsSlidingShell) {
-        if (aIsSlidingShell) {
-          const sf::Vector2f scorePosition = boundsCenter(*enemyB);
-          enemyB->onStomped();
-          publishEnemyDefeated(*enemyB, scorePosition);
-        }
-        if (bIsSlidingShell) {
-          const sf::Vector2f scorePosition = boundsCenter(*enemyA);
-          enemyA->onStomped();
-          publishEnemyDefeated(*enemyA, scorePosition);
-        }
-      } else {
-        const sf::Vector2f velA = enemyA->getVelocity();
-        const sf::Vector2f velB = enemyB->getVelocity();
-        enemyA->setVelocity(-velA.x, velA.y);
-        enemyB->setVelocity(-velB.x, velB.y);
-      }
+      const sf::Vector2f velA = enemyA->getVelocity();
+      const sf::Vector2f velB = enemyB->getVelocity();
+      enemyA->setVelocity(-velA.x, velA.y);
+      enemyB->setVelocity(-velB.x, velB.y);
     }
   }
 
@@ -624,7 +606,7 @@ void Level::handleCollisions(float dt) {
 
     // Fireball vs Enemies
     for (auto &enemy : m_enemies) {
-      if (!enemy->isActive() || enemy->isDead())
+      if (!enemy->isActive() || enemy->isDead() || !enemy->isVulnerable())
         continue;
       auto result = CollisionDetector::checkCollision(*fb, *enemy);
       if (result.collided) {

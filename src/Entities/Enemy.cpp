@@ -24,6 +24,10 @@ void Enemy::update(float dt) {
         m_active = false;
     }
 
+    // Sync facing direction with movement
+    if (m_velocity.x > 0.0f) m_facingRight = true;
+    else if (m_velocity.x < 0.0f) m_facingRight = false;
+
     updateSprite(dt);
 }
 
@@ -52,6 +56,10 @@ void Enemy::kill() {
     die();
     m_active = false;
 }
+
+bool Enemy::isVulnerable() const { return true; }
+
+bool Enemy::canBeStomped() const { return true; }
 
 void Enemy::setStrategy(std::unique_ptr<AIStrategy> strategy) {
     m_strategy = std::move(strategy);

@@ -151,35 +151,44 @@ LevelTheme normalizeGoombaTheme(LevelTheme theme) {
 }
 } // namespace
 
-const std::string &SpriteRegistry::goombaPath(LevelTheme theme, int walkFrame) {
-  if (normalizeGoombaTheme(theme) == LevelTheme::Underground) {
-    // Only one usable Underground Goomba file exists — both walk frames
-    // point at it, so the walk cycle is a static pose rather than missing.
-    static const std::string grey = "assets/textures/GoombaSMBGrey.gif";
-    return grey;
-  }
-  static const std::string frames[2] = {
-      "assets/textures/Goomba_SMB.png",
-      "assets/textures/SMB_Goomba_Sprite.gif",
-  };
-  return frames[walkFrame % 2];
+const std::string &SpriteRegistry::goombaPath(LevelTheme /*theme*/, int /*walkFrame*/) {
+  static const std::string sheet = "assets/textures/Character/Goomba.png";
+  return sheet;
 }
 
-const std::string &SpriteRegistry::goombaSquishPath(LevelTheme theme) {
-  static const std::string overworld = "assets/textures/SMB_Dead_Goomba.png";
-  static const std::string underground =
-      "assets/textures/SMB_Goomba_Underground_Dead.png";
-  return normalizeGoombaTheme(theme) == LevelTheme::Underground ? underground
-                                                                 : overworld;
+const std::string &SpriteRegistry::goombaSquishPath(LevelTheme /*theme*/) {
+  static const std::string die = "assets/textures/Character/Goomba_Die.png";
+  return die;
+}
+
+int SpriteRegistry::goombaFrameCount() {
+  return 16;
+}
+
+void SpriteRegistry::applyGoombaFrame(sf::Sprite &sprite, int frame,
+                                      const sf::FloatRect &box, bool flip) {
+  static const std::string path = "assets/textures/Character/Goomba.png";
+  sf::Texture &texture = AssetManager::getInstance().getTexture(path);
+  sf::Vector2u size = texture.getSize();
+  if (size.x == 0 || size.y == 0) return;
+
+  constexpr int cols = 8;
+  constexpr int rows = 2;
+  int cellW = static_cast<int>(size.x) / cols;
+  int cellH = static_cast<int>(size.y) / rows;
+
+  int f = frame % (cols * rows);
+  int col = f % cols;
+  int row = f / cols;
+
+  applyFrame(sprite, texture,
+             sf::IntRect(col * cellW, row * cellH, cellW, cellH), box, flip);
 }
 
 const std::string &SpriteRegistry::koopaWalkPath(LevelTheme /*theme*/,
                                                    int /*walkFrame*/) {
-  // Underground/Castle Koopa art is broken WebP or missing — every theme
-  // reuses the Overworld Koopa (deliberate, see goombaPath note above). Only
-  // one usable file exists, so the walk cycle is a static pose.
-  static const std::string walking = "assets/textures/Green_Koopa_Troopa_SMB.gif";
-  return walking;
+  static const std::string sheet = "assets/textures/Character/Koopa.png";
+  return sheet;
 }
 
 const std::string &SpriteRegistry::koopaShellPath(LevelTheme /*theme*/,
@@ -188,12 +197,77 @@ const std::string &SpriteRegistry::koopaShellPath(LevelTheme /*theme*/,
   return shell;
 }
 
-const std::string &SpriteRegistry::piranhaPlantPath(int frame) {
-  static const std::string frames[2] = {
-      "assets/textures/Piranha_Plant_Underwater.png",
-      "assets/textures/SMB_PI~1.GIF",
+const std::string &SpriteRegistry::koopaDiePath() {
+  static const std::string die = "assets/textures/Character/Koopa_Die.png";
+  return die;
+}
+
+int SpriteRegistry::koopaFrameCount() {
+  return 20;
+}
+
+void SpriteRegistry::applyKoopaFrame(sf::Sprite &sprite, int frame,
+                                     const sf::FloatRect &box, bool flip) {
+  static const std::string path = "assets/textures/Character/Koopa.png";
+  sf::Texture &texture = AssetManager::getInstance().getTexture(path);
+  sf::Vector2u size = texture.getSize();
+  if (size.x == 0 || size.y == 0) return;
+
+  constexpr int cols = 5;
+  constexpr int rows = 4;
+  int cellW = static_cast<int>(size.x) / cols;
+  int cellH = static_cast<int>(size.y) / rows;
+
+  int f = frame % (cols * rows);
+  int col = f % cols;
+  int row = f / cols;
+
+  applyFrame(sprite, texture,
+             sf::IntRect(col * cellW, row * cellH, cellW, cellH), box, flip);
+}
+
+const std::string &SpriteRegistry::piranhaPlantPath(int /*frame*/) {
+  static const std::string sheet = "assets/textures/Character/Piranha.png";
+  return sheet;
+}
+
+int SpriteRegistry::piranhaFrameCount() { return 95; }
+
+sf::IntRect SpriteRegistry::piranhaFrameRect(int frame) {
+  static const int WIDTHS[95] = {
+      11,11,11,12,12,13,14,16,16,17,
+      17,17,18,17,17,17,16,16,16,16,
+      17,17,16,17,17,18,19,22,23,24,
+      22,26,26,27,27,27,27,27,27,27,
+      27,27,27,26,26,26,26,26,26,26,
+      25,22,22,26,26,26,27,26,26,24,
+      23,21,20,20,20,20,20,19,18,18,
+      18,19,19,19,18,17,18,17,16,16,
+      15,15,15,15,14,14,14,14,14,13,
+      12,12,12,12,11
   };
-  return frames[frame % 2];
+  static const int GAPS[95] = {
+      1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+      1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+      1, 1, 1, 1, 1, 3, 1, 1, 1, 1,
+      1, 6, 1, 1, 1, 1, 1, 1, 1, 1,
+      1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+      3, 1, 1, 1, 5, 1, 1, 1, 1, 1,
+      1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+      1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+      1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+      1, 1, 1, 1, 1
+  };
+  int f = frame % 95;
+  int x = 0;
+  for (int i = 0; i < f; i++) x += WIDTHS[i] + GAPS[i];
+  return sf::IntRect(x, 0, WIDTHS[f], 66);
+}
+
+void SpriteRegistry::applyPiranhaFrame(sf::Sprite &sprite, int frame,
+                                       const sf::FloatRect &box, bool flip) {
+  sf::Texture &texture = AssetManager::getInstance().getTexture(piranhaPlantPath(0));
+  applyFrame(sprite, texture, piranhaFrameRect(frame), box, flip);
 }
 
 namespace {

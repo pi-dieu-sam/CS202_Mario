@@ -1,28 +1,26 @@
 #pragma once
 #include "Enemy.hpp"
 
-/// Koopa states after being stomped.
+/// Koopa states.
 enum class KoopaState {
     Walking,  // Normal patrol
-    Shell,    // In shell, stationary
-    Sliding   // Shell sliding after kicked
+    Dying     // Shown Koopa_Die.png, respawns after timer
 };
 
-/// Koopa — retreats into shell on stomp; shell can slide and defeat other enemies.
+/// Koopa — walks back and forth; respawns after being stomped or killed by fireball.
 class Koopa : public Enemy {
 public:
     Koopa();
 
     void onStomped() override;
+    void kill() override;
     void update(float dt) override;
     void draw(sf::RenderWindow& window) override;
+    bool isVulnerable() const override;
 
     KoopaState getKoopaState() const;
 
-    /// Kick the shell in the given direction (1 = right, -1 = left).
-    void kickShell(int direction);
-
 private:
     KoopaState m_koopaState = KoopaState::Walking;
-    float      m_shellTimer = 0.0f;  // Time before shell Koopa recovers
+    float      m_dieTimer   = 0.0f;
 };

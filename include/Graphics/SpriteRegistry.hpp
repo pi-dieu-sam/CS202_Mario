@@ -34,9 +34,20 @@ public:
   // ── Enemies ──
   static const std::string &goombaPath(LevelTheme theme, int walkFrame);
   static const std::string &goombaSquishPath(LevelTheme theme);
+  static int goombaFrameCount();
+  static void applyGoombaFrame(sf::Sprite &sprite, int frame,
+                               const sf::FloatRect &box, bool flip = false);
   static const std::string &koopaWalkPath(LevelTheme theme, int walkFrame);
   static const std::string &koopaShellPath(LevelTheme theme, bool spinning);
+  static const std::string &koopaDiePath();
+  static int koopaFrameCount();
+  static void applyKoopaFrame(sf::Sprite &sprite, int frame,
+                              const sf::FloatRect &box, bool flip = false);
   static const std::string &piranhaPlantPath(int frame);
+  static int piranhaFrameCount();
+  static sf::IntRect piranhaFrameRect(int frame);
+  static void applyPiranhaFrame(sf::Sprite &sprite, int frame,
+                                const sf::FloatRect &box, bool flip = false);
 
   // ── Player ──
   static const std::string &playerPath(CharacterId character, PowerUpState power,
