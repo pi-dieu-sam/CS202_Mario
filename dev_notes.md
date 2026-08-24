@@ -21,3 +21,4 @@
 - 2026-08-23: Minor syntax fixes
 - 2026-08-23: Tweak code comments
 - 2026-08-24: Fix indentation
+- 2026-08-24: Update TODO list
