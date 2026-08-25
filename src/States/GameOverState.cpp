@@ -1,10 +1,7 @@
 #include "States/GameOverState.hpp"
-#include "States/CharacterSelectState.hpp"
-#include "States/MenuState.hpp"
-#include "States/PlayingState.hpp"
+#include "States/Navigator.hpp"
 #include "Core/Game.hpp"
 #include "Core/AssetManager.hpp"
-#include "States/StateManager.hpp"
 #include "Physics/PhysicsConstants.hpp"
 #include <cmath>
 #include <string>
@@ -94,22 +91,22 @@ void GameOverState::activateSelectedOption() {
 
     if (m_selected == 0) {
         bool pvpResult = (m_result == GameResult::P1Won || m_result == GameResult::P2Won);
-        if (m_result == GameResult::Won || pvpResult) {
-            if (pvpResult) {
-                // PvP: replay the arena
-                game.getStateManager().changeState(std::make_unique<PlayingState>());
-            } else {
-                game.getProgress().resetGameData();
-                game.getStateManager().changeState(
-                    std::make_unique<CharacterSelectState>());
-            }
-        } else {
+        if (m_result == GameResult::Won) {
+            // SinglePlayer victory: back to a fresh character/level pick.
+            // ResetTo(CharacterSelect) rebuilds the stack as
+            // [MainMenu, CharacterSelect], so Escape from there still works.
+            game.getProgress().resetGameData();
+        } else if (!pvpResult) {
+            // Lost: retry the level that was failed, keeping score/coins.
             game.getProgress().retryCurrentLevel();
-            game.getStateManager().changeState(
-                std::make_unique<PlayingState>());
         }
+        // PvP win falls through with no PlayerProgress changes — just
+        // replay the arena.
+        Navigator::apply(ScreenFlow::onGameOverPrimary(m_result),
+                          game.getStateManager(), game.getProgress().getGameMode());
     } else {
-        game.getStateManager().changeState(std::make_unique<MenuState>());
+        Navigator::apply({ScreenFlow::Op::ResetTo, ScreenFlow::Screen::MainMenu},
+                          game.getStateManager(), game.getProgress().getGameMode());
     }
 }
 

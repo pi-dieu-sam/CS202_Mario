@@ -14,6 +14,9 @@ public:
     void update(float dt) override;
     void render(sf::RenderWindow& window) override;
 
+    /// Drawn as an overlay over the frozen PlayingState beneath it.
+    bool isTransparent() const override { return true; }
+
 private:
     void updateAudioUI();
 

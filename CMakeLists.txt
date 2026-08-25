@@ -67,6 +67,21 @@ if(BUILD_TESTS)
     set_tests_properties(ProgressionTests PROPERTIES
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     )
+
+    add_executable(NavigationTests tests/NavigationTests.cpp ${TEST_SOURCES})
+    target_include_directories(NavigationTests PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
+    )
+    target_link_libraries(NavigationTests PRIVATE
+        sfml-graphics
+        sfml-window
+        sfml-system
+        sfml-audio
+    )
+    add_test(NAME NavigationTests COMMAND NavigationTests)
+    set_tests_properties(NavigationTests PROPERTIES
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    )
 endif()
 
 # --- Copy assets to build directory ---
