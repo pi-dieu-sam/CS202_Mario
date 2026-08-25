@@ -22,7 +22,8 @@ enum class LevelTransitionStage {
     TimeBonusCount,
     Finished,
     PipeEnter,
-    PipeReturn
+    PipeReturn,
+    PipeExit
 };
 
 class PlayingState : public GameState {

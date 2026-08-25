@@ -52,6 +52,7 @@ public:
     /// above bottom-row pieces.
     static std::unique_ptr<Tile> createWardPipePiece(char pieceChar, float x, float y, LevelTheme theme);
 
-    /// Create an escalater (moving platform) at the given position.
-    static std::unique_ptr<Escalater> createEscalater(float x, float y, LevelTheme theme);
+    /// Create an escalater. `horizontal` selects the `e` map behaviour.
+    static std::unique_ptr<Escalater> createEscalater(float x, float y, bool horizontal,
+                                                      LevelTheme theme);
 };
