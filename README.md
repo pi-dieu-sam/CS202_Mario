@@ -29,6 +29,8 @@ Mỗi ký tự đại diện cho **một ô vuông 32×32 pixel** trong map.
 | `M` | Block có chứa Nấm (Mushroom) |
 | `F` | Block có chứa Hoa lửa (Fire Flower) |
 | `E` | Escalater
+| `O` | Fire Bar: block 32px và 8 cầu lửa liên tục quay xuyên map (lửa chạm vào sẽ chết) |
+| `i` | Lớp mặt dung nham có cầu lửa: bắn lên, rơi xuống, ẩn 3 giây rồi lặp lại |
 | `s` | Block có chứa Sao (Star) |
 | `Q` | Block đã dùng hết (cứng, không còn item) |
 | `o` | Xu (Coin) |
@@ -40,6 +42,8 @@ Mỗi ký tự đại diện cho **một ô vuông 32×32 pixel** trong map.
 | `f` | Cột cờ (đích của level) |
 |`Q` `2` `3` `4`| Castle
 |`6` `S` `7` `5`|
+|`L`| Lava;
+|`l`| lava wave
 
 
 **Lưu ý:**
