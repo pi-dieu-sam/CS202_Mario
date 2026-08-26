@@ -47,7 +47,7 @@ bool Level::loadFromFile(const std::string &filename,
 
   // Set map bounds on escalaters so they reverse at level edges
   for (auto &esc : m_escalaters) {
-    esc->setMapBounds(0.0f, m_height);
+    esc->setMapBounds(0.0f, m_width, 0.0f, m_height);
   }
 
   // Create player at spawn point
@@ -162,6 +162,20 @@ void Level::update(float dt) {
         esc->reverseDirection();
         break;
       }
+    }
+  }
+
+  // Horizontal `e` platforms turn around when they meet another escalater.
+  // Vertical `E` platforms retain their existing independent movement.
+  for (size_t i = 0; i < m_escalaters.size(); ++i) {
+    auto &first = m_escalaters[i];
+    if (!first || !first->isActive()) continue;
+    for (size_t j = i + 1; j < m_escalaters.size(); ++j) {
+      auto &second = m_escalaters[j];
+      if (!second || !second->isActive()) continue;
+      if (!CollisionDetector::checkCollision(*first, *second).collided) continue;
+      if (first->movesHorizontally()) first->reverseDirection();
+      if (second->movesHorizontally()) second->reverseDirection();
     }
   }
 
@@ -480,9 +494,13 @@ void Level::handlePlayerCollisions(Player* player, float dt) {
       CollisionDetector::resolveCollision(*player, *esc, result);
       if (result.side == CollisionDetector::Side::Bottom) {
         player->setGrounded(true);
-        // Transfer the escalater's vertical velocity to the player so they
-        // ride the platform up and down.
+        // Carry a standing player with either direction of platform motion.
         player->setVelocity(player->getVelocity().x, esc->getVelocity().y);
+        if (esc->movesHorizontally()) {
+          player->setPosition(player->getPosition().x +
+                                  esc->getVelocity().x * dt,
+                              player->getPosition().y);
+        }
       }
     }
   }

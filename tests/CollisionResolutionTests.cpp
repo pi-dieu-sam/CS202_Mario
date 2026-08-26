@@ -15,6 +15,7 @@
 #include "Entities/Goomba.hpp"
 #include "Entities/Koopa.hpp"
 #include "Entities/Block.hpp"
+#include "Entities/Escalater.hpp"
 #include "Entities/PiranhaPlant.hpp"
 #include "Entities/Luigi.hpp"
 #include "Entities/Mario.hpp"
@@ -197,6 +198,31 @@ static void testKoopaDyingAndRespawn() {
     CHECK(koopa.isDead() == false,
           "Shell Koopa is not dead (will respawn)");
   }
+}
+
+static void testHorizontalEscalaterMovement() {
+  Escalater platform(400.0f, 200.0f,
+                     Escalater::MovementAxis::Horizontal);
+  CHECK(platform.movesHorizontally(),
+        "horizontal escalater reports its movement axis");
+
+  float minX = platform.getPosition().x;
+  float maxX = minX;
+  for (int frame = 0; frame < 1000; ++frame) {
+    platform.update(0.01f);
+    minX = std::min(minX, platform.getPosition().x);
+    maxX = std::max(maxX, platform.getPosition().x);
+  }
+  CHECK(minX >= 400.0f - TILE_SIZE * 5.0f - 0.01f &&
+            maxX <= 400.0f + TILE_SIZE * 5.0f + 0.01f,
+        "horizontal escalater remains within five tiles of its map position");
+  CHECK(maxX > 400.0f + TILE_SIZE * 4.5f &&
+            minX < 400.0f - TILE_SIZE * 4.5f,
+        "horizontal escalater reaches both sides of its five-tile range");
+
+  platform.reverseDirection();
+  CHECK(platform.getVelocity().x < 0.0f && platform.getVelocity().y == 0.0f,
+        "reversing a horizontal escalater changes only horizontal velocity");
 }
 
 static void testLevel2LavaTilesKillPlayer() {
@@ -717,6 +743,7 @@ int main() {
   testGoombaBouncesBothDirections();
   testMushroomReversesInsteadOfStopping();
   testKoopaDyingAndRespawn();
+  testHorizontalEscalaterMovement();
   testLevel2LavaTilesKillPlayer();
   testGoombaStompDisablesCollisionImmediately();
   testEnlargedPlayersCanHitBlocksWithCompactBody();
