@@ -28,3 +28,4 @@
 - 2026-08-25: Tweak code comments
 - 2026-08-25: Fix indentation
 - 2026-08-26: Add missing documentation
+- 2026-08-26: Fix minor typo
