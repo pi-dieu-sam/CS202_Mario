@@ -48,9 +48,11 @@ public:
   sf::FloatRect getBounds() const override;
 
   TileType getTileType() const;
+  int getSubIndex() const;
 
 private:
   TileType m_tileType = TileType::Empty;
+  int m_subIndex = 0;
   sf::Vector2f m_size = {TILE_SIZE, TILE_SIZE};
   sf::Sprite m_sprite;
   float m_flameAnimTimer = 0.0f;

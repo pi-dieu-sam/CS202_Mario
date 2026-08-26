@@ -20,6 +20,7 @@ public:
     float getSlideEndY() const;
 
     bool isReached() const;
+    bool isFlagDropComplete() const;
     void setReached(bool reached);
 
 private:

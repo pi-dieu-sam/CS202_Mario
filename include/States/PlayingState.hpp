@@ -23,7 +23,9 @@ enum class LevelTransitionStage {
     Finished,
     PipeEnter,
     PipeReturn,
-    PipeExit
+    PipeExit,
+    PipeFadeOut,
+    PipeFadeIn
 };
 
 class PlayingState : public GameState {
@@ -46,7 +48,9 @@ private:
     bool tryExitPipe();
     void startPipeTransition(bool enteringSecret);
     void updatePipeTransition(float dt);
+    void swapPipeMap();
     void startLevelTransition();
+    void beginCastleEntry();
     void updateLevelTransition(float dt);
     void finishLevelTransition();
     void beginPlayerDeath();
@@ -84,8 +88,10 @@ private:
     int m_transitionConvertedTimeScore = 0;
     int m_transitionConvertedFlagpoleScore = 0;
     int m_transitionDisplayScore = 0;
+    float m_castleDoorTargetX = 0.0f;
     int m_mainLevelNumber = 1;
     bool m_inSecretRoom = false;
+    bool m_pipeTransitionEnteringSecret = false;
     sf::Vector2f m_pipeReturnPosition = {0.0f, 0.0f};
     PowerUpState m_pipeReturnPowerUp = PowerUpState::Small;
     PowerUpState m_pipeReturnPowerUp2 = PowerUpState::Small;
