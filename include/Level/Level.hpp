@@ -61,6 +61,14 @@ public:
   /// Return the bounds of a pipe currently touched by the player, if any.
   std::optional<sf::FloatRect> getTouchedPipeBounds(const Player &player) const;
 
+  /// Return the horizontal Ward-pipe entrance currently touched by the
+  /// player. These pipes are entered from the side rather than from above.
+  std::optional<sf::FloatRect> getHorizontalPipeEntranceBounds(const Player &player) const;
+
+  /// Return a complete vertical pipe whose left edge is in the given map
+  /// column. Used by scripted pipe routes to choose an exact destination.
+  std::optional<sf::FloatRect> getPipeBoundsAtColumn(int column) const;
+
   /// Check if the level is complete.
   bool isComplete() const;
 
