@@ -159,9 +159,32 @@ static void testKoopaDyingAndRespawn() {
     const float incomingVx = koopa.getVelocity().x;
     koopa.bounce(incomingVx);
     CHECK(koopa.isSliding(),
-          "a shell remains sliding after it hits a horizontal obstacle");
-    CHECK(koopa.getVelocity().x == -incomingVx,
-          "a sliding shell reverses direction after hitting an obstacle");
+          "a shell rebounds after it hits a horizontal obstacle");
+    CHECK(koopa.getVelocity().x < 0.0f &&
+              std::abs(koopa.getVelocity().x) < std::abs(incomingVx),
+          "a wall rebound is gentler than the original kicked speed");
+
+    const float reboundStart = koopa.getPosition().x;
+    for (int i = 0; i < 500 && koopa.isSliding(); ++i) {
+      koopa.update(0.005f);
+    }
+    const float reboundDistance = std::abs(koopa.getPosition().x - reboundStart);
+    CHECK(!koopa.isSliding(),
+          "a wall-rebounded shell slows down and stops");
+    CHECK(reboundDistance > TILE_SIZE * 3.5f && reboundDistance < TILE_SIZE * 4.1f,
+          "a wall-rebounded shell travels about four tiles before stopping");
+  }
+  {
+    Koopa koopa;
+    koopa.onStomped();
+    for (int i = 0; i < 400; ++i) koopa.update(0.01f);
+    koopa.kick(1.0f);
+    for (int i = 0; i < 400; ++i) koopa.update(0.01f);
+    CHECK(koopa.getKoopaState() == KoopaState::Shell,
+          "kicking a shell refreshes its respawn timer");
+    for (int i = 0; i < 110; ++i) koopa.update(0.01f);
+    CHECK(koopa.getKoopaState() == KoopaState::Walking,
+          "a kicked shell respawns after the refreshed timer expires");
   }
   {
     Koopa koopa;
