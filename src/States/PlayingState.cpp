@@ -20,8 +20,8 @@
 
 namespace {
 constexpr float TIME_BONUS_TICK_INTERVAL = 0.03f;
-constexpr int LEVEL1_SECRET_ENTRY_PIPE_COLUMN = 57; // A: enter the secret room
-constexpr int LEVEL1_SECRET_RETURN_PIPE_COLUMN = 71; // B: emerge 14 tiles to the right
+constexpr int LEVEL1_SECRET_ENTRY_PIPE_COLUMN = 59; // A: enter the secret room
+constexpr int LEVEL1_SECRET_RETURN_PIPE_COLUMN = 73; // B: emerge 14 tiles to the right
 constexpr float PIPE_VERTICAL_TRAVEL_TIME = 0.45f;
 constexpr float PIPE_HORIZONTAL_TRAVEL_TIME = 0.80f;
 constexpr float PIPE_FADE_DURATION = 0.12f;
@@ -73,6 +73,10 @@ void PlayingState::onEnter() {
         m_scorePopups.add(e.intData, e.worldPosition);
     });
 
+    m_enemyFireballHitSub = ScopedEventSubscription(EventType::EnemyHitByFireball, [](const GameEvent&) {
+        SoundManager::getInstance().playSound(SoundID::Fireball);
+    });
+
     m_playerDiedSub = ScopedEventSubscription(EventType::PlayerDied, [this](const GameEvent& e) {
         SoundManager::getInstance().stopMusic();
         SoundManager::getInstance().playSound(SoundID::PlayerDeath);
@@ -108,6 +112,7 @@ void PlayingState::onEnter() {
 void PlayingState::onExit() {
     m_coinSub.reset();
     m_enemyDefeatedSub.reset();
+    m_enemyFireballHitSub.reset();
     m_playerDiedSub.reset();
     m_powerUpSub.reset();
     m_blockHitSub.reset();
@@ -234,6 +239,7 @@ void PlayingState::update(float dt) {
     if (!m_player->isDead()) {
         m_player->setSprinting(m_inputP1.isSprintHeld());
         m_player->setJumpHeld(m_inputP1.isJumpHeld());
+        m_player->setVineHorizontalInput(m_inputP1.isHorizontalHeld());
         auto commands1 = m_inputP1.handleInput();
         for (auto* cmd : commands1) {
             cmd->execute(*m_player, dt);
@@ -254,6 +260,7 @@ void PlayingState::update(float dt) {
     if (m_player2 && !m_player2->isDead()) {
         m_player2->setSprinting(m_inputP2.isSprintHeld());
         m_player2->setJumpHeld(m_inputP2.isJumpHeld());
+        m_player2->setVineHorizontalInput(m_inputP2.isHorizontalHeld());
         auto commands2 = m_inputP2.handleInput();
         for (auto* cmd : commands2) {
             cmd->execute(*m_player2, dt);

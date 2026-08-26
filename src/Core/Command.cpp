@@ -10,6 +10,14 @@ void MoveRightCommand::execute(Player& player, float dt) {
     player.moveRight(dt);
 }
 
+void ClimbUpCommand::execute(Player& player, float dt) {
+    player.climbUp(dt);
+}
+
+void ClimbDownCommand::execute(Player& player, float dt) {
+    player.climbDown(dt);
+}
+
 void JumpCommand::execute(Player& player, float dt) {
     if (player.isGrounded()) {
         SoundManager::getInstance().playSound(SoundID::Jump);

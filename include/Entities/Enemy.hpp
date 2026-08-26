@@ -23,6 +23,11 @@ public:
   /// PiranhaPlant -> no effect), kill() always removes the enemy.
   virtual void kill();
 
+  /// Apply a fireball hit and return whether it defeated the enemy. Most
+  /// enemies die immediately; bosses can require multiple fireballs without
+  /// changing other defeat types.
+  virtual bool hitByFireball();
+
   /// Returns false when the enemy is in a non-interactive state (e.g. dying
   /// animation) and should not deal or receive damage.
   virtual bool isVulnerable() const;
@@ -42,7 +47,7 @@ public:
   /// Forward the player's current position to this enemy's AI strategy.
   /// No-op if there's no strategy, or if it doesn't use the position
   /// (e.g. PatrolStrategy).
-  void updatePlayerPosition(const sf::Vector2f& playerPos);
+  virtual void updatePlayerPosition(const sf::Vector2f& playerPos);
 
   /// Points awarded when this enemy is defeated.
   int getScoreValue() const;

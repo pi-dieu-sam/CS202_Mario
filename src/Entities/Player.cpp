@@ -20,6 +20,8 @@ constexpr float WALK_ANIM_SPEED = 0.08f;
 constexpr float JUMP_ANIM_SPEED = 0.15f;
 constexpr float IDLE_ANIM_SPEED = 0.16f;
 constexpr float FIRE_ANIM_SPEED = 0.12f;
+constexpr float CLIMB_ANIM_SPEED = 0.12f;
+constexpr float CLIMB_SPEED = 120.0f;
 
 // FlowersBuff parameters
 constexpr float BUFF_DURATION = 40.0f;      // seconds the buff lasts
@@ -83,14 +85,27 @@ void Player::update(float dt) {
     }
   }
 
-  // Apply gravity
-  applyGravity(dt);
+  // A climbing player is held by the vine, so gravity and horizontal
+  // friction do not affect them. climbUp()/climbDown() set vertical velocity.
+  if (!m_climbing) {
+    applyGravity(dt);
+  } else {
+    m_velocity.x = 0.0f;
+    m_grounded = false;
+  }
 
   // Apply friction when no horizontal input this frame
-  applyFriction();
+  if (!m_climbing) {
+    applyFriction();
+  }
 
   // Move
   m_position += m_velocity * dt;
+  // Up/down commands are held commands. Consume their velocity after this
+  // frame so tapping a key moves one small step instead of climbing forever.
+  if (m_climbing) {
+    m_velocity.y = 0.0f;
+  }
 
   // Invincibility timer (post-damage blink)
   if (m_invincible) {
@@ -120,7 +135,10 @@ void Player::update(float dt) {
   // ── Decide animation state ──
   SpriteRegistry::PlayerAnim anim;
   float animSpeed = -1.0f;
-  if (m_shootAnimTimer > 0.0f) {
+  if (m_climbing) {
+    anim = SpriteRegistry::PlayerAnim::Climb;
+    animSpeed = CLIMB_ANIM_SPEED;
+  } else if (m_shootAnimTimer > 0.0f) {
     // The character's Fire sheet plays briefly after each shot, even mid-air.
     m_shootAnimTimer -= dt;
     anim = SpriteRegistry::PlayerAnim::Fire;
@@ -143,7 +161,11 @@ void Player::update(float dt) {
       SpriteRegistry::playerFrameCount(m_characterId, m_powerUp, anim),
       animSpeed);
 
-  updateSprite(dt);
+  // Keep the current climb pose while idle; advance only while moving up/down.
+  if (!m_climbing || m_climbMoving) {
+    updateSprite(dt);
+  }
+  m_climbMoving = false;
 }
 
 void Player::draw(sf::RenderWindow &window) {
@@ -221,6 +243,96 @@ float Player::getEffectiveSpeed() const {
   return base;
 }
 
+void Player::moveLeft(float dt) {
+  if (m_climbing) {
+    if (m_vineHorizontalReleaseRequired) return;
+    leaveVine(true);
+  }
+  Character::moveLeft(dt);
+}
+
+void Player::moveRight(float dt) {
+  if (m_climbing) {
+    if (m_vineHorizontalReleaseRequired) return;
+    leaveVine(true);
+  }
+  Character::moveRight(dt);
+}
+
+void Player::updateVineContact(bool touchingVine, float vineX) {
+  if (!touchingVine) {
+    if (m_climbing && m_hasVineAnchor) {
+      // Do not let a step beyond the end/gap of a vine create a free-floating
+      // climb state. Restore the last valid vine position and wait for
+      // left/right to detach.
+      m_position = m_lastVineAnchor;
+      m_velocity = {0.0f, 0.0f};
+    } else if (!m_climbing) {
+      m_vineReattachLocked = false;
+    }
+    return;
+  }
+
+  if (!m_climbing && !m_vineReattachLocked &&
+      m_goalAnimationPhase == GoalAnimationPhase::None && !m_dead) {
+    m_climbing = true;
+    // The approach key is normally still held as the player touches the
+    // vine. Ignore it until released, so it does not instantly cancel climb.
+    m_vineHorizontalReleaseRequired = true;
+    m_velocity = {0.0f, 0.0f};
+    m_grounded = false;
+    // m_position is the two-tile player anchor; the small body is inset 2px
+    // and 28px wide, so this places its centre at vineX + 16px exactly.
+    m_position.x = vineX;
+    // Collision is processed after Player::update() for the frame. Select
+    // the climb sprite here as well so touching the vine is visible
+    // immediately, rather than one frame later.
+    m_currentAnim = SpriteRegistry::PlayerAnim::Climb;
+    m_animFrames = SpriteRegistry::playerFrameCount(
+        m_characterId, m_powerUp, m_currentAnim);
+    m_animFrame = 0;
+    m_animTimer = 0.0f;
+    m_animSpeed = CLIMB_ANIM_SPEED;
+  }
+
+  if (m_climbing) {
+    // This position has been confirmed to overlap a V tile, so it is safe to
+    // use as the rollback point if the next vertical step leaves the vine.
+    m_lastVineAnchor = m_position;
+    m_hasVineAnchor = true;
+  }
+}
+
+void Player::climbUp(float /*dt*/) {
+  if (!m_climbing) return;
+  m_velocity = {0.0f, -CLIMB_SPEED};
+  m_climbMoving = true;
+}
+
+void Player::climbDown(float /*dt*/) {
+  if (!m_climbing) return;
+  m_velocity = {0.0f, CLIMB_SPEED};
+  m_climbMoving = true;
+}
+
+bool Player::isClimbing() const { return m_climbing; }
+
+void Player::setVineHorizontalInput(bool held) {
+  if (!held) {
+    m_vineHorizontalReleaseRequired = false;
+  }
+}
+
+void Player::leaveVine(bool lockReattach) {
+  m_climbing = false;
+  m_climbMoving = false;
+  m_vineReattachLocked = lockReattach;
+  m_vineHorizontalReleaseRequired = false;
+  m_hasVineAnchor = false;
+  m_velocity = {0.0f, 0.0f};
+  m_grounded = false;
+}
+
 void Player::jump() {
   if (m_grounded) {
     m_velocity.y = m_jumpForce;
@@ -295,6 +407,7 @@ void Player::beginFlagpoleSlide(float poleCenterX, float landingY) {
   m_flagpoleSlideX = poleCenterX - (TILE_SIZE - 2.0f);
   m_flagpoleSlideTargetY = landingY;
   m_position.x = m_flagpoleSlideX;
+  leaveVine(false);
   m_velocity = {0.0f, 0.0f};
   m_grounded = false;
   m_sprinting = false;
@@ -351,6 +464,7 @@ void Player::die() {
     return;
 
   m_goalAnimationPhase = GoalAnimationPhase::None;
+  leaveVine(false);
   m_dead = true;
   m_grounded = false;
   m_sprinting = false;

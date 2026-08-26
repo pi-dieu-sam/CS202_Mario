@@ -101,6 +101,12 @@ const std::string &wardPipePiecePath() {
   static const std::string p = "assets/textures/items/WardPipe_piece.png";
   return p;
 }
+
+const std::string &vineTopPath() {
+  // VineTop.png is a 14x14 sprite. Tile applies the map-cell scale.
+  static const std::string p = "assets/textures/items/VineTop.png";
+  return p;
+}
 } // namespace
 
 const std::string &SpriteRegistry::tilePath(TileType type, LevelTheme theme) {
@@ -114,6 +120,8 @@ const std::string &SpriteRegistry::tilePath(TileType type, LevelTheme theme) {
     return castlePiecePath();
   case TileType::WardPipePiece:
     return wardPipePiecePath();
+  case TileType::VineTop:
+    return vineTopPath();
   case TileType::Ground:
   case TileType::Underground:
   case TileType::CastleBlock:
@@ -228,6 +236,68 @@ void SpriteRegistry::applyKoopaFrame(sf::Sprite &sprite, int frame,
              sf::IntRect(col * cellW, row * cellH, cellW, cellH), box, flip);
 }
 
+const std::string &SpriteRegistry::troopaPath() {
+  static const std::string sheet = "assets/textures/Character/Troopa.png";
+  return sheet;
+}
+
+int SpriteRegistry::troopaFrameCount() { return 4; }
+
+void SpriteRegistry::applyTroopaFrame(sf::Sprite &sprite, int frame,
+                                      const sf::FloatRect &box, bool flip) {
+  sf::Texture &texture = AssetManager::getInstance().getTexture(troopaPath());
+  const sf::Vector2u size = texture.getSize();
+  if (size.x == 0 || size.y == 0)
+    return;
+
+  // The source image has four 250px frames separated by one transparent
+  // column. Its final three columns are also transparent padding.
+  const int f = frame % troopaFrameCount();
+  const int left = f == 0 ? 0 : f * 251 - 1;
+  applyFrame(sprite, texture,
+             sf::IntRect(left, 0, 250, static_cast<int>(size.y)), box, flip);
+}
+
+const std::string &SpriteRegistry::bowserPath() {
+  static const std::string sprite = "assets/textures/Character/Bowser.png";
+  return sprite;
+}
+
+const std::string &SpriteRegistry::bowserBreathPath() {
+  static const std::string sheet =
+      "assets/textures/Character/Bowser_Breath.png";
+  return sheet;
+}
+
+int SpriteRegistry::bowserBreathFrameCount() { return 6; }
+
+sf::IntRect SpriteRegistry::bowserBreathFrameRect(int frame) {
+  constexpr int widths[] = {78, 78, 78, 91, 105, 103};
+  constexpr int offsets[] = {0, 78, 156, 234, 325, 430};
+  const int f = std::clamp(frame, 0, bowserBreathFrameCount() - 1);
+  return sf::IntRect(offsets[f], 0, widths[f], 60);
+}
+
+void SpriteRegistry::applyBowserBreathFrame(sf::Sprite &sprite, int frame,
+                                            const sf::FloatRect &box,
+                                            bool flip) {
+  sf::Texture &texture =
+      AssetManager::getInstance().getTexture(bowserBreathPath());
+  const sf::Vector2u size = texture.getSize();
+  if (size.x == 0 || size.y == 0)
+    return;
+
+  applyFrame(sprite, texture, bowserBreathFrameRect(frame), box, flip);
+}
+
+const std::string &SpriteRegistry::bowserFirePath() {
+  static const std::string sheet =
+      "assets/textures/Character/Bowser_Fire.png";
+  return sheet;
+}
+
+int SpriteRegistry::bowserFireFrameCount() { return 3; }
+
 const std::string &SpriteRegistry::piranhaPlantPath(int /*frame*/) {
   // This GIF contains the two classic, fixed-size mouth poses. Vertical
   // emergence is controlled by PiranhaPlant itself; the old 95-frame strip
@@ -278,6 +348,9 @@ const MarioSheet &marioSheet(SpriteRegistry::PlayerAnim anim) {
                                   32, 3};
   static const MarioSheet fire = {"assets/textures/Character/Mario_Fire.png",
                                   48, 2};
+  // Mario_climb.png contains two adjacent 32x32 animation cells.
+  static const MarioSheet climb = {"assets/textures/Character/Mario_climb.png",
+                                   32, 2};
   switch (anim) {
   case SpriteRegistry::PlayerAnim::Walk:
     return walk;
@@ -285,6 +358,8 @@ const MarioSheet &marioSheet(SpriteRegistry::PlayerAnim anim) {
     return jump;
   case SpriteRegistry::PlayerAnim::Fire:
     return fire;
+  case SpriteRegistry::PlayerAnim::Climb:
+    return climb;
   case SpriteRegistry::PlayerAnim::Idle:
   case SpriteRegistry::PlayerAnim::Skid:
   default:
@@ -334,6 +409,16 @@ const sf::IntRect LUIGI_FIRE_FRAMES[1] = {
     sf::IntRect(0, 0, 41, 36),
 };
 
+// Luigi_Climb.png has four 26x44 cells laid out side-by-side. The two spare
+// pixels at the right of the source image are transparent padding, not a
+// fifth frame.
+const sf::IntRect LUIGI_CLIMB_FRAMES[4] = {
+    sf::IntRect(0, 0, 26, 44),
+    sf::IntRect(26, 0, 26, 44),
+    sf::IntRect(52, 0, 26, 44),
+    sf::IntRect(78, 0, 26, 44),
+};
+
 const LuigiSheet &luigiSheet(SpriteRegistry::PlayerAnim anim) {
   static const LuigiSheet idle = {
       "assets/textures/Character/Luigi_Stand.png", LUIGI_STAND_FRAMES, 3};
@@ -343,6 +428,8 @@ const LuigiSheet &luigiSheet(SpriteRegistry::PlayerAnim anim) {
       "assets/textures/Character/Luigi_Jump.png", LUIGI_JUMP_FRAMES, 5};
   static const LuigiSheet fire = {
       "assets/textures/Character/Luigi_Fire.png", LUIGI_FIRE_FRAMES, 1};
+  static const LuigiSheet climb = {
+      "assets/textures/Character/Luigi_Climb.png", LUIGI_CLIMB_FRAMES, 4};
   switch (anim) {
   case SpriteRegistry::PlayerAnim::Walk:
     return walk;
@@ -350,6 +437,8 @@ const LuigiSheet &luigiSheet(SpriteRegistry::PlayerAnim anim) {
     return jump;
   case SpriteRegistry::PlayerAnim::Fire:
     return fire;
+  case SpriteRegistry::PlayerAnim::Climb:
+    return climb;
   case SpriteRegistry::PlayerAnim::Idle:
   case SpriteRegistry::PlayerAnim::Skid:
   default:

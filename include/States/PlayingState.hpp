@@ -70,6 +70,7 @@ private:
 
     ScopedEventSubscription m_coinSub;
     ScopedEventSubscription m_enemyDefeatedSub;
+    ScopedEventSubscription m_enemyFireballHitSub;
     ScopedEventSubscription m_playerDiedSub;
     ScopedEventSubscription m_powerUpSub;
     ScopedEventSubscription m_blockHitSub;
