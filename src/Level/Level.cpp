@@ -47,7 +47,7 @@ bool Level::loadFromFile(const std::string &filename,
 
   // Set map bounds on escalaters so they reverse at level edges
   for (auto &esc : m_escalaters) {
-    esc->setMapBounds(0.0f, m_height);
+    esc->setMapBounds(0.0f, m_width, 0.0f, m_height);
   }
 
   // Create player at spawn point
@@ -67,7 +67,7 @@ bool Level::loadFromFile(const std::string &filename,
   if (!m_player)
     return false;
 
-  m_background.load(theme, m_width);
+  m_background.load(theme, m_width, filename == "assets/levels/level2.txt");
 
   return true;
 }
@@ -162,6 +162,20 @@ void Level::update(float dt) {
         esc->reverseDirection();
         break;
       }
+    }
+  }
+
+  // Horizontal `e` platforms turn around when they meet another escalater.
+  // Vertical `E` platforms retain their existing independent movement.
+  for (size_t i = 0; i < m_escalaters.size(); ++i) {
+    auto &first = m_escalaters[i];
+    if (!first || !first->isActive()) continue;
+    for (size_t j = i + 1; j < m_escalaters.size(); ++j) {
+      auto &second = m_escalaters[j];
+      if (!second || !second->isActive()) continue;
+      if (!CollisionDetector::checkCollision(*first, *second).collided) continue;
+      if (first->movesHorizontally()) first->reverseDirection();
+      if (second->movesHorizontally()) second->reverseDirection();
     }
   }
 
@@ -360,6 +374,88 @@ Level::getTouchedPipeBounds(const Player &player) const {
   return std::nullopt;
 }
 
+std::optional<sf::FloatRect>
+Level::getHorizontalPipeEntranceBounds(const Player &player) const {
+  const sf::FloatRect playerBounds = player.getBounds();
+
+  auto hasWardPiece = [&](float x, float y) {
+    for (const auto &tile : m_tiles) {
+      if (tile->getTileType() != TileType::WardPipePiece)
+        continue;
+      const sf::FloatRect bounds = tile->getBounds();
+      if (std::abs(bounds.left - x) < 0.5f &&
+          std::abs(bounds.top - y) < 0.5f) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  for (const auto &tile : m_tiles) {
+    if (tile->getTileType() != TileType::WardPipePiece)
+      continue;
+
+    const sf::FloatRect topLeft = tile->getBounds();
+    const float x = topLeft.left;
+    const float y = topLeft.top;
+
+    // A horizontal pipe is authored as a 3x2 WardPipe_piece rectangle.
+    if (!hasWardPiece(x + TILE_SIZE, y) ||
+        !hasWardPiece(x + TILE_SIZE * 2.0f, y) ||
+        !hasWardPiece(x, y + TILE_SIZE) ||
+        !hasWardPiece(x + TILE_SIZE, y + TILE_SIZE) ||
+        !hasWardPiece(x + TILE_SIZE * 2.0f, y + TILE_SIZE)) {
+      continue;
+    }
+
+    // Give the entrance a small lip on the left so the player can activate it
+    // while standing against the solid first pipe tile.
+    const sf::FloatRect entrance(x - 8.0f, y, TILE_SIZE * 3.0f + 8.0f,
+                                 TILE_SIZE * 2.0f);
+    if (playerBounds.intersects(entrance)) {
+      return entrance;
+    }
+  }
+
+  return std::nullopt;
+}
+
+std::optional<sf::FloatRect> Level::getPipeBoundsAtColumn(int column) const {
+  const float expectedX = static_cast<float>(column) * TILE_SIZE;
+
+  auto hasPipePart = [&](float x, float y, TileType type) {
+    for (const auto &tile : m_tiles) {
+      if (tile->getTileType() != type)
+        continue;
+      const sf::FloatRect bounds = tile->getBounds();
+      if (std::abs(bounds.left - x) < 0.5f &&
+          std::abs(bounds.top - y) < 0.5f) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  for (const auto &tile : m_tiles) {
+    if (tile->getTileType() != TileType::PipeTopLeft)
+      continue;
+
+    const sf::FloatRect topLeft = tile->getBounds();
+    if (std::abs(topLeft.left - expectedX) >= 0.5f)
+      continue;
+
+    const float x = topLeft.left;
+    const float y = topLeft.top;
+    if (hasPipePart(x + TILE_SIZE, y, TileType::PipeTopRight) &&
+        hasPipePart(x, y + TILE_SIZE, TileType::PipeBodyLeft) &&
+        hasPipePart(x + TILE_SIZE, y + TILE_SIZE, TileType::PipeBodyRight)) {
+      return sf::FloatRect(x, y, TILE_SIZE * 2.0f, TILE_SIZE * 2.0f);
+    }
+  }
+
+  return std::nullopt;
+}
+
 bool Level::isComplete() const { return m_flagpole && m_flagpole->isReached(); }
 
 void Level::handlePlayerCollisions(Player* player, float dt) {
@@ -367,7 +463,7 @@ void Level::handlePlayerCollisions(Player* player, float dt) {
 
   player->setGrounded(false);
 
-  /* // Player vs Tiles
+  // Player vs Tiles
   for (Tile *tile : m_tileGrid.query(player->getBounds())) {
     auto result = CollisionDetector::checkCollision(*player, *tile);
     if (result.collided) {
@@ -382,7 +478,7 @@ void Level::handlePlayerCollisions(Player* player, float dt) {
         player->setGrounded(true);
       }
     }
-  } */
+  }
 
   // Player vs Blocks
   // Resolve block contacts before terrain. An enlarged player can overlap a
@@ -480,9 +576,13 @@ void Level::handlePlayerCollisions(Player* player, float dt) {
       CollisionDetector::resolveCollision(*player, *esc, result);
       if (result.side == CollisionDetector::Side::Bottom) {
         player->setGrounded(true);
-        // Transfer the escalater's vertical velocity to the player so they
-        // ride the platform up and down.
+        // Carry a standing player with either direction of platform motion.
         player->setVelocity(player->getVelocity().x, esc->getVelocity().y);
+        if (esc->movesHorizontally()) {
+          player->setPosition(player->getPosition().x +
+                                  esc->getVelocity().x * dt,
+                              player->getPosition().y);
+        }
       }
     }
   }

@@ -4,6 +4,16 @@
 #include "Physics/PhysicsConstants.hpp"
 #include <cmath>
 
+namespace {
+constexpr float SHELL_RESPAWN_TIME = 5.0f;
+constexpr float WALL_BOUNCE_SPEED = 120.0f;
+constexpr float WALL_BOUNCE_DISTANCE = TILE_SIZE * 4.0f;
+// v^2 = u^2 + 2as: exactly brings a WALL_BOUNCE_SPEED rebound to rest
+// after WALL_BOUNCE_DISTANCE, independent of the fixed update rate.
+constexpr float WALL_BRAKE_DECELERATION =
+    (WALL_BOUNCE_SPEED * WALL_BOUNCE_SPEED) / (2.0f * WALL_BOUNCE_DISTANCE);
+}
+
 Koopa::Koopa() {
   m_speed = 60.0f;
   m_scoreValue = 200;
@@ -17,7 +27,8 @@ void Koopa::onStomped() {
   case KoopaState::Walking:
     m_koopaState = KoopaState::Shell;
     m_sliding = false;
-    m_dieTimer = 5.0f;
+    m_brakingAfterWall = false;
+    m_dieTimer = SHELL_RESPAWN_TIME;
     m_velocity = {0.0f, 0.0f};
     m_strategy = nullptr;
     break;
@@ -26,8 +37,9 @@ void Koopa::onStomped() {
     if (m_sliding) {
       // Stomp stops a sliding shell
       m_sliding = false;
+      m_brakingAfterWall = false;
       m_velocity.x = 0.0f;
-      m_dieTimer = 5.0f;
+      m_dieTimer = SHELL_RESPAWN_TIME;
     } else {
       // Second stomp on a sitting shell — resume walking
       m_koopaState = KoopaState::Walking;
@@ -43,7 +55,8 @@ void Koopa::kill() {
   if (m_koopaState == KoopaState::Walking) {
     m_koopaState = KoopaState::Shell;
     m_sliding = false;
-    m_dieTimer = 5.0f;
+    m_brakingAfterWall = false;
+    m_dieTimer = SHELL_RESPAWN_TIME;
     m_velocity = {0.0f, 0.0f};
     m_strategy = nullptr;
     m_dead = false;
@@ -52,15 +65,28 @@ void Koopa::kill() {
 
 void Koopa::update(float dt) {
   if (m_koopaState == KoopaState::Shell) {
-    if (!m_sliding) {
-      // Sitting shell: count down respawn timer
-      m_dieTimer -= dt;
-      if (m_dieTimer <= 0.0f) {
-        m_koopaState = KoopaState::Walking;
-        m_velocity.x = -m_speed;
-        m_facingRight = false;
-        setStrategy(std::make_unique<PatrolStrategy>());
-        return;
+    // The shell's respawn clock continues even when it is moving.  Every
+    // kick refreshes this clock, so a kicked shell cannot slide forever.
+    m_dieTimer -= dt;
+    if (m_dieTimer <= 0.0f) {
+      m_koopaState = KoopaState::Walking;
+      m_sliding = false;
+      m_brakingAfterWall = false;
+      m_velocity.x = -m_speed;
+      m_facingRight = false;
+      setStrategy(std::make_unique<PatrolStrategy>());
+      return;
+    }
+
+    if (m_sliding && m_brakingAfterWall) {
+      const float speed = std::abs(m_velocity.x);
+      const float speedLoss = WALL_BRAKE_DECELERATION * dt;
+      if (speed <= speedLoss) {
+        m_velocity.x = 0.0f;
+        m_sliding = false;
+        m_brakingAfterWall = false;
+      } else {
+        m_velocity.x -= std::copysign(speedLoss, m_velocity.x);
       }
     }
     applyGravity(dt);
@@ -101,19 +127,21 @@ void Koopa::kick(float direction) {
   if (m_koopaState != KoopaState::Shell || m_sliding)
     return;
   m_sliding = true;
+  m_brakingAfterWall = false;
   m_velocity.x = direction * m_shellSpeed;
   m_facingRight = direction > 0.0f;
-  m_dieTimer = 0.0f;
+  m_dieTimer = SHELL_RESPAWN_TIME;
 }
 
 void Koopa::bounce(float incomingVelocity) {
   if (m_koopaState != KoopaState::Shell || !m_sliding)
     return;
 
-  const float speed = std::abs(incomingVelocity) > 0.0f
-                          ? std::abs(incomingVelocity)
-                          : m_shellSpeed;
-  m_velocity.x = incomingVelocity >= 0.0f ? -speed : speed;
+  // A wall impact is deliberately gentler than a kick.  update() applies a
+  // constant brake so this rebound travels about four tiles, then stops.
+  m_velocity.x = incomingVelocity >= 0.0f ? -WALL_BOUNCE_SPEED
+                                           : WALL_BOUNCE_SPEED;
+  m_brakingAfterWall = true;
   m_facingRight = m_velocity.x > 0.0f;
 }
 
@@ -121,6 +149,7 @@ void Koopa::stopSliding() {
   if (m_koopaState != KoopaState::Shell || !m_sliding)
     return;
   m_sliding = false;
+  m_brakingAfterWall = false;
   m_velocity.x = 0.0f;
-  m_dieTimer = 5.0f;
+  m_dieTimer = SHELL_RESPAWN_TIME;
 }
