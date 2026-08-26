@@ -10,10 +10,12 @@
 #include "Physics/PhysicsConstants.hpp"
 #include "Core/AssetManager.hpp"
 #include "Graphics/SpriteRegistry.hpp"
+#include "Level/Level.hpp"
 #include "Level/TileGrid.hpp"
 #include "Entities/Goomba.hpp"
 #include "Entities/Koopa.hpp"
 #include "Entities/Block.hpp"
+#include "Entities/Escalater.hpp"
 #include "Entities/PiranhaPlant.hpp"
 #include "Entities/Luigi.hpp"
 #include "Entities/Mario.hpp"
@@ -159,9 +161,32 @@ static void testKoopaDyingAndRespawn() {
     const float incomingVx = koopa.getVelocity().x;
     koopa.bounce(incomingVx);
     CHECK(koopa.isSliding(),
-          "a shell remains sliding after it hits a horizontal obstacle");
-    CHECK(koopa.getVelocity().x == -incomingVx,
-          "a sliding shell reverses direction after hitting an obstacle");
+          "a shell rebounds after it hits a horizontal obstacle");
+    CHECK(koopa.getVelocity().x < 0.0f &&
+              std::abs(koopa.getVelocity().x) < std::abs(incomingVx),
+          "a wall rebound is gentler than the original kicked speed");
+
+    const float reboundStart = koopa.getPosition().x;
+    for (int i = 0; i < 500 && koopa.isSliding(); ++i) {
+      koopa.update(0.005f);
+    }
+    const float reboundDistance = std::abs(koopa.getPosition().x - reboundStart);
+    CHECK(!koopa.isSliding(),
+          "a wall-rebounded shell slows down and stops");
+    CHECK(reboundDistance > TILE_SIZE * 3.5f && reboundDistance < TILE_SIZE * 4.1f,
+          "a wall-rebounded shell travels about four tiles before stopping");
+  }
+  {
+    Koopa koopa;
+    koopa.onStomped();
+    for (int i = 0; i < 400; ++i) koopa.update(0.01f);
+    koopa.kick(1.0f);
+    for (int i = 0; i < 400; ++i) koopa.update(0.01f);
+    CHECK(koopa.getKoopaState() == KoopaState::Shell,
+          "kicking a shell refreshes its respawn timer");
+    for (int i = 0; i < 110; ++i) koopa.update(0.01f);
+    CHECK(koopa.getKoopaState() == KoopaState::Walking,
+          "a kicked shell respawns after the refreshed timer expires");
   }
   {
     Koopa koopa;
@@ -173,6 +198,54 @@ static void testKoopaDyingAndRespawn() {
     CHECK(koopa.isDead() == false,
           "Shell Koopa is not dead (will respawn)");
   }
+}
+
+static void testHorizontalEscalaterMovement() {
+  Escalater platform(400.0f, 200.0f,
+                     Escalater::MovementAxis::Horizontal);
+  CHECK(platform.movesHorizontally(),
+        "horizontal escalater reports its movement axis");
+
+  float minX = platform.getPosition().x;
+  float maxX = minX;
+  for (int frame = 0; frame < 1000; ++frame) {
+    platform.update(0.01f);
+    minX = std::min(minX, platform.getPosition().x);
+    maxX = std::max(maxX, platform.getPosition().x);
+  }
+  CHECK(minX >= 400.0f - TILE_SIZE * 5.0f - 0.01f &&
+            maxX <= 400.0f + TILE_SIZE * 5.0f + 0.01f,
+        "horizontal escalater remains within five tiles of its map position");
+  CHECK(maxX > 400.0f + TILE_SIZE * 4.5f &&
+            minX < 400.0f - TILE_SIZE * 4.5f,
+        "horizontal escalater reaches both sides of its five-tile range");
+
+  platform.reverseDirection();
+  CHECK(platform.getVelocity().x < 0.0f && platform.getVelocity().y == 0.0f,
+        "reversing a horizontal escalater changes only horizontal velocity");
+}
+
+static void testLevel2LavaTilesKillPlayer() {
+  // level2 uses `l` for the animated flame surface (map row 13) and `L` for
+  // the lava beneath it (map row 14). LevelLoader offsets this 15-row map by
+  // four rows to align it to the 19-row window.
+  const auto checkLavaRow = [](int worldRow, const char *name) {
+    Level level;
+    CHECK(level.loadFromFile("assets/levels/level2.txt", "Mario",
+                             LevelTheme::Castle),
+          "level 2 loads for lava collision test");
+    Player *player = level.getPlayer();
+    CHECK(player != nullptr, "level 2 creates a player");
+    if (!player) return;
+
+    player->setPosition(7.0f * TILE_SIZE,
+                        worldRow * TILE_SIZE - TILE_SIZE);
+    level.update(0.0f);
+    CHECK(player->isDead(), name);
+  };
+
+  checkLavaRow(17, "`l` flame tile kills a player on contact");
+  checkLavaRow(18, "`L` lava tile kills a player on contact");
 }
 
 static void testGoombaStompDisablesCollisionImmediately() {
@@ -670,6 +743,8 @@ int main() {
   testGoombaBouncesBothDirections();
   testMushroomReversesInsteadOfStopping();
   testKoopaDyingAndRespawn();
+  testHorizontalEscalaterMovement();
+  testLevel2LavaTilesKillPlayer();
   testGoombaStompDisablesCollisionImmediately();
   testEnlargedPlayersCanHitBlocksWithCompactBody();
   testResolveCollisionAloneStillZeroesVelocity();

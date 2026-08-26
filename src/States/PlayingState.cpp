@@ -20,6 +20,10 @@
 
 namespace {
 constexpr float TIME_BONUS_TICK_INTERVAL = 0.03f;
+constexpr int LEVEL1_SECRET_ENTRY_PIPE_COLUMN = 57; // A: enter the secret room
+constexpr int LEVEL1_SECRET_RETURN_PIPE_COLUMN = 71; // B: emerge 14 tiles to the right
+constexpr float PIPE_VERTICAL_TRAVEL_TIME = 0.45f;
+constexpr float PIPE_HORIZONTAL_TRAVEL_TIME = 0.80f;
 }
 
 PlayingState::PlayingState() : m_hud(std::make_unique<HUD>()) {
@@ -156,6 +160,13 @@ void PlayingState::handleEvent(const sf::Event& event) {
                         return;
                     }
                 }
+            } else if (event.key.code == sf::Keyboard::Right &&
+                       m_inSecretRoom && m_mainLevelNumber == 1) {
+                // The bonus-room B pipe is horizontal, so it is entered
+                // from the left rather than with the Down key.
+                if (tryExitPipe()) {
+                    return;
+                }
             }
         }
 
@@ -268,8 +279,11 @@ void PlayingState::update(float dt) {
         return;
     }
 
-    // In secret rooms, touching the exit pipe auto-returns to the main map.
-    if (m_inSecretRoom && m_transitionStage == LevelTransitionStage::Inactive) {
+    // Levels 2 and 3 retain their legacy touch-to-exit pipes. Level 1 uses
+    // the B horizontal pipe, which must be entered intentionally from its
+    // left edge with Right.
+    if (m_inSecretRoom && m_mainLevelNumber != 1 &&
+        m_transitionStage == LevelTransitionStage::Inactive) {
         if (m_level->getTouchedPipeBounds(*m_player)) {
             startPipeTransition(false);
             return;
@@ -399,10 +413,13 @@ std::string PlayingState::getLevelPath(int levelNumber, bool secretRoom) const {
 }
 
 LevelTheme PlayingState::getLevelTheme(int levelNumber, bool secretRoom) const {
+    // Level 1's secret room is entered from the overworld map, so keep its
+    // terrain palette consistent with level1 (green pipes and overworld X
+    // ground) instead of switching those tiles to the underground palette.
+    if (levelNumber == 1) return LevelTheme::Overworld;
     if (secretRoom) {
         return LevelTheme::Underground;
     }
-    if (levelNumber == 1) return LevelTheme::Overworld;
     if (levelNumber == 2) return LevelTheme::Underground;
     return LevelTheme::Castle;
 }
@@ -420,6 +437,14 @@ bool PlayingState::tryEnterPipe() {
     if (!pipeBounds)
         return false;
 
+    // World 1-1 has one designated bonus-pipe entrance (A). Other decorative
+    // pipes remain ordinary scenery instead of accidentally opening the room.
+    if (m_mainLevelNumber == 1 &&
+        static_cast<int>(pipeBounds->left / TILE_SIZE) !=
+            LEVEL1_SECRET_ENTRY_PIPE_COLUMN) {
+        return false;
+    }
+
     m_pipeReturnPosition = m_player->getPosition(); // We'll just spawn both here on return
     m_pipeReturnPowerUp = m_player->getPowerUpState();
     if (m_player2) m_pipeReturnPowerUp2 = m_player2->getPowerUpState();
@@ -430,6 +455,14 @@ bool PlayingState::tryEnterPipe() {
 bool PlayingState::tryExitPipe() {
     if (!m_level || !m_inSecretRoom)
         return false;
+
+    if (m_mainLevelNumber == 1) {
+        if (!m_player || !m_level->getHorizontalPipeEntranceBounds(*m_player)) {
+            return false;
+        }
+        startPipeTransition(false);
+        return true;
+    }
 
     bool canExit = (m_player && m_player->isGrounded() && m_level->getEnterablePipeBounds(*m_player));
     if (!canExit && m_player2 && m_player2->isGrounded()) {
@@ -470,6 +503,14 @@ void PlayingState::updatePipeTransition(float dt) {
         pos.y += pipeTravelSpeed * dt;
         pos2.y += pipeTravelSpeed * dt;
     } else if (m_transitionStage == LevelTransitionStage::PipeReturn) {
+        if (m_mainLevelNumber == 1 && m_inSecretRoom) {
+            pos.x += pipeTravelSpeed * dt;
+            pos2.x += pipeTravelSpeed * dt;
+        } else {
+            pos.y -= pipeTravelSpeed * dt;
+            pos2.y -= pipeTravelSpeed * dt;
+        }
+    } else if (m_transitionStage == LevelTransitionStage::PipeExit) {
         pos.y -= pipeTravelSpeed * dt;
         pos2.y -= pipeTravelSpeed * dt;
     }
@@ -482,7 +523,19 @@ void PlayingState::updatePipeTransition(float dt) {
     }
 
     m_transitionTimer += dt;
-    if (m_transitionTimer < 0.45f) {
+    const float travelTime =
+        ((m_transitionStage == LevelTransitionStage::PipeReturn &&
+          m_mainLevelNumber == 1 && m_inSecretRoom) ||
+         m_transitionStage == LevelTransitionStage::PipeExit)
+            ? PIPE_HORIZONTAL_TRAVEL_TIME
+            : PIPE_VERTICAL_TRAVEL_TIME;
+    if (m_transitionTimer < travelTime) {
+        return;
+    }
+
+    if (m_transitionStage == LevelTransitionStage::PipeExit) {
+        m_transitionStage = LevelTransitionStage::Inactive;
+        m_transitionTimer = 0.0f;
         return;
     }
 
@@ -508,7 +561,21 @@ void PlayingState::updatePipeTransition(float dt) {
     if (m_player) {
         m_player->applyPowerUp(m_pipeReturnPowerUp);
         if (!enteringSecret) {
-            m_player->setPosition(m_pipeReturnPosition);
+            if (m_mainLevelNumber == 1) {
+                const auto exitPipe =
+                    m_level->getPipeBoundsAtColumn(LEVEL1_SECRET_RETURN_PIPE_COLUMN);
+                if (!exitPipe) {
+                    std::cerr << "[PlayingState] Missing level 1 B return pipe\n";
+                    m_player->setPosition(m_pipeReturnPosition);
+                } else {
+                    // Start inside B, then visibly rise out of the vertical
+                    // pipe before returning player control.
+                    m_player->setPosition(exitPipe->left + TILE_SIZE * 0.5f,
+                                          exitPipe->top + TILE_SIZE);
+                }
+            } else {
+                m_player->setPosition(m_pipeReturnPosition);
+            }
             m_player->setVelocity(0.0f, 0.0f);
             m_player->setGrounded(false);
         }
@@ -517,14 +584,25 @@ void PlayingState::updatePipeTransition(float dt) {
         m_player2->applyPowerUp(m_pipeReturnPowerUp2);
         if (!enteringSecret) {
             // Spawn P2 slightly off to the side so they don't exactly overlap
-            m_player2->setPosition(m_pipeReturnPosition + sf::Vector2f(32.0f, 0.0f));
+            if (m_mainLevelNumber == 1) {
+                const auto exitPipe =
+                    m_level->getPipeBoundsAtColumn(LEVEL1_SECRET_RETURN_PIPE_COLUMN);
+                m_player2->setPosition(
+                    exitPipe ? sf::Vector2f(exitPipe->left + TILE_SIZE * 1.5f,
+                                             exitPipe->top + TILE_SIZE)
+                             : m_pipeReturnPosition + sf::Vector2f(32.0f, 0.0f));
+            } else {
+                m_player2->setPosition(m_pipeReturnPosition + sf::Vector2f(32.0f, 0.0f));
+            }
             m_player2->setVelocity(0.0f, 0.0f);
             m_player2->setGrounded(false);
         }
     }
 
     m_inSecretRoom = enteringSecret;
-    m_transitionStage = LevelTransitionStage::Inactive;
+    m_transitionStage = !enteringSecret && m_mainLevelNumber == 1
+                            ? LevelTransitionStage::PipeExit
+                            : LevelTransitionStage::Inactive;
     m_transitionTimer = 0.0f;
 }
 
@@ -534,7 +612,8 @@ void PlayingState::updateLevelTransition(float dt) {
     }
 
     if (m_transitionStage == LevelTransitionStage::PipeEnter ||
-        m_transitionStage == LevelTransitionStage::PipeReturn) {
+        m_transitionStage == LevelTransitionStage::PipeReturn ||
+        m_transitionStage == LevelTransitionStage::PipeExit) {
         updatePipeTransition(dt);
         return;
     }

@@ -39,6 +39,7 @@ class LavaFireball;
 /// - 'f' = explicit flagpole
 /// - 'k' = Koopa (override for 'E')   'r' = Piranha Plant (override for 'E')
 /// - 'M' = question block w/ Mushroom   'F' = w/ Fire Flower   's' = w/ Star
+/// - 'E' = vertical escalater; 'e' = horizontal escalater (five tiles each way)
 /// - 'O' = fire-bar anchor with eight rotating, lethal fireballs
 /// - 'i' = top lava tile with a repeating fireball launcher (waits 3 sec/arc)
 ///   (in main level2.txt only, each pipe top <> is also a launcher)
