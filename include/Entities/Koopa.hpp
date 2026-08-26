@@ -25,8 +25,8 @@ public:
 
     /// Kick the shell in the given direction (-1 = left, +1 = right).
     void kick(float direction);
-    /// Reverse a sliding shell after a horizontal collision. The incoming
-    /// velocity is captured before collision resolution clears it.
+    /// Bounce a sliding shell away from a horizontal obstacle.  The rebound
+    /// slows down over roughly four tiles before the shell comes to rest.
     void bounce(float incomingVelocity);
     /// Stop the sliding shell (for example, when the player stomps it).
     void stopSliding();
@@ -34,6 +34,7 @@ public:
 private:
     KoopaState m_koopaState = KoopaState::Walking;
     bool       m_sliding    = false;
+    bool       m_brakingAfterWall = false;
     float      m_dieTimer   = 0.0f;
     float      m_shellSpeed = 300.0f;
 };
