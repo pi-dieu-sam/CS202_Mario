@@ -1,13 +1,11 @@
 #pragma once
 #include "GameState.hpp"
+#include "States/ScreenFlow.hpp"
 #include <SFML/Graphics.hpp>
 
-enum class GameResult {
-    Lost,
-    Won,
-    P1Won,
-    P2Won
-};
+/// GameResult lives in ScreenFlow.hpp (not here) so the post-game-over
+/// navigation decision can be unit-tested without pulling in SFML.
+using GameResult = ScreenFlow::GameResult;
 
 /// GameOverState — shown when the player runs out of lives or wins.
 class GameOverState : public GameState {

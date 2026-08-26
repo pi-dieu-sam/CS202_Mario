@@ -1,13 +1,10 @@
 #include "States/MenuState.hpp"
-#include "States/CharacterSelectState.hpp"
-#include "States/LevelSelectState.hpp"
-#include "States/PlayingState.hpp"
+#include "States/Navigator.hpp"
 #include "Core/Game.hpp"
 #include "Core/AssetManager.hpp"
 #include "Core/PlayerProgress.hpp"
 #include "Core/SaveManager.hpp"
 #include "Core/SoundManager.hpp"
-#include "States/StateManager.hpp"
 #include "Physics/PhysicsConstants.hpp"
 #include "Graphics/SpriteRegistry.hpp"
 #include <cmath>
@@ -191,29 +188,35 @@ void MenuState::handleEvent(const sf::Event& event) {
                     case 0: // 1 Player Game
                         Game::getInstance().getProgress().resetGameData();
                         Game::getInstance().getProgress().setGameMode(GameMode::SinglePlayer);
-                        Game::getInstance().getStateManager().changeState(
-                            std::make_unique<CharacterSelectState>());
+                        Navigator::apply(ScreenFlow::onMenuOption(0, false),
+                                         Game::getInstance().getStateManager(),
+                                         Game::getInstance().getProgress().getGameMode());
                         break;
                     case 1: // 2 Player Co-op
                         Game::getInstance().getProgress().resetGameData();
                         Game::getInstance().getProgress().setGameMode(GameMode::Coop);
-                        Game::getInstance().getStateManager().changeState(
-                            std::make_unique<LevelSelectState>());
+                        Navigator::apply(ScreenFlow::onMenuOption(1, false),
+                                         Game::getInstance().getStateManager(),
+                                         Game::getInstance().getProgress().getGameMode());
                         break;
                     case 2: // 2 Player PvP
                         Game::getInstance().getProgress().resetGameData();
                         Game::getInstance().getProgress().setGameMode(GameMode::PvP);
-                        Game::getInstance().getStateManager().changeState(
-                            std::make_unique<PlayingState>());
+                        Navigator::apply(ScreenFlow::onMenuOption(2, false),
+                                         Game::getInstance().getStateManager(),
+                                         Game::getInstance().getProgress().getGameMode());
                         break;
-                    case 3: // Load Game
-                        if (SaveManager::loadGame()) {
-                            Game::getInstance().getStateManager().changeState(
-                                std::make_unique<PlayingState>());
-                        }
+                    case 3: { // Load Game
+                        bool loaded = SaveManager::loadGame();
+                        Navigator::apply(ScreenFlow::onMenuOption(3, loaded),
+                                         Game::getInstance().getStateManager(),
+                                         Game::getInstance().getProgress().getGameMode());
                         break;
+                    }
                     case 4: // Exit
-                        Game::getInstance().getStateManager().clearStates();
+                        Navigator::apply(ScreenFlow::onMenuOption(4, false),
+                                         Game::getInstance().getStateManager(),
+                                         Game::getInstance().getProgress().getGameMode());
                         break;
                 }
                 return;
@@ -241,29 +244,35 @@ void MenuState::handleEvent(const sf::Event& event) {
                     case 0: // 1 Player Game
                         Game::getInstance().getProgress().resetGameData();
                         Game::getInstance().getProgress().setGameMode(GameMode::SinglePlayer);
-                        Game::getInstance().getStateManager().changeState(
-                            std::make_unique<CharacterSelectState>());
+                        Navigator::apply(ScreenFlow::onMenuOption(0, false),
+                                         Game::getInstance().getStateManager(),
+                                         Game::getInstance().getProgress().getGameMode());
                         break;
                     case 1: // 2 Player Co-op
                         Game::getInstance().getProgress().resetGameData();
                         Game::getInstance().getProgress().setGameMode(GameMode::Coop);
-                        Game::getInstance().getStateManager().changeState(
-                            std::make_unique<LevelSelectState>());
+                        Navigator::apply(ScreenFlow::onMenuOption(1, false),
+                                         Game::getInstance().getStateManager(),
+                                         Game::getInstance().getProgress().getGameMode());
                         break;
                     case 2: // 2 Player PvP
                         Game::getInstance().getProgress().resetGameData();
                         Game::getInstance().getProgress().setGameMode(GameMode::PvP);
-                        Game::getInstance().getStateManager().changeState(
-                            std::make_unique<PlayingState>());
+                        Navigator::apply(ScreenFlow::onMenuOption(2, false),
+                                         Game::getInstance().getStateManager(),
+                                         Game::getInstance().getProgress().getGameMode());
                         break;
-                    case 3: // Load Game
-                        if (SaveManager::loadGame()) {
-                            Game::getInstance().getStateManager().changeState(
-                                std::make_unique<PlayingState>());
-                        }
+                    case 3: { // Load Game
+                        bool loaded = SaveManager::loadGame();
+                        Navigator::apply(ScreenFlow::onMenuOption(3, loaded),
+                                         Game::getInstance().getStateManager(),
+                                         Game::getInstance().getProgress().getGameMode());
                         break;
+                    }
                     case 4: // Exit
-                        Game::getInstance().getStateManager().clearStates();
+                        Navigator::apply(ScreenFlow::onMenuOption(4, false),
+                                         Game::getInstance().getStateManager(),
+                                         Game::getInstance().getProgress().getGameMode());
                         break;
                 }
                 break;
