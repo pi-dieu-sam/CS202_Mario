@@ -374,6 +374,88 @@ Level::getTouchedPipeBounds(const Player &player) const {
   return std::nullopt;
 }
 
+std::optional<sf::FloatRect>
+Level::getHorizontalPipeEntranceBounds(const Player &player) const {
+  const sf::FloatRect playerBounds = player.getBounds();
+
+  auto hasWardPiece = [&](float x, float y) {
+    for (const auto &tile : m_tiles) {
+      if (tile->getTileType() != TileType::WardPipePiece)
+        continue;
+      const sf::FloatRect bounds = tile->getBounds();
+      if (std::abs(bounds.left - x) < 0.5f &&
+          std::abs(bounds.top - y) < 0.5f) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  for (const auto &tile : m_tiles) {
+    if (tile->getTileType() != TileType::WardPipePiece)
+      continue;
+
+    const sf::FloatRect topLeft = tile->getBounds();
+    const float x = topLeft.left;
+    const float y = topLeft.top;
+
+    // A horizontal pipe is authored as a 3x2 WardPipe_piece rectangle.
+    if (!hasWardPiece(x + TILE_SIZE, y) ||
+        !hasWardPiece(x + TILE_SIZE * 2.0f, y) ||
+        !hasWardPiece(x, y + TILE_SIZE) ||
+        !hasWardPiece(x + TILE_SIZE, y + TILE_SIZE) ||
+        !hasWardPiece(x + TILE_SIZE * 2.0f, y + TILE_SIZE)) {
+      continue;
+    }
+
+    // Give the entrance a small lip on the left so the player can activate it
+    // while standing against the solid first pipe tile.
+    const sf::FloatRect entrance(x - 8.0f, y, TILE_SIZE * 3.0f + 8.0f,
+                                 TILE_SIZE * 2.0f);
+    if (playerBounds.intersects(entrance)) {
+      return entrance;
+    }
+  }
+
+  return std::nullopt;
+}
+
+std::optional<sf::FloatRect> Level::getPipeBoundsAtColumn(int column) const {
+  const float expectedX = static_cast<float>(column) * TILE_SIZE;
+
+  auto hasPipePart = [&](float x, float y, TileType type) {
+    for (const auto &tile : m_tiles) {
+      if (tile->getTileType() != type)
+        continue;
+      const sf::FloatRect bounds = tile->getBounds();
+      if (std::abs(bounds.left - x) < 0.5f &&
+          std::abs(bounds.top - y) < 0.5f) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  for (const auto &tile : m_tiles) {
+    if (tile->getTileType() != TileType::PipeTopLeft)
+      continue;
+
+    const sf::FloatRect topLeft = tile->getBounds();
+    if (std::abs(topLeft.left - expectedX) >= 0.5f)
+      continue;
+
+    const float x = topLeft.left;
+    const float y = topLeft.top;
+    if (hasPipePart(x + TILE_SIZE, y, TileType::PipeTopRight) &&
+        hasPipePart(x, y + TILE_SIZE, TileType::PipeBodyLeft) &&
+        hasPipePart(x + TILE_SIZE, y + TILE_SIZE, TileType::PipeBodyRight)) {
+      return sf::FloatRect(x, y, TILE_SIZE * 2.0f, TILE_SIZE * 2.0f);
+    }
+  }
+
+  return std::nullopt;
+}
+
 bool Level::isComplete() const { return m_flagpole && m_flagpole->isReached(); }
 
 void Level::handlePlayerCollisions(Player* player, float dt) {
