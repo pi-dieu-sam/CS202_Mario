@@ -159,6 +159,10 @@ std::unique_ptr<Player> EntityFactory::createPlayer(const std::string& character
     return player;
 }
 
-std::unique_ptr<Escalater> EntityFactory::createEscalater(float x, float y, LevelTheme /*theme*/) {
-    return std::make_unique<Escalater>(x, y);
+std::unique_ptr<Escalater> EntityFactory::createEscalater(float x, float y,
+                                                          bool horizontal,
+                                                          LevelTheme /*theme*/) {
+    return std::make_unique<Escalater>(
+        x, y, horizontal ? Escalater::MovementAxis::Horizontal
+                         : Escalater::MovementAxis::Vertical);
 }

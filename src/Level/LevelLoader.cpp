@@ -162,9 +162,9 @@ LevelLoader::LevelData LevelLoader::loadLevel(const std::string& filename,
                 }
 
                 // ── Escalater (moving platform) ──
-                case 'E':
+                case 'E': case 'e':
                 {
-                    auto esc = EntityFactory::createEscalater(x, y, theme);
+                    auto esc = EntityFactory::createEscalater(x, y, c == 'e', theme);
                     if (esc) data.escalaters.push_back(std::move(esc));
                     break;
                 }
