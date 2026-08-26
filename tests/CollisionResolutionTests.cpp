@@ -10,6 +10,7 @@
 #include "Physics/PhysicsConstants.hpp"
 #include "Core/AssetManager.hpp"
 #include "Graphics/SpriteRegistry.hpp"
+#include "Level/Level.hpp"
 #include "Level/TileGrid.hpp"
 #include "Entities/Goomba.hpp"
 #include "Entities/Koopa.hpp"
@@ -196,6 +197,29 @@ static void testKoopaDyingAndRespawn() {
     CHECK(koopa.isDead() == false,
           "Shell Koopa is not dead (will respawn)");
   }
+}
+
+static void testLevel2LavaTilesKillPlayer() {
+  // level2 uses `l` for the animated flame surface (map row 13) and `L` for
+  // the lava beneath it (map row 14). LevelLoader offsets this 15-row map by
+  // four rows to align it to the 19-row window.
+  const auto checkLavaRow = [](int worldRow, const char *name) {
+    Level level;
+    CHECK(level.loadFromFile("assets/levels/level2.txt", "Mario",
+                             LevelTheme::Castle),
+          "level 2 loads for lava collision test");
+    Player *player = level.getPlayer();
+    CHECK(player != nullptr, "level 2 creates a player");
+    if (!player) return;
+
+    player->setPosition(7.0f * TILE_SIZE,
+                        worldRow * TILE_SIZE - TILE_SIZE);
+    level.update(0.0f);
+    CHECK(player->isDead(), name);
+  };
+
+  checkLavaRow(17, "`l` flame tile kills a player on contact");
+  checkLavaRow(18, "`L` lava tile kills a player on contact");
 }
 
 static void testGoombaStompDisablesCollisionImmediately() {
@@ -693,6 +717,7 @@ int main() {
   testGoombaBouncesBothDirections();
   testMushroomReversesInsteadOfStopping();
   testKoopaDyingAndRespawn();
+  testLevel2LavaTilesKillPlayer();
   testGoombaStompDisablesCollisionImmediately();
   testEnlargedPlayersCanHitBlocksWithCompactBody();
   testResolveCollisionAloneStillZeroesVelocity();

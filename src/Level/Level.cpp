@@ -67,7 +67,7 @@ bool Level::loadFromFile(const std::string &filename,
   if (!m_player)
     return false;
 
-  m_background.load(theme, m_width);
+  m_background.load(theme, m_width, filename == "assets/levels/level2.txt");
 
   return true;
 }
@@ -367,7 +367,7 @@ void Level::handlePlayerCollisions(Player* player, float dt) {
 
   player->setGrounded(false);
 
-  /* // Player vs Tiles
+  // Player vs Tiles
   for (Tile *tile : m_tileGrid.query(player->getBounds())) {
     auto result = CollisionDetector::checkCollision(*player, *tile);
     if (result.collided) {
@@ -382,7 +382,7 @@ void Level::handlePlayerCollisions(Player* player, float dt) {
         player->setGrounded(true);
       }
     }
-  } */
+  }
 
   // Player vs Blocks
   // Resolve block contacts before terrain. An enlarged player can overlap a

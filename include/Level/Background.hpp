@@ -9,6 +9,7 @@ struct SceneryElement {
   sf::Texture texture;  ///< Owns the loaded texture (one row from a sheet)
   float worldY = 0.0f;  ///< Y position in screen space (pixels from top)
   float parallax = 1.0f;///< 0=fixed, 1=scroll 1:1 with camera, 0.5=half speed
+  sf::Vector2f scale = {1.0f, 1.0f}; ///< Display scale for this scenery strip
   float repeatWidth = 0.f; ///< horizontal tile repeat width (texture natural width if 0)
 };
 
@@ -17,7 +18,9 @@ struct SceneryElement {
 /// strips (clouds, hills, bushes) extracted from the NES background sheets.
 class Background {
 public:
-  void load(LevelTheme theme, float levelWidth);
+  /// `useLavaBackground` selects the dedicated artwork for the main level 2
+  /// map without changing the background of underground secret rooms.
+  void load(LevelTheme theme, float levelWidth, bool useLavaBackground = false);
   void render(sf::RenderWindow &window, float cameraCenterX);
 
 private:
@@ -32,4 +35,4 @@ private:
   bool loadStrip(SceneryElement &elem,
                  const std::string &sheetPath,
                  sf::IntRect srcRect);
-};
+};
