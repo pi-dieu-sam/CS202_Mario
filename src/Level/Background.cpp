@@ -52,8 +52,24 @@ bool Background::loadStrip(SceneryElement &elem,
   return elem.texture.loadFromImage(strip);
 }
 
-void Background::load(LevelTheme theme, float levelWidth) {
+void Background::load(LevelTheme theme, float levelWidth, bool useLavaBackground) {
   m_elements.clear();
+
+  if (useLavaBackground) {
+    m_topColor    = sf::Color(42, 10, 8);
+    m_bottomColor = sf::Color(18, 3, 2);
+
+    SceneryElement lavaBackground;
+    if (lavaBackground.texture.loadFromFile("assets/textures/lava_background.png")) {
+      lavaBackground.worldY   = 0.0f;
+      lavaBackground.parallax = 0.35f;
+      const float scale = static_cast<float>(WINDOW_HEIGHT) /
+                          lavaBackground.texture.getSize().y;
+      lavaBackground.scale = {scale, scale};
+      m_elements.push_back(std::move(lavaBackground));
+    }
+    return;
+  }
 
   switch (theme) {
   case LevelTheme::Underground: {
@@ -117,7 +133,7 @@ void Background::render(sf::RenderWindow &window, float cameraCenterX) {
   for (const SceneryElement &elem : m_elements) {
     if (elem.texture.getSize().x == 0) continue;
 
-    const float texW = static_cast<float>(elem.texture.getSize().x);
+    const float texW = static_cast<float>(elem.texture.getSize().x) * elem.scale.x;
 
     // Apply parallax: strip scrolls slower than the camera by `parallax` factor.
     float scrollX = cameraCenterX * elem.parallax;
@@ -127,6 +143,7 @@ void Background::render(sf::RenderWindow &window, float cameraCenterX) {
     if (startX > left) startX -= texW;
 
     sf::Sprite sprite(elem.texture);
+    sprite.setScale(elem.scale);
     // Soften/dim background scenery so foreground character, blocks, and enemies stand out clearly
     sprite.setColor(sf::Color(150, 150, 165, 200));
 
