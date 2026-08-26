@@ -5,8 +5,7 @@
 #include "Graphics/SpriteRegistry.hpp"
 #include "Level/LevelTheme.hpp"
 #include "Physics/PhysicsConstants.hpp"
-#include "States/PlayingState.hpp"
-#include "States/StateManager.hpp"
+#include "States/Navigator.hpp"
 
 LevelSelectState::LevelSelectState() {}
 
@@ -145,8 +144,11 @@ void LevelSelectState::handleEvent(const sf::Event &event) {
       if (m_levelBoxes[i].getGlobalBounds().contains(mousePos)) {
         m_selected = i;
         Game::getInstance().getProgress().setCurrentLevel(m_selected + 1);
-        Game::getInstance().getStateManager().changeState(
-            std::make_unique<PlayingState>());
+        Navigator::apply(
+            ScreenFlow::onConfirm(ScreenFlow::Screen::LevelSelect,
+                                  Game::getInstance().getProgress().getGameMode()),
+            Game::getInstance().getStateManager(),
+            Game::getInstance().getProgress().getGameMode());
         return;
       }
     }
@@ -170,12 +172,17 @@ void LevelSelectState::handleEvent(const sf::Event &event) {
     case sf::Keyboard::Return:
     case sf::Keyboard::Space:
       Game::getInstance().getProgress().setCurrentLevel(m_selected + 1);
-      Game::getInstance().getStateManager().changeState(
-          std::make_unique<PlayingState>());
+      Navigator::apply(
+          ScreenFlow::onConfirm(ScreenFlow::Screen::LevelSelect,
+                                Game::getInstance().getProgress().getGameMode()),
+          Game::getInstance().getStateManager(),
+          Game::getInstance().getProgress().getGameMode());
       break;
 
     case sf::Keyboard::Escape:
-      Game::getInstance().getStateManager().popState();
+      Navigator::apply(ScreenFlow::onBack(ScreenFlow::Screen::LevelSelect),
+                        Game::getInstance().getStateManager(),
+                        Game::getInstance().getProgress().getGameMode());
       break;
 
     default:
