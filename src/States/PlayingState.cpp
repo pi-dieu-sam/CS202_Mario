@@ -24,6 +24,7 @@ constexpr int LEVEL1_SECRET_ENTRY_PIPE_COLUMN = 57; // A: enter the secret room
 constexpr int LEVEL1_SECRET_RETURN_PIPE_COLUMN = 71; // B: emerge 14 tiles to the right
 constexpr float PIPE_VERTICAL_TRAVEL_TIME = 0.45f;
 constexpr float PIPE_HORIZONTAL_TRAVEL_TIME = 0.80f;
+constexpr float PIPE_FADE_DURATION = 0.12f;
 }
 
 PlayingState::PlayingState() : m_hud(std::make_unique<HUD>()) {
@@ -335,13 +336,37 @@ void PlayingState::render(sf::RenderWindow& window) {
     m_camera.applyTo(window);
 
     if (m_level) {
-        m_level->render(window, m_camera.getView().getCenter().x);
+        const bool pipeTransition =
+            m_transitionStage == LevelTransitionStage::PipeEnter ||
+            m_transitionStage == LevelTransitionStage::PipeReturn ||
+            m_transitionStage == LevelTransitionStage::PipeExit ||
+            m_transitionStage == LevelTransitionStage::PipeFadeOut ||
+            m_transitionStage == LevelTransitionStage::PipeFadeIn;
+        m_level->render(window, m_camera.getView().getCenter().x, pipeTransition);
         m_scorePopups.render(window);
     }
 
     // Reset view for HUD (screen-space)
     window.setView(window.getDefaultView());
     m_hud->render(window);
+
+    // Hide the costly map replacement and camera relocation behind a short
+    // fade. It keeps the secret-room round trip continuous instead of showing
+    // a one-frame jump to the newly loaded map.
+    float fade = 0.0f;
+    if (m_transitionStage == LevelTransitionStage::PipeFadeOut) {
+        fade = std::min(m_transitionTimer / PIPE_FADE_DURATION, 1.0f);
+    } else if (m_transitionStage == LevelTransitionStage::PipeFadeIn) {
+        fade = 1.0f - std::min(m_transitionTimer / PIPE_FADE_DURATION, 1.0f);
+    }
+    if (fade > 0.0f) {
+        sf::RectangleShape overlay(
+            sf::Vector2f(static_cast<float>(WINDOW_WIDTH),
+                         static_cast<float>(WINDOW_HEIGHT)));
+        overlay.setFillColor(sf::Color(0, 0, 0,
+            static_cast<sf::Uint8>(fade * 255.0f)));
+        window.draw(overlay);
+    }
 }
 
 void PlayingState::loadLevel(int levelNumber) {
@@ -486,6 +511,7 @@ void PlayingState::startPipeTransition(bool enteringSecret) {
     m_transitionStage = enteringSecret ? LevelTransitionStage::PipeEnter
                                        : LevelTransitionStage::PipeReturn;
     m_transitionTimer = 0.0f;
+    m_pipeTransitionEnteringSecret = enteringSecret;
 
     if (m_player) {
         m_player->setGrounded(false);
@@ -499,6 +525,26 @@ void PlayingState::startPipeTransition(bool enteringSecret) {
 
 void PlayingState::updatePipeTransition(float dt) {
     if (!m_level || !m_player) {
+        return;
+    }
+
+    if (m_transitionStage == LevelTransitionStage::PipeFadeOut) {
+        m_transitionTimer += dt;
+        if (m_transitionTimer >= PIPE_FADE_DURATION) {
+            swapPipeMap();
+        }
+        return;
+    }
+
+    if (m_transitionStage == LevelTransitionStage::PipeFadeIn) {
+        m_transitionTimer += dt;
+        if (m_transitionTimer >= PIPE_FADE_DURATION) {
+            m_transitionStage = !m_pipeTransitionEnteringSecret &&
+                                        m_mainLevelNumber == 1
+                                    ? LevelTransitionStage::PipeExit
+                                    : LevelTransitionStage::Inactive;
+            m_transitionTimer = 0.0f;
+        }
         return;
     }
 
@@ -528,6 +574,11 @@ void PlayingState::updatePipeTransition(float dt) {
         m_player2->setPosition(pos2);
         m_player2->setVelocity(0.0f, 0.0f);
     }
+    if (m_player2) {
+        m_camera.update(m_player->getPosition(), m_player2->getPosition());
+    } else {
+        m_camera.update(m_player->getPosition());
+    }
 
     m_transitionTimer += dt;
     const float travelTime =
@@ -546,7 +597,12 @@ void PlayingState::updatePipeTransition(float dt) {
         return;
     }
 
-    const bool enteringSecret = m_transitionStage == LevelTransitionStage::PipeEnter;
+    m_transitionStage = LevelTransitionStage::PipeFadeOut;
+    m_transitionTimer = 0.0f;
+}
+
+void PlayingState::swapPipeMap() {
+    const bool enteringSecret = m_pipeTransitionEnteringSecret;
     const int levelNumber = m_mainLevelNumber;
     const bool secretRoom = enteringSecret;
     const std::string filename = getLevelPath(levelNumber, secretRoom);
@@ -607,9 +663,12 @@ void PlayingState::updatePipeTransition(float dt) {
     }
 
     m_inSecretRoom = enteringSecret;
-    m_transitionStage = !enteringSecret && m_mainLevelNumber == 1
-                            ? LevelTransitionStage::PipeExit
-                            : LevelTransitionStage::Inactive;
+    if (m_player2) {
+        m_camera.update(m_player->getPosition(), m_player2->getPosition());
+    } else if (m_player) {
+        m_camera.update(m_player->getPosition());
+    }
+    m_transitionStage = LevelTransitionStage::PipeFadeIn;
     m_transitionTimer = 0.0f;
 }
 
@@ -620,7 +679,9 @@ void PlayingState::updateLevelTransition(float dt) {
 
     if (m_transitionStage == LevelTransitionStage::PipeEnter ||
         m_transitionStage == LevelTransitionStage::PipeReturn ||
-        m_transitionStage == LevelTransitionStage::PipeExit) {
+        m_transitionStage == LevelTransitionStage::PipeExit ||
+        m_transitionStage == LevelTransitionStage::PipeFadeOut ||
+        m_transitionStage == LevelTransitionStage::PipeFadeIn) {
         updatePipeTransition(dt);
         return;
     }
