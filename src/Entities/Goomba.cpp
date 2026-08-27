@@ -5,7 +5,8 @@
 Goomba::Goomba() {
   m_speed = 60.0f;
   m_scoreValue = 100;
-  m_velocity.x = -m_speed; // Start walking left
+  m_velocity.x = -m_speed; // Walk left by default
+  m_active = true;
 
   setAnimFrameCount(16, 0.08f);
 }
