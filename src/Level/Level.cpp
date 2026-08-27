@@ -211,8 +211,19 @@ void Level::updateCompletion(float dt) {
   }
 }
 
-void Level::render(sf::RenderWindow &window, float cameraCenterX) {
+void Level::render(sf::RenderWindow &window, float cameraCenterX,
+                   bool playersBehindTerrain) {
   m_background.render(window, cameraCenterX);
+
+  // During a pipe transition the player must be behind its terrain. Drawing
+  // them before the tiles lets the pipe mouth/body conceal the overlapping
+  // portion exactly as Mario moves into or out of it.
+  if (playersBehindTerrain) {
+    if (m_player)
+      m_player->draw(window);
+    if (m_player2)
+      m_player2->draw(window);
+  }
 
   // Draw tiles
   for (auto &tile : m_tiles) {
@@ -266,11 +277,14 @@ void Level::render(sf::RenderWindow &window, float cameraCenterX) {
       lavaFireball->draw(window);
   }
 
-  // Draw player last (on top)
-  if (m_player)
-    m_player->draw(window);
-  if (m_player2)
-    m_player2->draw(window);
+  // Draw players on top during normal play. Pipe transitions already drew
+  // them below terrain above so the pipe remains visually in front.
+  if (!playersBehindTerrain) {
+    if (m_player)
+      m_player->draw(window);
+    if (m_player2)
+      m_player2->draw(window);
+  }
 }
 
 Player *Level::getPlayer() const { return m_player.get(); }
@@ -453,6 +467,19 @@ std::optional<sf::FloatRect> Level::getPipeBoundsAtColumn(int column) const {
     }
   }
 
+  return std::nullopt;
+}
+
+std::optional<sf::Vector2f> Level::getCastleDoorEntryPosition() const {
+  for (const auto &tile : m_tiles) {
+    // `5` is the lower-right castle-door cell. The player's position anchor
+    // is centred on it, while their feet stay on the ground beneath it.
+    if (tile->getTileType() == TileType::CastlePiece &&
+        tile->getSubIndex() == 7) {
+      const sf::FloatRect door = tile->getBounds();
+      return sf::Vector2f(door.left, door.top - TILE_SIZE);
+    }
+  }
   return std::nullopt;
 }
 
