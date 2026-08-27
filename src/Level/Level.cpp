@@ -470,6 +470,19 @@ std::optional<sf::FloatRect> Level::getPipeBoundsAtColumn(int column) const {
   return std::nullopt;
 }
 
+std::optional<sf::Vector2f> Level::getCastleDoorEntryPosition() const {
+  for (const auto &tile : m_tiles) {
+    // `5` is the lower-right castle-door cell. The player's position anchor
+    // is centred on it, while their feet stay on the ground beneath it.
+    if (tile->getTileType() == TileType::CastlePiece &&
+        tile->getSubIndex() == 7) {
+      const sf::FloatRect door = tile->getBounds();
+      return sf::Vector2f(door.left, door.top - TILE_SIZE);
+    }
+  }
+  return std::nullopt;
+}
+
 bool Level::isComplete() const { return m_flagpole && m_flagpole->isReached(); }
 
 void Level::handlePlayerCollisions(Player* player, float dt) {

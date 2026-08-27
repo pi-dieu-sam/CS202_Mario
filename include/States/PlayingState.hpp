@@ -50,6 +50,7 @@ private:
     void updatePipeTransition(float dt);
     void swapPipeMap();
     void startLevelTransition();
+    void beginCastleEntry();
     void updateLevelTransition(float dt);
     void finishLevelTransition();
     void beginPlayerDeath();
@@ -87,6 +88,7 @@ private:
     int m_transitionConvertedTimeScore = 0;
     int m_transitionConvertedFlagpoleScore = 0;
     int m_transitionDisplayScore = 0;
+    float m_castleDoorTargetX = 0.0f;
     int m_mainLevelNumber = 1;
     bool m_inSecretRoom = false;
     bool m_pipeTransitionEnteringSecret = false;

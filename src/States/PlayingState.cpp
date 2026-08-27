@@ -428,8 +428,7 @@ void PlayingState::startLevelTransition() {
             // isComplete() is normally driven by a flagpole, but malformed
             // custom levels must still be able to finish instead of waiting
             // forever for a slide target that does not exist.
-            m_player->beginFlagpoleCastleWalk();
-            m_transitionStage = LevelTransitionStage::CastleEntry;
+            beginCastleEntry();
         }
     }
 
@@ -601,6 +600,24 @@ void PlayingState::updatePipeTransition(float dt) {
     m_transitionTimer = 0.0f;
 }
 
+void PlayingState::beginCastleEntry() {
+    if (!m_player) {
+        return;
+    }
+
+    m_player->beginFlagpoleCastleWalk();
+    const auto door = m_level ? m_level->getCastleDoorEntryPosition()
+                               : std::nullopt;
+    // Custom maps without a `4`/`5` door keep the original short walk as a
+    // safe fallback. Official level 1 resolves to the real castle doorway.
+    m_castleDoorTargetX = door ? door->x : m_player->getPosition().x + 90.0f;
+    if (door) {
+        m_player->setPosition(m_player->getPosition().x, door->y);
+    }
+    m_transitionStage = LevelTransitionStage::CastleEntry;
+    m_transitionTimer = 0.0f;
+}
+
 void PlayingState::swapPipeMap() {
     const bool enteringSecret = m_pipeTransitionEnteringSecret;
     const int levelNumber = m_mainLevelNumber;
@@ -692,22 +709,28 @@ void PlayingState::updateLevelTransition(float dt) {
         // advancing its own rise/fall/pause timeline.
         break;
     case LevelTransitionStage::FlagSlide: {
-        if (m_player->isFlagpoleSlideComplete()) {
-            m_player->beginFlagpoleCastleWalk();
-            m_transitionStage = LevelTransitionStage::CastleEntry;
-            m_transitionTimer = 0.0f;
+        const Flagpole* flagpole = m_level->getFlagpole();
+        // Mario waits at the pole base while the flag finishes dropping.
+        // Player::SlideComplete already holds the character still for us.
+        if (m_player->isFlagpoleSlideComplete() &&
+            (!flagpole || flagpole->isFlagDropComplete())) {
+            beginCastleEntry();
         }
         break;
     }
     case LevelTransitionStage::CastleEntry: {
         sf::Vector2f pos = m_player->getPosition();
-        pos.x += 120.0f * dt;
-        pos.y -= 70.0f * dt;
+        const float remainingX = m_castleDoorTargetX - pos.x;
+        const float step = 120.0f * dt;
+        if (remainingX <= step) {
+            pos.x = m_castleDoorTargetX;
+        } else {
+            pos.x += step;
+        }
         m_player->setPosition(pos);
         m_player->setVelocity(0.0f, 0.0f);
 
-        m_transitionTimer += dt;
-        if (m_transitionTimer >= 0.75f) {
+        if (pos.x >= m_castleDoorTargetX) {
             m_player->setActive(false);
             m_transitionStage = LevelTransitionStage::TimeBonusCount;
             m_transitionTimer = 0.0f;

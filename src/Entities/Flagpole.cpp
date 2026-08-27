@@ -36,6 +36,9 @@ void Flagpole::update(float dt) {
         float flagTarget = m_position.y - TILE_SIZE;
         if (m_flagPos.y < flagTarget) {
             m_flagPos.y += 150.0f * dt;
+            if (m_flagPos.y > flagTarget) {
+                m_flagPos.y = flagTarget;
+            }
             m_flag.setPosition(m_flagPos);
         }
     }
@@ -77,4 +80,7 @@ float Flagpole::getSlideEndY() const {
 }
 
 bool Flagpole::isReached() const { return m_reached; }
+bool Flagpole::isFlagDropComplete() const {
+    return m_reached && m_flagPos.y >= m_position.y - TILE_SIZE;
+}
 void Flagpole::setReached(bool reached) { m_reached = reached; }
