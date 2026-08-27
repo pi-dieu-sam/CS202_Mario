@@ -38,7 +38,9 @@ public:
   void updateCompletion(float dt);
 
   /// Render all entities. cameraCenterX drives the parallax background.
-  void render(sf::RenderWindow &window, float cameraCenterX);
+  /// Pipe transitions draw players below terrain so the pipe can hide them.
+  void render(sf::RenderWindow &window, float cameraCenterX,
+              bool playersBehindTerrain = false);
 
   /// Get the player pointers (owned by this level).
   Player *getPlayer() const;
