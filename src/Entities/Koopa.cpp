@@ -121,7 +121,7 @@ bool Koopa::isVulnerable() const {
 
 KoopaState Koopa::getKoopaState() const { return m_koopaState; }
 
-bool Koopa::isSliding() const { return m_sliding; }
+bool Koopa::isSliding() const noexcept { return m_sliding; }
 
 void Koopa::kick(float direction) {
   if (m_koopaState != KoopaState::Shell || m_sliding)
