@@ -26,7 +26,7 @@ void Goomba::onStomped() {
 void Goomba::update(float dt) {
   if (m_squished) {
     m_deathTimer -= dt;
-    if (m_deathTimer <= 0.0f) {
+    if (m_deathTimer <= 0.0f || !m_active) {
       m_active = false;
     }
     return;
