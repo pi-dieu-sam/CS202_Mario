@@ -23,7 +23,7 @@ Tile::Tile() { m_type = ObjectType::Tile; }
 
 Tile::Tile(TileType tileType, float x, float y, LevelTheme theme,
            int subIndex)
-    : m_tileType(tileType) {
+    : m_tileType(tileType), m_subIndex(subIndex) {
   m_type = ObjectType::Tile;
   m_position = {x, y};
 
@@ -136,3 +136,4 @@ sf::FloatRect Tile::getBounds() const {
 }
 
 TileType Tile::getTileType() const { return m_tileType; }
+int Tile::getSubIndex() const { return m_subIndex; }

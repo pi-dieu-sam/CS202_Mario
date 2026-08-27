@@ -71,6 +71,10 @@ public:
   /// column. Used by scripted pipe routes to choose an exact destination.
   std::optional<sf::FloatRect> getPipeBoundsAtColumn(int column) const;
 
+  /// Return the player anchor position centred on the castle door (the `4` /
+  /// `5` tile pair), if this map contains a castle.
+  std::optional<sf::Vector2f> getCastleDoorEntryPosition() const;
+
   /// Check if the level is complete.
   bool isComplete() const;
 
