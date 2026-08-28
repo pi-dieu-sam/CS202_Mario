@@ -50,5 +50,6 @@ void Goomba::draw(sf::RenderWindow &window) {
 }
 
 bool Goomba::isVulnerable() const {
+  // A squished or dead Goomba should not interact with the player.
   return !m_squished && !m_dead;
 }
