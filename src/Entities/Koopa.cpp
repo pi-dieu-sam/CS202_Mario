@@ -124,6 +124,7 @@ KoopaState Koopa::getKoopaState() const { return m_koopaState; }
 bool Koopa::isSliding() const noexcept { return m_sliding; }
 
 void Koopa::kick(float direction) {
+  // Only a stationary shell can be kicked; ignore if already sliding
   if (m_koopaState != KoopaState::Shell || m_sliding)
     return;
   m_sliding = true;
