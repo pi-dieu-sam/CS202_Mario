@@ -119,7 +119,7 @@ bool Koopa::isVulnerable() const {
   return m_koopaState == KoopaState::Walking;
 }
 
-KoopaState Koopa::getKoopaState() const { return m_koopaState; }
+KoopaState Koopa::getKoopaState() const noexcept { return m_koopaState; }
 
 bool Koopa::isSliding() const noexcept { return m_sliding; }
 
