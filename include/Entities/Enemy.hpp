@@ -1,4 +1,5 @@
 #pragma once
+// Enemy.hpp — abstract base for all hostile NPCs
 #include "../AI/AIStrategy.hpp"
 #include "../Level/LevelTheme.hpp"
 #include "Character.hpp"
