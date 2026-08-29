@@ -36,3 +36,4 @@
 - 2026-08-28: Update TODO list
 - 2026-08-28: Update TODO list
 - 2026-08-29: Review and clean code
+- 2026-08-29: Tweak code comments
