@@ -1,4 +1,5 @@
 #pragma once
+// Player.hpp — player-controlled character with lives, power-ups, and scoring
 #include "Character.hpp"
 #include "../Graphics/SpriteRegistry.hpp"
 
