@@ -84,6 +84,7 @@ std::unique_ptr<Tile> EntityFactory::createTile(char tileChar, float x, float y,
             break;
         case 'L': type = TileType::Lava;   break;
         case 'l': type = TileType::Flame;  break;
+        case 'V': type = TileType::VineTop; break;
         default:  return nullptr;
     }
     return std::make_unique<Tile>(type, x, y, theme);

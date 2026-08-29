@@ -22,7 +22,7 @@ enum class PowerUpState;
 class SpriteRegistry {
 public:
   enum class BlockVisualState { Idle, Hit, Used };
-  enum class PlayerAnim { Idle, Walk, Jump, Skid, Fire, FlagpoleSlide };
+  enum class PlayerAnim { Idle, Walk, Jump, Skid, Fire, Climb, FlagpoleSlide };
 
   // ── Tiles ──
   static const std::string &tilePath(TileType type, LevelTheme theme);
