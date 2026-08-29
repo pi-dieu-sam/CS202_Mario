@@ -97,7 +97,7 @@ public:
   void loseLife();
 
   // ── Player ID (1 = P1, 2 = P2) for event routing ──
-  int  getPlayerId() const { return m_playerId; }
+  int  getPlayerId() const noexcept { return m_playerId; }
   void setPlayerId(int id) { m_playerId = id; }
 
   // ── Invincibility (star or post-damage) ──
