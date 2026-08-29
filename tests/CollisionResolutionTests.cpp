@@ -248,6 +248,43 @@ static void testLevel2LavaTilesKillPlayer() {
   checkLavaRow(18, "`L` lava tile kills a player on contact");
 }
 
+static void testLevel1VineEntersClimbState() {
+  // level1.txt places a vertical V vine at map column 7, rows 6-11. Its
+  // first cell lands at world row 11 after the five-row display offset.
+  Level level;
+  CHECK(level.loadFromFile("assets/levels/level1.txt", "Mario",
+                           LevelTheme::Overworld),
+        "level 1 loads for vine climbing test");
+  Player *player = level.getPlayer();
+  CHECK(player != nullptr, "level 1 creates a player for vine climbing test");
+  if (!player) return;
+
+  // Player position is a two-tile anchor; its small-form body begins 32px
+  // below it. Position that body inside the first V tile at (7, 11).
+  player->setPosition(7.0f * TILE_SIZE - 26.0f,
+                      11.0f * TILE_SIZE - TILE_SIZE);
+  level.update(0.0f);
+  CHECK(player->isClimbing(),
+        "touching a V map tile enters the climb state without terrain resolve");
+  CHECK(std::abs(player->getPosition().x - 7.0f * TILE_SIZE) < 0.001f,
+        "entering a V tile centres the player on the vine");
+
+  const float startY = player->getPosition().y;
+  player->climbUp(FIXED_DT);
+  level.update(FIXED_DT);
+  CHECK(player->isClimbing() &&
+            std::abs(player->getPosition().y -
+                     startY) < 0.01f,
+        "a solid tile above the vine stops upward climbing without ejecting the player");
+
+  player->climbDown(FIXED_DT);
+  level.update(FIXED_DT);
+  CHECK(player->isClimbing() &&
+            std::abs(player->getPosition().y -
+                     (startY + 120.0f * FIXED_DT)) < 0.01f,
+        "climbing down moves smoothly when the vine path is clear");
+}
+
 static void testGoombaStompDisablesCollisionImmediately() {
   Goomba goomba;
   goomba.onStomped();
@@ -538,6 +575,52 @@ static void testAllMarioSpriteStatesLoad() {
   }
 }
 
+static void testVineClimbingControls() {
+  Mario player;
+  player.setPosition(128.0f, 128.0f);
+
+  player.updateVineContact(true, 128.0f);
+  CHECK(player.isClimbing(), "touching a V tile enters the climbing state");
+  CHECK(player.getVelocity().x == 0.0f && player.getVelocity().y == 0.0f,
+        "entering a vine stops the existing movement");
+
+  const float startY = player.getPosition().y;
+  player.climbUp(FIXED_DT);
+  player.update(FIXED_DT);
+  CHECK(player.getPosition().y < startY,
+        "climb-up input moves the player upward without gravity");
+
+  const float afterTapY = player.getPosition().y;
+  player.update(FIXED_DT);
+  CHECK(std::abs(player.getPosition().y - afterTapY) < 0.001f,
+        "releasing climb input stops vertical movement immediately");
+
+  const float climbedY = player.getPosition().y;
+  player.climbDown(FIXED_DT);
+  player.update(FIXED_DT);
+  CHECK(player.getPosition().y > climbedY,
+        "climb-down input moves the player downward");
+
+  // The right key used to approach the vine can still be held when contact
+  // begins. It must not detach until released and pressed again.
+  player.setVineHorizontalInput(true);
+  player.moveRight(FIXED_DT);
+  CHECK(player.isClimbing(),
+        "held approach direction does not instantly cancel vine climbing");
+  player.setVineHorizontalInput(false);
+  player.moveRight(FIXED_DT);
+  CHECK(!player.isClimbing() && player.getVelocity().x > 0.0f,
+        "right input detaches from the vine and starts horizontal movement");
+
+  player.updateVineContact(true, 128.0f);
+  CHECK(!player.isClimbing(),
+        "a horizontal detach cannot immediately reattach while still overlapping");
+  player.updateVineContact(false, 0.0f);
+  player.updateVineContact(true, 128.0f);
+  CHECK(player.isClimbing(),
+        "leaving the vine tile re-enables climbing on the next contact");
+}
+
 static void testPiranhaFramesAndEmergenceStayStable() {
   const std::string &path = SpriteRegistry::piranhaPlantPath(0);
   CHECK(std::filesystem::exists(path),
@@ -752,6 +835,7 @@ int main() {
   testKoopaDyingAndRespawn();
   testHorizontalEscalaterMovement();
   testLevel2LavaTilesKillPlayer();
+  testLevel1VineEntersClimbState();
   testGoombaStompDisablesCollisionImmediately();
   testEnlargedPlayersCanHitBlocksWithCompactBody();
   testResolveCollisionAloneStillZeroesVelocity();
@@ -761,6 +845,7 @@ int main() {
   testSprintDoesNotCompoundVelocity();
   testAllLuigiSpriteStatesLoad();
   testAllMarioSpriteStatesLoad();
+  testVineClimbingControls();
   testPiranhaFramesAndEmergenceStayStable();
   testFlagpoleSlideFramesAndCutscene();
   testPlayerDeathAnimationUsesFacingPoses();

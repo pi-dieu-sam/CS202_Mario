@@ -234,6 +234,7 @@ void PlayingState::update(float dt) {
     if (!m_player->isDead()) {
         m_player->setSprinting(m_inputP1.isSprintHeld());
         m_player->setJumpHeld(m_inputP1.isJumpHeld());
+        m_player->setVineHorizontalInput(m_inputP1.isHorizontalHeld());
         auto commands1 = m_inputP1.handleInput();
         for (auto* cmd : commands1) {
             cmd->execute(*m_player, dt);
@@ -254,6 +255,7 @@ void PlayingState::update(float dt) {
     if (m_player2 && !m_player2->isDead()) {
         m_player2->setSprinting(m_inputP2.isSprintHeld());
         m_player2->setJumpHeld(m_inputP2.isJumpHeld());
+        m_player2->setVineHorizontalInput(m_inputP2.isHorizontalHeld());
         auto commands2 = m_inputP2.handleInput();
         for (auto* cmd : commands2) {
             cmd->execute(*m_player2, dt);
