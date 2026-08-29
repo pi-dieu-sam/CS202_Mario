@@ -23,6 +23,16 @@ public:
     void execute(Player& player, float dt) override;
 };
 
+class ClimbUpCommand : public Command {
+public:
+    void execute(Player& player, float dt) override;
+};
+
+class ClimbDownCommand : public Command {
+public:
+    void execute(Player& player, float dt) override;
+};
+
 class JumpCommand : public Command {
 public:
     void execute(Player& player, float dt) override;

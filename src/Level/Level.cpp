@@ -489,9 +489,25 @@ void Level::handlePlayerCollisions(Player* player, float dt) {
   if (!player || player->isDead()) return;
 
   player->setGrounded(false);
+  bool touchingVine = false;
+  float vineX = 0.0f;
+
+  const auto nearbyTiles = m_tileGrid.query(player->getBounds());
+
+  // Detect the vine before resolving terrain. This lets a vine take priority
+  // over a neighbouring ceiling/floor tile in the same frame.
+  for (Tile *tile : nearbyTiles) {
+    if (tile->getTileType() != TileType::VineTop) continue;
+    if (CollisionDetector::checkCollision(*player, *tile).collided) {
+      touchingVine = true;
+      vineX = tile->getBounds().left;
+      break;
+    }
+  }
+  player->updateVineContact(touchingVine, vineX);
 
   // Player vs Tiles
-  for (Tile *tile : m_tileGrid.query(player->getBounds())) {
+  for (Tile *tile : nearbyTiles) {
     auto result = CollisionDetector::checkCollision(*player, *tile);
     if (result.collided) {
       // Lava and flame are lethal hazards — kill on contact, no physics resolve.
@@ -500,8 +516,7 @@ void Level::handlePlayerCollisions(Player* player, float dt) {
         player->die();
         return;
       }
-      // Vines are visual/interaction tiles for now; climbing behaviour will
-      // be added later, so they must not act like solid terrain.
+      // Vines are non-solid interaction tiles, handled in the pre-pass.
       if (tt == TileType::VineTop) {
         continue;
       }
@@ -511,7 +526,6 @@ void Level::handlePlayerCollisions(Player* player, float dt) {
       }
     }
   }
-
   // Player vs Blocks
   // Resolve block contacts before terrain. An enlarged player can overlap a
   // low block with its upper body, and terrain resolution would otherwise
@@ -576,6 +590,11 @@ void Level::handlePlayerCollisions(Player* player, float dt) {
 
   // Player vs Tiles
   for (Tile *tile : m_tileGrid.query(player->getBounds())) {
+    // Vines are always non-solid. Every other tile stays solid, including
+    // while climbing, so S/X/blocks stop upward or downward movement.
+    if (tile->getTileType() == TileType::VineTop) {
+      continue;
+    }
     auto result = CollisionDetector::checkCollision(*player, *tile);
     if (!result.collided)
       continue;

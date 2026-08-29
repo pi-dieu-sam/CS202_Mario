@@ -31,7 +31,21 @@ public:
   /// player's visual/terrain body.
   sf::FloatRect getBlockInteractionBounds() const;
   float getEffectiveSpeed() const override;
+  void moveLeft(float dt) override;
+  void moveRight(float dt) override;
   void jump() override;
+
+  // -- Vine climbing --
+  /// Called by Level after tile collision detection to enter/leave the vine.
+  /// `vineX` is the tile's left edge; entering centres the player on it.
+  /// A horizontal detach cannot reattach until the player has left that tile.
+  void updateVineContact(bool touchingVine, float vineX);
+  void climbUp(float dt);
+  void climbDown(float dt);
+  bool isClimbing() const;
+  /// Horizontal input held while first touching a vine must be released
+  /// before a new left/right press can detach the player.
+  void setVineHorizontalInput(bool held);
 
   // ── Power-ups ──
   void applyPowerUp(PowerUpState state);
@@ -99,6 +113,12 @@ protected:
   bool m_sprinting = false;
   bool m_wantsToShoot = false;
   bool m_jumpHeld = false;
+  bool m_climbing = false;
+  bool m_climbMoving = false;
+  bool m_vineReattachLocked = false;
+  bool m_vineHorizontalReleaseRequired = false;
+  bool m_hasVineAnchor = false;
+  sf::Vector2f m_lastVineAnchor = {0.0f, 0.0f};
   int  m_playerId = 1; ///< 1 = P1, 2 = P2
 
   // Invincibility after damage
@@ -126,6 +146,8 @@ protected:
   // Brief post-shot window during which the Fire (shoot) animation plays
   // before reverting to the normal state. Only used by Mario.
   float m_shootAnimTimer = 0.0f;
+
+  void leaveVine(bool lockReattach);
 
 private:
   enum class DeathAnimationPhase { None, Rising, Falling, Paused, Complete };
