@@ -500,6 +500,11 @@ void Level::handlePlayerCollisions(Player* player, float dt) {
         player->die();
         return;
       }
+      // Vines are visual/interaction tiles for now; climbing behaviour will
+      // be added later, so they must not act like solid terrain.
+      if (tt == TileType::VineTop) {
+        continue;
+      }
       CollisionDetector::resolveCollision(*player, *tile, result);
       if (result.side == CollisionDetector::Side::Bottom) {
         player->setGrounded(true);

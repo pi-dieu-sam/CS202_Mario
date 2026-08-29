@@ -32,7 +32,10 @@ enum class TileType {
   Lava,
   /// Flame tile — 4 animated frames (16x16 each) from flame.png (64x16 sheet),
   /// scaled to 32x32. Kills the player on contact.
-  Flame
+  Flame,
+  /// Vine top -- a 14x14 decorative/interaction tile from VineTop.png,
+  /// scaled to one 32x32 map cell. It is non-solid until climbing is added.
+  VineTop
 };
 
 /// Tile — static, collidable terrain piece (ground, pipes, etc.).

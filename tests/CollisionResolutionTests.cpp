@@ -422,7 +422,7 @@ static void testAllLuigiSpriteStatesLoad() {
   const std::vector<SpriteRegistry::PlayerAnim> animations = {
       SpriteRegistry::PlayerAnim::Idle, SpriteRegistry::PlayerAnim::Walk,
       SpriteRegistry::PlayerAnim::Jump, SpriteRegistry::PlayerAnim::Fire,
-      SpriteRegistry::PlayerAnim::Skid};
+      SpriteRegistry::PlayerAnim::Skid, SpriteRegistry::PlayerAnim::Climb};
 
   for (PowerUpState power : powers) {
     for (SpriteRegistry::PlayerAnim animation : animations) {
@@ -471,6 +471,9 @@ static void testAllLuigiSpriteStatesLoad() {
     CHECK(SpriteRegistry::playerFrameCount(
               CharacterId::Luigi, power, SpriteRegistry::PlayerAnim::Fire) == 1,
           "Luigi Fire sheet exposes its 1 shoot frame");
+    CHECK(SpriteRegistry::playerFrameCount(
+              CharacterId::Luigi, power, SpriteRegistry::PlayerAnim::Climb) == 4,
+          "Luigi Climb sheet exposes its 4 climbing frames");
   }
 }
 
@@ -479,7 +482,8 @@ static void testAllMarioSpriteStatesLoad() {
       PowerUpState::Small, PowerUpState::Big, PowerUpState::Fire};
   const std::vector<SpriteRegistry::PlayerAnim> animations = {
       SpriteRegistry::PlayerAnim::Idle, SpriteRegistry::PlayerAnim::Walk,
-      SpriteRegistry::PlayerAnim::Jump, SpriteRegistry::PlayerAnim::Fire};
+      SpriteRegistry::PlayerAnim::Jump, SpriteRegistry::PlayerAnim::Fire,
+      SpriteRegistry::PlayerAnim::Climb};
 
   for (PowerUpState power : powers) {
     for (SpriteRegistry::PlayerAnim animation : animations) {
@@ -528,6 +532,9 @@ static void testAllMarioSpriteStatesLoad() {
     CHECK(SpriteRegistry::playerFrameCount(
               CharacterId::Mario, power, SpriteRegistry::PlayerAnim::Fire) == 2,
           "Mario Fire sheet exposes its 2 shoot frames");
+    CHECK(SpriteRegistry::playerFrameCount(
+              CharacterId::Mario, power, SpriteRegistry::PlayerAnim::Climb) == 2,
+          "Mario Climb sheet exposes its 2 climbing frames");
   }
 }
 
