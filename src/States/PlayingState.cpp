@@ -73,6 +73,10 @@ void PlayingState::onEnter() {
         m_scorePopups.add(e.intData, e.worldPosition);
     });
 
+    m_enemyFireballHitSub = ScopedEventSubscription(EventType::EnemyHitByFireball, [](const GameEvent&) {
+        SoundManager::getInstance().playSound(SoundID::Fireball);
+    });
+
     m_playerDiedSub = ScopedEventSubscription(EventType::PlayerDied, [this](const GameEvent& e) {
         SoundManager::getInstance().stopMusic();
         SoundManager::getInstance().playSound(SoundID::PlayerDeath);
@@ -108,6 +112,7 @@ void PlayingState::onEnter() {
 void PlayingState::onExit() {
     m_coinSub.reset();
     m_enemyDefeatedSub.reset();
+    m_enemyFireballHitSub.reset();
     m_playerDiedSub.reset();
     m_powerUpSub.reset();
     m_blockHitSub.reset();

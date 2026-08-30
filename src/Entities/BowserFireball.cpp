@@ -2,7 +2,7 @@
 #include "Graphics/SpriteRegistry.hpp"
 
 namespace {
-constexpr float FIREBALL_SPEED = 180.0f;
+constexpr float FIREBALL_SPEED = 160.0f;
 constexpr float FIREBALL_WIDTH = 30.0f;
 constexpr float FIREBALL_HEIGHT = 20.0f;
 constexpr float FRAME_DURATION = 0.10f;

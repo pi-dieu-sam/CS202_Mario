@@ -1071,6 +1071,9 @@ void Level::handleCollisions(float dt) {
       if (result.collided) {
         if (enemy->isVulnerable()) {
           const sf::Vector2f scorePosition = boundsCenter(*enemy);
+          if (dynamic_cast<Bowser *>(enemy.get())) {
+            EventManager::getInstance().publish({EventType::EnemyHitByFireball});
+          }
           if (enemy->hitByFireball()) {
             publishEnemyDefeated(*enemy, scorePosition);
           }
