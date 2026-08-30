@@ -26,7 +26,7 @@ Mỗi ký tự đại diện cho **một ô vuông 32×32 pixel** trong map.
 | `)` `}` `/` | Ống Ward (ward pipe) — **mảnh hàng dưới** |
 | `S` | Gạch vỡ: phá sau 3 lần đập từ dưới khi nhân vật đang có FlowersBuff từ `W`; mỗi lần đập phát `block_break.wav` |
 | `?` | Block có chứa xu (Coin) |
-| `W` | FlowersBuff — vật phẩm tăng kích thước, tốc độ và lực nhảy tạm thời |
+| `W` | Block chứa FlowersBuff — đập từ dưới sẽ hiện FlowersBuff ở ô phía trên |
 | `F` | Block có chứa Hoa lửa (Fire Flower) |
 | `E` | Escalater
 | `O` | Fire Bar: block 32px và 8 cầu lửa liên tục quay xuyên map (lửa chạm vào sẽ chết) |

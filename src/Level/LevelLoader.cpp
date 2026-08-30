@@ -134,7 +134,7 @@ LevelLoader::LevelData LevelLoader::loadLevel(const std::string& filename,
                 }
 
                 // ── Blocks ──
-                case '?': case 'S': case 'M': case 'F': case 's':
+                case '?': case 'S': case 'W': case 'M': case 'F': case 's':
                 {
                     auto block = EntityFactory::createBlock(c, x, y, theme);
                     if (block) data.blocks.push_back(std::move(block));
@@ -205,13 +205,6 @@ LevelLoader::LevelData LevelLoader::loadLevel(const std::string& filename,
                 case 'o': // Coin
                 {
                     auto item = EntityFactory::createItem(ItemType::Coin, {x, y}, theme);
-                    if (item) data.items.push_back(std::move(item));
-                    break;
-                }
-
-                case 'W': // FlowersBuff (size/speed/jump buff)
-                {
-                    auto item = EntityFactory::createItem(ItemType::FlowersBuff, {x, y}, theme);
                     if (item) data.items.push_back(std::move(item));
                     break;
                 }

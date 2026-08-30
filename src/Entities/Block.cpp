@@ -2,6 +2,7 @@
 #include "Core/SoundManager.hpp"
 #include "Entities/Coin.hpp"
 #include "Entities/FireFlower.hpp"
+#include "Entities/FlowersBuff.hpp"
 #include "Entities/Mushroom.hpp"
 #include "Entities/Star.hpp"
 #include "Graphics/SpriteRegistry.hpp"
@@ -97,6 +98,12 @@ std::unique_ptr<Item> Block::hit(bool playerIsBig) {
       star->setPosition(spawnPos);
       star->setTheme(m_theme);
       return star;
+    }
+    case ObjectType::FlowersBuff: {
+      auto flowersBuff = std::make_unique<FlowersBuff>();
+      flowersBuff->setPosition(spawnPos);
+      flowersBuff->setTheme(m_theme);
+      return flowersBuff;
     }
     default:
       break;

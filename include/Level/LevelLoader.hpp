@@ -37,7 +37,7 @@ class LavaFireball;
 /// - '@' = explicit player spawn      '9' = player 2 spawn (PvP/Co-op)
 /// - 'f' = explicit flagpole
 /// - 'K' = Koopa   'T' = flying Troopa   'B' = Bowser   'P' = Piranha Plant
-/// - 'W' = FlowersBuff (temporary size/speed/jump boost)
+/// - 'W' = question block w/ FlowersBuff (temporary size/speed/jump boost)
 /// - 'S' = breakable brick; an enlarged player must hit it three times
 /// - 'M' = legacy question block w/ Mushroom   'F' = w/ Fire Flower
 ///   's' = w/ Star
