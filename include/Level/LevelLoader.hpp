@@ -25,8 +25,7 @@ class LavaFireball;
 /// - 'E' = enemy, type unspecified by the format -- defaults to Goomba
 /// - '<' '>' = pipe top-left/right   '[' ']' = pipe body-left/right
 /// - 'o' = coin
-/// - 'B' 'b' = cannon top/bottom -- no projectile mechanic exists here,
-///   rendered as a solid block stand-in
+/// - 'b' = legacy cannon-bottom tile, rendered as a solid block stand-in
 /// - Ward pipe pieces: '(' '{' '\' (top row) and ')' '}' '/' (bottom row) —
 ///   each char is one 16x16 cell of WardPipe_piece.png scaled to one 32x32
 ///   tile. Assemble a pipe by stacking top-row pieces above bottom-row ones.
@@ -37,12 +36,13 @@ class LavaFireball;
 /// Extensions (not part of VGLC's own alphabet, safe to hand-add to a file):
 /// - '@' = explicit player spawn      '9' = player 2 spawn (PvP/Co-op)
 /// - 'f' = explicit flagpole
-/// - 'k' = Koopa (override for 'E')   'r' = Piranha Plant (override for 'E')
+/// - 'K' = Koopa   'T' = flying Troopa   'B' = Bowser   'P' = Piranha Plant
 /// - 'M' = question block w/ Mushroom   'F' = w/ Fire Flower   's' = w/ Star
 /// - 'E' = vertical escalater; 'e' = horizontal escalater (five tiles each way)
 /// - 'O' = fire-bar anchor with eight rotating, lethal fireballs
 /// - 'i' = top lava tile with a repeating fireball launcher (waits 3 sec/arc)
 ///   (in main level2.txt only, each pipe top <> is also a launcher)
+/// - 'V' = vine top; a non-solid 32x32 tile rendered from VineTop.png
 ///
 /// VGLC has no notion of a spawn point or a flagpole. If a file has no '@'
 /// or 'f', LevelLoader places them automatically: spawn near the left edge,

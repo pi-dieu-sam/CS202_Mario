@@ -36,6 +36,8 @@ Mỗi ký tự đại diện cho **một ô vuông 32×32 pixel** trong map.
 | `o` | Xu (Coin) |
 | `G` | Goomba |
 | `K` | Koopa |
+| `T` | Troopa bay (4 frame, không chịu trọng lực; đổi hướng khi chạm vật cản) |
+| `B` | Bowser cố định, chiếm vùng 2×2 ô tính từ ô `B`; đứng yên 2 giây rồi thở 3 giây |
 | `P` | Piranha Plant (đặt ngay phía trên nửa trái miệng ống `<`) |
 | `@` | Điểm spawn Player 1 |
 | `9` | Điểm spawn Player 2 (PvP / Co-op) |
@@ -44,6 +46,7 @@ Mỗi ký tự đại diện cho **một ô vuông 32×32 pixel** trong map.
 |`6` `S` `7` `5`|
 |`L`| Lava;
 |`l`| lava wave
+|`V`| VineTop
 
 
 **Lưu ý:**

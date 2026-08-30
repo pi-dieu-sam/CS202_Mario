@@ -13,6 +13,8 @@ void InputHandler::setPlayer1Bindings() {
     // Held keys
     m_keyBindings[sf::Keyboard::A] = std::make_unique<MoveLeftCommand>();
     m_keyBindings[sf::Keyboard::D] = std::make_unique<MoveRightCommand>();
+    m_keyBindings[sf::Keyboard::W] = std::make_unique<ClimbUpCommand>();
+    m_keyBindings[sf::Keyboard::S] = std::make_unique<ClimbDownCommand>();
 
     // Press keys
     m_pressBindings[sf::Keyboard::W]     = std::make_unique<JumpCommand>();
@@ -22,6 +24,7 @@ void InputHandler::setPlayer1Bindings() {
 
     m_jumpKeys = {sf::Keyboard::W, sf::Keyboard::Space};
     m_sprintKeys = {sf::Keyboard::LShift};
+    m_horizontalKeys = {sf::Keyboard::A, sf::Keyboard::D};
 
     m_heldKeys.clear();
     seedHeldKeys();
@@ -34,6 +37,8 @@ void InputHandler::setPlayer2Bindings() {
     // Held keys
     m_keyBindings[sf::Keyboard::Left]  = std::make_unique<MoveLeftCommand>();
     m_keyBindings[sf::Keyboard::Right] = std::make_unique<MoveRightCommand>();
+    m_keyBindings[sf::Keyboard::Up]    = std::make_unique<ClimbUpCommand>();
+    m_keyBindings[sf::Keyboard::Down]  = std::make_unique<ClimbDownCommand>();
 
     // Press keys
     m_pressBindings[sf::Keyboard::Up]       = std::make_unique<JumpCommand>();
@@ -42,6 +47,7 @@ void InputHandler::setPlayer2Bindings() {
 
     m_jumpKeys = {sf::Keyboard::Up, sf::Keyboard::Numpad0};
     m_sprintKeys = {sf::Keyboard::RShift};
+    m_horizontalKeys = {sf::Keyboard::Left, sf::Keyboard::Right};
 
     m_heldKeys.clear();
     seedHeldKeys();
@@ -56,6 +62,10 @@ void InputHandler::setSinglePlayerBindings() {
     m_keyBindings[sf::Keyboard::Left]  = std::make_unique<MoveLeftCommand>();
     m_keyBindings[sf::Keyboard::D]     = std::make_unique<MoveRightCommand>();
     m_keyBindings[sf::Keyboard::Right] = std::make_unique<MoveRightCommand>();
+    m_keyBindings[sf::Keyboard::W]     = std::make_unique<ClimbUpCommand>();
+    m_keyBindings[sf::Keyboard::S]     = std::make_unique<ClimbDownCommand>();
+    m_keyBindings[sf::Keyboard::Up]    = std::make_unique<ClimbUpCommand>();
+    m_keyBindings[sf::Keyboard::Down]  = std::make_unique<ClimbDownCommand>();
 
     // Press keys
     m_pressBindings[sf::Keyboard::W]       = std::make_unique<JumpCommand>();
@@ -69,6 +79,8 @@ void InputHandler::setSinglePlayerBindings() {
     m_jumpKeys = {sf::Keyboard::W, sf::Keyboard::Space,
                   sf::Keyboard::Up, sf::Keyboard::Numpad0};
     m_sprintKeys = {sf::Keyboard::LShift, sf::Keyboard::RShift};
+    m_horizontalKeys = {sf::Keyboard::A, sf::Keyboard::D,
+                        sf::Keyboard::Left, sf::Keyboard::Right};
 
     m_heldKeys.clear();
     seedHeldKeys();
@@ -120,6 +132,13 @@ bool InputHandler::isJumpHeld() const {
 
 bool InputHandler::isSprintHeld() const {
     for (auto k : m_sprintKeys) {
+        if (m_heldKeys.count(k)) return true;
+    }
+    return false;
+}
+
+bool InputHandler::isHorizontalHeld() const {
+    for (auto k : m_horizontalKeys) {
         if (m_heldKeys.count(k)) return true;
     }
     return false;

@@ -14,6 +14,9 @@
 #include "Level/TileGrid.hpp"
 #include "Entities/Goomba.hpp"
 #include "Entities/Koopa.hpp"
+#include "Entities/Troopa.hpp"
+#include "Entities/Bowser.hpp"
+#include "Entities/BowserFireball.hpp"
 #include "Entities/Block.hpp"
 #include "Entities/Escalater.hpp"
 #include "Entities/PiranhaPlant.hpp"
@@ -200,6 +203,109 @@ static void testKoopaDyingAndRespawn() {
   }
 }
 
+static void testFlyingTroopa() {
+  CHECK(std::filesystem::exists(SpriteRegistry::troopaPath()),
+        "Troopa animation uses the checked-in asset");
+  CHECK(SpriteRegistry::troopaFrameCount() == 4,
+        "Troopa exposes all four animation frames");
+
+  sf::Sprite sprite;
+  SpriteRegistry::applyTroopaFrame(
+      sprite, 3, sf::FloatRect(0.0f, 0.0f, TILE_SIZE, TILE_SIZE));
+  CHECK(sprite.getTextureRect() == sf::IntRect(752, 0, 250, 253),
+        "Troopa fourth frame selects its own source image region");
+
+  Troopa troopa;
+  troopa.setPosition(100.0f, 200.0f);
+  troopa.setVelocity(troopa.getSpeed(), 300.0f);
+  troopa.update(1.0f);
+  CHECK(std::abs(troopa.getPosition().y - 200.0f) < 0.001f &&
+            std::abs(troopa.getVelocity().y) < 0.001f,
+        "Troopa ignores gravity and keeps its flying altitude");
+
+  troopa.setVelocity(troopa.getSpeed(), 0.0f);
+  Tile wall;
+  placeWallRightOf(troopa, wall);
+  bounceOnce(troopa, wall, troopa.getSpeed());
+  CHECK(troopa.getVelocity().x == -troopa.getSpeed(),
+        "Troopa reverses after it collides with a solid obstacle");
+
+  troopa.onStomped();
+  CHECK(troopa.isDead() && !troopa.isActive(),
+        "stomping a Troopa defeats it immediately");
+}
+
+static void testBowserBreathingCycle() {
+  CHECK(std::filesystem::exists(SpriteRegistry::bowserPath()) &&
+            std::filesystem::exists(SpriteRegistry::bowserBreathPath()),
+        "Bowser idle and breathing assets are checked in");
+  CHECK(SpriteRegistry::bowserBreathFrameCount() == 6,
+        "Bowser breathing animation has six frames");
+  CHECK(SpriteRegistry::bowserBreathFrameRect(0) == sf::IntRect(0, 0, 78, 60) &&
+            SpriteRegistry::bowserBreathFrameRect(3) == sf::IntRect(234, 0, 91, 60) &&
+            SpriteRegistry::bowserBreathFrameRect(5) == sf::IntRect(430, 0, 103, 60),
+        "Bowser breathing frame crops use the supplied variable widths");
+
+  Bowser bowser;
+  CHECK(bowser.getBounds().width == TILE_SIZE * 2.0f &&
+            bowser.getBounds().height == TILE_SIZE * 2.0f,
+        "Bowser occupies a two-by-two tile area");
+  CHECK(!bowser.canBeStomped() && !bowser.usesTerrainCollisions(),
+        "Bowser cannot be stomped and remains fixed at its map position");
+  bowser.update(2.0f);
+  CHECK(bowser.getState() == Bowser::State::Breathing &&
+            bowser.getBreathFrame() == 0,
+        "Bowser begins breathing after two seconds idle");
+  bowser.update(0.5f);
+  CHECK(bowser.getBreathFrame() == 1,
+        "Bowser advances to the next breathing frame every half second");
+  bowser.update(2.5f);
+  CHECK(bowser.getState() == Bowser::State::Idle,
+        "Bowser returns to idle after three seconds breathing");
+
+  for (int hit = 0; hit < 4; ++hit) bowser.hitByFireball();
+  CHECK(bowser.getFireballHits() == 4 && bowser.isActive() && !bowser.isDead(),
+        "Bowser survives the first four fireballs");
+  bowser.hitByFireball();
+  CHECK(bowser.getFireballHits() == 5 && !bowser.isActive() && bowser.isDead(),
+        "Bowser dies on the fifth fireball");
+}
+
+static void testBowserFireballs() {
+  CHECK(std::filesystem::exists(SpriteRegistry::bowserFirePath()) &&
+            SpriteRegistry::bowserFireFrameCount() == 3,
+        "Bowser fire uses its three-frame checked-in sprite sheet");
+
+  Bowser bowser;
+  bowser.setPosition(1000.0f, 200.0f);
+  bowser.updatePlayerPosition(
+      sf::Vector2f(1000.0f - TILE_SIZE * 30.0f, 200.0f));
+  bowser.update(0.01f);
+  CHECK(bowser.takePendingFireballs() == 1,
+        "Bowser fires the first idle-phase shot at a player within left range");
+  bowser.update(0.70f);
+  CHECK(bowser.takePendingFireballs() == 1,
+        "Bowser fires the second idle-phase shot on schedule");
+  bowser.update(0.70f);
+  CHECK(bowser.takePendingFireballs() == 1,
+        "Bowser fires the third idle-phase shot on schedule");
+
+  Bowser outOfRangeBowser;
+  outOfRangeBowser.setPosition(1000.0f, 200.0f);
+  outOfRangeBowser.updatePlayerPosition(sf::Vector2f(1001.0f, 200.0f));
+  outOfRangeBowser.update(1.5f);
+  CHECK(outOfRangeBowser.takePendingFireballs() == 0,
+        "Bowser does not fire at a player to its right or outside left range");
+
+  BowserFireball fireball(200.0f, 100.0f);
+  fireball.update(0.1f);
+  CHECK(fireball.getPosition().x < 200.0f,
+        "Bowser fireball travels left from Bowser");
+  fireball.update(5.0f);
+  CHECK(!fireball.isActive(),
+        "Bowser fireball expires if it does not hit a solid object");
+}
+
 static void testHorizontalEscalaterMovement() {
   Escalater platform(400.0f, 200.0f,
                      Escalater::MovementAxis::Horizontal);
@@ -246,6 +352,43 @@ static void testLevel2LavaTilesKillPlayer() {
 
   checkLavaRow(17, "`l` flame tile kills a player on contact");
   checkLavaRow(18, "`L` lava tile kills a player on contact");
+}
+
+static void testLevel1VineEntersClimbState() {
+  // level1.txt places a vertical V vine at map column 7, rows 6-11. Its
+  // first cell lands at world row 11 after the five-row display offset.
+  Level level;
+  CHECK(level.loadFromFile("assets/levels/level1.txt", "Mario",
+                           LevelTheme::Overworld),
+        "level 1 loads for vine climbing test");
+  Player *player = level.getPlayer();
+  CHECK(player != nullptr, "level 1 creates a player for vine climbing test");
+  if (!player) return;
+
+  // Player position is a two-tile anchor; its small-form body begins 32px
+  // below it. Position that body inside the first V tile at (7, 11).
+  player->setPosition(7.0f * TILE_SIZE - 26.0f,
+                      11.0f * TILE_SIZE - TILE_SIZE);
+  level.update(0.0f);
+  CHECK(player->isClimbing(),
+        "touching a V map tile enters the climb state without terrain resolve");
+  CHECK(std::abs(player->getPosition().x - 7.0f * TILE_SIZE) < 0.001f,
+        "entering a V tile centres the player on the vine");
+
+  const float startY = player->getPosition().y;
+  player->climbUp(FIXED_DT);
+  level.update(FIXED_DT);
+  CHECK(player->isClimbing() &&
+            std::abs(player->getPosition().y -
+                     startY) < 0.01f,
+        "a solid tile above the vine stops upward climbing without ejecting the player");
+
+  player->climbDown(FIXED_DT);
+  level.update(FIXED_DT);
+  CHECK(player->isClimbing() &&
+            std::abs(player->getPosition().y -
+                     (startY + 120.0f * FIXED_DT)) < 0.01f,
+        "climbing down moves smoothly when the vine path is clear");
 }
 
 static void testGoombaStompDisablesCollisionImmediately() {
@@ -422,7 +565,7 @@ static void testAllLuigiSpriteStatesLoad() {
   const std::vector<SpriteRegistry::PlayerAnim> animations = {
       SpriteRegistry::PlayerAnim::Idle, SpriteRegistry::PlayerAnim::Walk,
       SpriteRegistry::PlayerAnim::Jump, SpriteRegistry::PlayerAnim::Fire,
-      SpriteRegistry::PlayerAnim::Skid};
+      SpriteRegistry::PlayerAnim::Skid, SpriteRegistry::PlayerAnim::Climb};
 
   for (PowerUpState power : powers) {
     for (SpriteRegistry::PlayerAnim animation : animations) {
@@ -471,6 +614,9 @@ static void testAllLuigiSpriteStatesLoad() {
     CHECK(SpriteRegistry::playerFrameCount(
               CharacterId::Luigi, power, SpriteRegistry::PlayerAnim::Fire) == 1,
           "Luigi Fire sheet exposes its 1 shoot frame");
+    CHECK(SpriteRegistry::playerFrameCount(
+              CharacterId::Luigi, power, SpriteRegistry::PlayerAnim::Climb) == 4,
+          "Luigi Climb sheet exposes its 4 climbing frames");
   }
 }
 
@@ -479,7 +625,8 @@ static void testAllMarioSpriteStatesLoad() {
       PowerUpState::Small, PowerUpState::Big, PowerUpState::Fire};
   const std::vector<SpriteRegistry::PlayerAnim> animations = {
       SpriteRegistry::PlayerAnim::Idle, SpriteRegistry::PlayerAnim::Walk,
-      SpriteRegistry::PlayerAnim::Jump, SpriteRegistry::PlayerAnim::Fire};
+      SpriteRegistry::PlayerAnim::Jump, SpriteRegistry::PlayerAnim::Fire,
+      SpriteRegistry::PlayerAnim::Climb};
 
   for (PowerUpState power : powers) {
     for (SpriteRegistry::PlayerAnim animation : animations) {
@@ -528,7 +675,56 @@ static void testAllMarioSpriteStatesLoad() {
     CHECK(SpriteRegistry::playerFrameCount(
               CharacterId::Mario, power, SpriteRegistry::PlayerAnim::Fire) == 2,
           "Mario Fire sheet exposes its 2 shoot frames");
+    CHECK(SpriteRegistry::playerFrameCount(
+              CharacterId::Mario, power, SpriteRegistry::PlayerAnim::Climb) == 2,
+          "Mario Climb sheet exposes its 2 climbing frames");
   }
+}
+
+static void testVineClimbingControls() {
+  Mario player;
+  player.setPosition(128.0f, 128.0f);
+
+  player.updateVineContact(true, 128.0f);
+  CHECK(player.isClimbing(), "touching a V tile enters the climbing state");
+  CHECK(player.getVelocity().x == 0.0f && player.getVelocity().y == 0.0f,
+        "entering a vine stops the existing movement");
+
+  const float startY = player.getPosition().y;
+  player.climbUp(FIXED_DT);
+  player.update(FIXED_DT);
+  CHECK(player.getPosition().y < startY,
+        "climb-up input moves the player upward without gravity");
+
+  const float afterTapY = player.getPosition().y;
+  player.update(FIXED_DT);
+  CHECK(std::abs(player.getPosition().y - afterTapY) < 0.001f,
+        "releasing climb input stops vertical movement immediately");
+
+  const float climbedY = player.getPosition().y;
+  player.climbDown(FIXED_DT);
+  player.update(FIXED_DT);
+  CHECK(player.getPosition().y > climbedY,
+        "climb-down input moves the player downward");
+
+  // The right key used to approach the vine can still be held when contact
+  // begins. It must not detach until released and pressed again.
+  player.setVineHorizontalInput(true);
+  player.moveRight(FIXED_DT);
+  CHECK(player.isClimbing(),
+        "held approach direction does not instantly cancel vine climbing");
+  player.setVineHorizontalInput(false);
+  player.moveRight(FIXED_DT);
+  CHECK(!player.isClimbing() && player.getVelocity().x > 0.0f,
+        "right input detaches from the vine and starts horizontal movement");
+
+  player.updateVineContact(true, 128.0f);
+  CHECK(!player.isClimbing(),
+        "a horizontal detach cannot immediately reattach while still overlapping");
+  player.updateVineContact(false, 0.0f);
+  player.updateVineContact(true, 128.0f);
+  CHECK(player.isClimbing(),
+        "leaving the vine tile re-enables climbing on the next contact");
 }
 
 static void testPiranhaFramesAndEmergenceStayStable() {
@@ -743,8 +939,12 @@ int main() {
   testGoombaBouncesBothDirections();
   testMushroomReversesInsteadOfStopping();
   testKoopaDyingAndRespawn();
+  testFlyingTroopa();
+  testBowserBreathingCycle();
+  testBowserFireballs();
   testHorizontalEscalaterMovement();
   testLevel2LavaTilesKillPlayer();
+  testLevel1VineEntersClimbState();
   testGoombaStompDisablesCollisionImmediately();
   testEnlargedPlayersCanHitBlocksWithCompactBody();
   testResolveCollisionAloneStillZeroesVelocity();
@@ -754,6 +954,7 @@ int main() {
   testSprintDoesNotCompoundVelocity();
   testAllLuigiSpriteStatesLoad();
   testAllMarioSpriteStatesLoad();
+  testVineClimbingControls();
   testPiranhaFramesAndEmergenceStayStable();
   testFlagpoleSlideFramesAndCutscene();
   testPlayerDeathAnimationUsesFacingPoses();

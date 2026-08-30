@@ -22,7 +22,7 @@ enum class PowerUpState;
 class SpriteRegistry {
 public:
   enum class BlockVisualState { Idle, Hit, Used };
-  enum class PlayerAnim { Idle, Walk, Jump, Skid, Fire, FlagpoleSlide };
+  enum class PlayerAnim { Idle, Walk, Jump, Skid, Fire, Climb, FlagpoleSlide };
 
   // ── Tiles ──
   static const std::string &tilePath(TileType type, LevelTheme theme);
@@ -43,6 +43,19 @@ public:
   static int koopaFrameCount();
   static void applyKoopaFrame(sf::Sprite &sprite, int frame,
                               const sf::FloatRect &box, bool flip = false);
+  static const std::string &troopaPath();
+  static int troopaFrameCount();
+  static void applyTroopaFrame(sf::Sprite &sprite, int frame,
+                               const sf::FloatRect &box, bool flip = false);
+  static const std::string &bowserPath();
+  static const std::string &bowserBreathPath();
+  static int bowserBreathFrameCount();
+  static sf::IntRect bowserBreathFrameRect(int frame);
+  static void applyBowserBreathFrame(sf::Sprite &sprite, int frame,
+                                     const sf::FloatRect &box,
+                                     bool flip = false);
+  static const std::string &bowserFirePath();
+  static int bowserFireFrameCount();
   static const std::string &piranhaPlantPath(int frame);
   static int piranhaFrameCount();
   /// Full source rectangle of one decoded Piranha GIF frame.

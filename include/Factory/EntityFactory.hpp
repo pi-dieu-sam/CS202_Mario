@@ -15,6 +15,8 @@ class Escalater;
 enum class EnemyType {
     Goomba,
     Koopa,
+    Troopa,
+    Bowser,
     PiranhaPlant
 };
 

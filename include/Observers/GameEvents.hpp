@@ -10,6 +10,7 @@
 enum class EventType {
     CoinCollected,
     EnemyDefeated,
+    EnemyHitByFireball,
     PowerUpCollected,
     PlayerDied,
     LevelCompleted,
