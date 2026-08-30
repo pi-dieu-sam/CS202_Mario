@@ -147,6 +147,7 @@ void Koopa::bounce(float incomingVelocity) {
 }
 
 void Koopa::stopSliding() {
+  // Only applies to a currently sliding shell
   if (m_koopaState != KoopaState::Shell || !m_sliding)
     return;
   m_sliding = false;
