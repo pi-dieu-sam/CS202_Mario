@@ -15,6 +15,7 @@
 #include "Entities/Goomba.hpp"
 #include "Entities/Koopa.hpp"
 #include "Entities/Troopa.hpp"
+#include "Entities/Bowser.hpp"
 #include "Entities/Block.hpp"
 #include "Entities/Escalater.hpp"
 #include "Entities/PiranhaPlant.hpp"
@@ -231,6 +232,42 @@ static void testFlyingTroopa() {
   troopa.onStomped();
   CHECK(troopa.isDead() && !troopa.isActive(),
         "stomping a Troopa defeats it immediately");
+}
+
+static void testBowserBreathingCycle() {
+  CHECK(std::filesystem::exists(SpriteRegistry::bowserPath()) &&
+            std::filesystem::exists(SpriteRegistry::bowserBreathPath()),
+        "Bowser idle and breathing assets are checked in");
+  CHECK(SpriteRegistry::bowserBreathFrameCount() == 6,
+        "Bowser breathing animation has six frames");
+  CHECK(SpriteRegistry::bowserBreathFrameRect(0) == sf::IntRect(0, 0, 78, 60) &&
+            SpriteRegistry::bowserBreathFrameRect(3) == sf::IntRect(234, 0, 91, 60) &&
+            SpriteRegistry::bowserBreathFrameRect(5) == sf::IntRect(430, 0, 103, 60),
+        "Bowser breathing frame crops use the supplied variable widths");
+
+  Bowser bowser;
+  CHECK(bowser.getBounds().width == TILE_SIZE * 2.0f &&
+            bowser.getBounds().height == TILE_SIZE * 2.0f,
+        "Bowser occupies a two-by-two tile area");
+  CHECK(!bowser.canBeStomped() && !bowser.usesTerrainCollisions(),
+        "Bowser cannot be stomped and remains fixed at its map position");
+  bowser.update(2.0f);
+  CHECK(bowser.getState() == Bowser::State::Breathing &&
+            bowser.getBreathFrame() == 0,
+        "Bowser begins breathing after two seconds idle");
+  bowser.update(0.5f);
+  CHECK(bowser.getBreathFrame() == 1,
+        "Bowser advances to the next breathing frame every half second");
+  bowser.update(2.5f);
+  CHECK(bowser.getState() == Bowser::State::Idle,
+        "Bowser returns to idle after three seconds breathing");
+
+  for (int hit = 0; hit < 4; ++hit) bowser.hitByFireball();
+  CHECK(bowser.getFireballHits() == 4 && bowser.isActive() && !bowser.isDead(),
+        "Bowser survives the first four fireballs");
+  bowser.hitByFireball();
+  CHECK(bowser.getFireballHits() == 5 && !bowser.isActive() && bowser.isDead(),
+        "Bowser dies on the fifth fireball");
 }
 
 static void testHorizontalEscalaterMovement() {
@@ -867,6 +904,7 @@ int main() {
   testMushroomReversesInsteadOfStopping();
   testKoopaDyingAndRespawn();
   testFlyingTroopa();
+  testBowserBreathingCycle();
   testHorizontalEscalaterMovement();
   testLevel2LavaTilesKillPlayer();
   testLevel1VineEntersClimbState();

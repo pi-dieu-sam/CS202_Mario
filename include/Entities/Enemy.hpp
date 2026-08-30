@@ -23,6 +23,11 @@ public:
   /// PiranhaPlant -> no effect), kill() always removes the enemy.
   virtual void kill();
 
+  /// Apply a fireball hit and return whether it defeated the enemy. Most
+  /// enemies die immediately; bosses can require multiple fireballs without
+  /// changing other defeat types.
+  virtual bool hitByFireball();
+
   /// Returns false when the enemy is in a non-interactive state (e.g. dying
   /// animation) and should not deal or receive damage.
   virtual bool isVulnerable() const;

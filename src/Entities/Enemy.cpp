@@ -57,6 +57,11 @@ void Enemy::kill() {
     m_active = false;
 }
 
+bool Enemy::hitByFireball() {
+    kill();
+    return true;
+}
+
 bool Enemy::isVulnerable() const { return true; }
 
 bool Enemy::canBeStomped() const { return true; }

@@ -22,7 +22,7 @@ bool isSolidChar(char c) {
     switch (c) {
         case 'X':
         case '<': case '>': case '[': case ']':
-        case 'B': case 'b':
+        case 'b':
         case 'M': case 'F': case 's':
         case '(': case '{': case '\\': case ')': case '}': case '/':
         case 'Q': case '2': case '3': case '4':
@@ -91,7 +91,7 @@ LevelLoader::LevelData LevelLoader::loadLevel(const std::string& filename,
 
                 // ── Tiles ──
                 case 'X': case '<': case '>': case '[': case ']':
-                case 'B': case 'b':
+                case 'b':
                 case 'L': case 'l': case 'V':
                 {
                     auto tile = EntityFactory::createTile(c, x, y, theme);
@@ -157,6 +157,12 @@ LevelLoader::LevelData LevelLoader::loadLevel(const std::string& filename,
                 case 'T':
                 {
                     auto enemy = EntityFactory::createEnemy(EnemyType::Troopa, {x, y}, theme);
+                    if (enemy) data.enemies.push_back(std::move(enemy));
+                    break;
+                }
+                case 'B':
+                {
+                    auto enemy = EntityFactory::createEnemy(EnemyType::Bowser, {x, y}, theme);
                     if (enemy) data.enemies.push_back(std::move(enemy));
                     break;
                 }

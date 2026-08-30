@@ -2,6 +2,7 @@
 #include "Entities/Goomba.hpp"
 #include "Entities/Koopa.hpp"
 #include "Entities/Troopa.hpp"
+#include "Entities/Bowser.hpp"
 #include "Entities/PiranhaPlant.hpp"
 #include "Entities/Coin.hpp"
 #include "Entities/Mushroom.hpp"
@@ -29,6 +30,9 @@ std::unique_ptr<Enemy> EntityFactory::createEnemy(EnemyType type, sf::Vector2f p
             break;
         case EnemyType::Troopa:
             enemy = std::make_unique<Troopa>();
+            break;
+        case EnemyType::Bowser:
+            enemy = std::make_unique<Bowser>();
             break;
         case EnemyType::PiranhaPlant:
             enemy = std::make_unique<PiranhaPlant>();
@@ -80,9 +84,8 @@ std::unique_ptr<Tile> EntityFactory::createTile(char tileChar, float x, float y,
         case '>': type = TileType::PipeTopRight;   break;
         case '[': type = TileType::PipeBodyLeft;   break;
         case ']': type = TileType::PipeBodyRight;  break;
-        // Bullet Bill cannons ('B' top / 'b' bottom) have no projectile
-        // mechanic in this engine -- render as an inert solid block instead.
-        case 'B':
+        // The legacy Bullet Bill cannon bottom ('b') has no projectile
+        // mechanic in this engine, so it renders as an inert solid block.
         case 'b':
             type = TileType::Ground;
             break;
