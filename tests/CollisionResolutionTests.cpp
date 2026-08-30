@@ -14,6 +14,7 @@
 #include "Level/TileGrid.hpp"
 #include "Entities/Goomba.hpp"
 #include "Entities/Koopa.hpp"
+#include "Entities/Troopa.hpp"
 #include "Entities/Block.hpp"
 #include "Entities/Escalater.hpp"
 #include "Entities/PiranhaPlant.hpp"
@@ -198,6 +199,38 @@ static void testKoopaDyingAndRespawn() {
     CHECK(koopa.isDead() == false,
           "Shell Koopa is not dead (will respawn)");
   }
+}
+
+static void testFlyingTroopa() {
+  CHECK(std::filesystem::exists(SpriteRegistry::troopaPath()),
+        "Troopa animation uses the checked-in asset");
+  CHECK(SpriteRegistry::troopaFrameCount() == 4,
+        "Troopa exposes all four animation frames");
+
+  sf::Sprite sprite;
+  SpriteRegistry::applyTroopaFrame(
+      sprite, 3, sf::FloatRect(0.0f, 0.0f, TILE_SIZE, TILE_SIZE));
+  CHECK(sprite.getTextureRect() == sf::IntRect(752, 0, 250, 253),
+        "Troopa fourth frame selects its own source image region");
+
+  Troopa troopa;
+  troopa.setPosition(100.0f, 200.0f);
+  troopa.setVelocity(troopa.getSpeed(), 300.0f);
+  troopa.update(1.0f);
+  CHECK(std::abs(troopa.getPosition().y - 200.0f) < 0.001f &&
+            std::abs(troopa.getVelocity().y) < 0.001f,
+        "Troopa ignores gravity and keeps its flying altitude");
+
+  troopa.setVelocity(troopa.getSpeed(), 0.0f);
+  Tile wall;
+  placeWallRightOf(troopa, wall);
+  bounceOnce(troopa, wall, troopa.getSpeed());
+  CHECK(troopa.getVelocity().x == -troopa.getSpeed(),
+        "Troopa reverses after it collides with a solid obstacle");
+
+  troopa.onStomped();
+  CHECK(troopa.isDead() && !troopa.isActive(),
+        "stomping a Troopa defeats it immediately");
 }
 
 static void testHorizontalEscalaterMovement() {
@@ -833,6 +866,7 @@ int main() {
   testGoombaBouncesBothDirections();
   testMushroomReversesInsteadOfStopping();
   testKoopaDyingAndRespawn();
+  testFlyingTroopa();
   testHorizontalEscalaterMovement();
   testLevel2LavaTilesKillPlayer();
   testLevel1VineEntersClimbState();

@@ -154,6 +154,12 @@ LevelLoader::LevelData LevelLoader::loadLevel(const std::string& filename,
                     if (enemy) data.enemies.push_back(std::move(enemy));
                     break;
                 }
+                case 'T':
+                {
+                    auto enemy = EntityFactory::createEnemy(EnemyType::Troopa, {x, y}, theme);
+                    if (enemy) data.enemies.push_back(std::move(enemy));
+                    break;
+                }
                 case 'P':
                 {
                     auto enemy = EntityFactory::createEnemy(EnemyType::PiranhaPlant, {x, y-14}, theme);
