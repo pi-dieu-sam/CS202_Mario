@@ -236,6 +236,28 @@ void SpriteRegistry::applyKoopaFrame(sf::Sprite &sprite, int frame,
              sf::IntRect(col * cellW, row * cellH, cellW, cellH), box, flip);
 }
 
+const std::string &SpriteRegistry::troopaPath() {
+  static const std::string sheet = "assets/textures/Character/Troopa.png";
+  return sheet;
+}
+
+int SpriteRegistry::troopaFrameCount() { return 4; }
+
+void SpriteRegistry::applyTroopaFrame(sf::Sprite &sprite, int frame,
+                                      const sf::FloatRect &box, bool flip) {
+  sf::Texture &texture = AssetManager::getInstance().getTexture(troopaPath());
+  const sf::Vector2u size = texture.getSize();
+  if (size.x == 0 || size.y == 0)
+    return;
+
+  // The source image has four 250px frames separated by one transparent
+  // column. Its final three columns are also transparent padding.
+  const int f = frame % troopaFrameCount();
+  const int left = f == 0 ? 0 : f * 251 - 1;
+  applyFrame(sprite, texture,
+             sf::IntRect(left, 0, 250, static_cast<int>(size.y)), box, flip);
+}
+
 const std::string &SpriteRegistry::piranhaPlantPath(int /*frame*/) {
   // This GIF contains the two classic, fixed-size mouth poses. Vertical
   // emergence is controlled by PiranhaPlant itself; the old 95-frame strip

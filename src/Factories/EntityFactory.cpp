@@ -1,6 +1,7 @@
 #include "Factory/EntityFactory.hpp"
 #include "Entities/Goomba.hpp"
 #include "Entities/Koopa.hpp"
+#include "Entities/Troopa.hpp"
 #include "Entities/PiranhaPlant.hpp"
 #include "Entities/Coin.hpp"
 #include "Entities/Mushroom.hpp"
@@ -25,6 +26,9 @@ std::unique_ptr<Enemy> EntityFactory::createEnemy(EnemyType type, sf::Vector2f p
         case EnemyType::Koopa:
             enemy = std::make_unique<Koopa>();
             enemy->setStrategy(std::make_unique<PatrolStrategy>());
+            break;
+        case EnemyType::Troopa:
+            enemy = std::make_unique<Troopa>();
             break;
         case EnemyType::PiranhaPlant:
             enemy = std::make_unique<PiranhaPlant>();

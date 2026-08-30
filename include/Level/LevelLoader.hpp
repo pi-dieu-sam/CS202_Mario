@@ -37,7 +37,7 @@ class LavaFireball;
 /// Extensions (not part of VGLC's own alphabet, safe to hand-add to a file):
 /// - '@' = explicit player spawn      '9' = player 2 spawn (PvP/Co-op)
 /// - 'f' = explicit flagpole
-/// - 'k' = Koopa (override for 'E')   'r' = Piranha Plant (override for 'E')
+/// - 'K' = Koopa   'T' = flying Troopa   'P' = Piranha Plant
 /// - 'M' = question block w/ Mushroom   'F' = w/ Fire Flower   's' = w/ Star
 /// - 'E' = vertical escalater; 'e' = horizontal escalater (five tiles each way)
 /// - 'O' = fire-bar anchor with eight rotating, lethal fireballs

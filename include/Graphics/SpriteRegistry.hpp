@@ -43,6 +43,10 @@ public:
   static int koopaFrameCount();
   static void applyKoopaFrame(sf::Sprite &sprite, int frame,
                               const sf::FloatRect &box, bool flip = false);
+  static const std::string &troopaPath();
+  static int troopaFrameCount();
+  static void applyTroopaFrame(sf::Sprite &sprite, int frame,
+                               const sf::FloatRect &box, bool flip = false);
   static const std::string &piranhaPlantPath(int frame);
   static int piranhaFrameCount();
   /// Full source rectangle of one decoded Piranha GIF frame.

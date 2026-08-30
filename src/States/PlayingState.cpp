@@ -20,8 +20,8 @@
 
 namespace {
 constexpr float TIME_BONUS_TICK_INTERVAL = 0.03f;
-constexpr int LEVEL1_SECRET_ENTRY_PIPE_COLUMN = 57; // A: enter the secret room
-constexpr int LEVEL1_SECRET_RETURN_PIPE_COLUMN = 71; // B: emerge 14 tiles to the right
+constexpr int LEVEL1_SECRET_ENTRY_PIPE_COLUMN = 59; // A: enter the secret room
+constexpr int LEVEL1_SECRET_RETURN_PIPE_COLUMN = 73; // B: emerge 14 tiles to the right
 constexpr float PIPE_VERTICAL_TRAVEL_TIME = 0.45f;
 constexpr float PIPE_HORIZONTAL_TRAVEL_TIME = 0.80f;
 constexpr float PIPE_FADE_DURATION = 0.12f;
