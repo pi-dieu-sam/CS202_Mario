@@ -47,6 +47,13 @@ public:
   static int troopaFrameCount();
   static void applyTroopaFrame(sf::Sprite &sprite, int frame,
                                const sf::FloatRect &box, bool flip = false);
+  static const std::string &bowserPath();
+  static const std::string &bowserBreathPath();
+  static int bowserBreathFrameCount();
+  static sf::IntRect bowserBreathFrameRect(int frame);
+  static void applyBowserBreathFrame(sf::Sprite &sprite, int frame,
+                                     const sf::FloatRect &box,
+                                     bool flip = false);
   static const std::string &piranhaPlantPath(int frame);
   static int piranhaFrameCount();
   /// Full source rectangle of one decoded Piranha GIF frame.

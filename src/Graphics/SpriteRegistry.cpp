@@ -258,6 +258,38 @@ void SpriteRegistry::applyTroopaFrame(sf::Sprite &sprite, int frame,
              sf::IntRect(left, 0, 250, static_cast<int>(size.y)), box, flip);
 }
 
+const std::string &SpriteRegistry::bowserPath() {
+  static const std::string sprite = "assets/textures/Character/Bowser.png";
+  return sprite;
+}
+
+const std::string &SpriteRegistry::bowserBreathPath() {
+  static const std::string sheet =
+      "assets/textures/Character/Bowser_Breath.png";
+  return sheet;
+}
+
+int SpriteRegistry::bowserBreathFrameCount() { return 6; }
+
+sf::IntRect SpriteRegistry::bowserBreathFrameRect(int frame) {
+  constexpr int widths[] = {78, 78, 78, 91, 105, 103};
+  constexpr int offsets[] = {0, 78, 156, 234, 325, 430};
+  const int f = std::clamp(frame, 0, bowserBreathFrameCount() - 1);
+  return sf::IntRect(offsets[f], 0, widths[f], 60);
+}
+
+void SpriteRegistry::applyBowserBreathFrame(sf::Sprite &sprite, int frame,
+                                            const sf::FloatRect &box,
+                                            bool flip) {
+  sf::Texture &texture =
+      AssetManager::getInstance().getTexture(bowserBreathPath());
+  const sf::Vector2u size = texture.getSize();
+  if (size.x == 0 || size.y == 0)
+    return;
+
+  applyFrame(sprite, texture, bowserBreathFrameRect(frame), box, flip);
+}
+
 const std::string &SpriteRegistry::piranhaPlantPath(int /*frame*/) {
   // This GIF contains the two classic, fixed-size mouth poses. Vertical
   // emergence is controlled by PiranhaPlant itself; the old 95-frame strip

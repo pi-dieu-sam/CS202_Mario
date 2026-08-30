@@ -25,8 +25,7 @@ class LavaFireball;
 /// - 'E' = enemy, type unspecified by the format -- defaults to Goomba
 /// - '<' '>' = pipe top-left/right   '[' ']' = pipe body-left/right
 /// - 'o' = coin
-/// - 'B' 'b' = cannon top/bottom -- no projectile mechanic exists here,
-///   rendered as a solid block stand-in
+/// - 'b' = legacy cannon-bottom tile, rendered as a solid block stand-in
 /// - Ward pipe pieces: '(' '{' '\' (top row) and ')' '}' '/' (bottom row) —
 ///   each char is one 16x16 cell of WardPipe_piece.png scaled to one 32x32
 ///   tile. Assemble a pipe by stacking top-row pieces above bottom-row ones.
@@ -37,7 +36,7 @@ class LavaFireball;
 /// Extensions (not part of VGLC's own alphabet, safe to hand-add to a file):
 /// - '@' = explicit player spawn      '9' = player 2 spawn (PvP/Co-op)
 /// - 'f' = explicit flagpole
-/// - 'K' = Koopa   'T' = flying Troopa   'P' = Piranha Plant
+/// - 'K' = Koopa   'T' = flying Troopa   'B' = Bowser   'P' = Piranha Plant
 /// - 'M' = question block w/ Mushroom   'F' = w/ Fire Flower   's' = w/ Star
 /// - 'E' = vertical escalater; 'e' = horizontal escalater (five tiles each way)
 /// - 'O' = fire-bar anchor with eight rotating, lethal fireballs
