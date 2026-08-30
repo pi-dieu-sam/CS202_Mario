@@ -7,7 +7,7 @@ A 2D Super Mario clone built using C++17 and SFML 2.6, implementing strong Objec
 - **Characters**: Selectable Mario and Luigi with distinct stats
 - **Levels**: 3 levels (Grassland, Underground, Castle) with increasing difficulty
 - **Enemies**: Goombas, Koopas (with shell mechanics), Piranha Plants
-- **Power-ups**: Mushrooms (grow), Fire Flowers (fireballs), Stars (invincibility)
+- **Power-ups**: FlowersBuff (temporary size/speed/jump boost), Fire Flowers (fireballs), Stars (invincibility)
 - **UI & Menu**: Mouse & Keyboard support, HUD overlay, Pause state, Game Over state
 - **Save/Load**: Save game state and progress to file
 
@@ -24,9 +24,9 @@ Mỗi ký tự đại diện cho **một ô vuông 32×32 pixel** trong map.
 | `[` `]` | Thân ống (body-left / body-right) |
 | `(` `{` `\` | Ống Ward (ward pipe) — **mảnh hàng trên** (xếp chồng lên mảnh dưới) |
 | `)` `}` `/` | Ống Ward (ward pipe) — **mảnh hàng dưới** |
-| `S` | Gạch vỡ (Brick, phá được khi Mario to) |
+| `S` | Gạch vỡ: phá sau 3 lần đập từ dưới khi nhân vật đang có FlowersBuff từ `W`; mỗi lần đập phát `block_break.wav` |
 | `?` | Block có chứa xu (Coin) |
-| `M` | Block có chứa Nấm (Mushroom) |
+| `W` | FlowersBuff — vật phẩm tăng kích thước, tốc độ và lực nhảy tạm thời |
 | `F` | Block có chứa Hoa lửa (Fire Flower) |
 | `E` | Escalater
 | `O` | Fire Bar: block 32px và 8 cầu lửa liên tục quay xuyên map (lửa chạm vào sẽ chết) |
@@ -43,7 +43,7 @@ Mỗi ký tự đại diện cho **một ô vuông 32×32 pixel** trong map.
 | `9` | Điểm spawn Player 2 (PvP / Co-op) |
 | `f` | Cột cờ (đích của level) |
 |`Q` `2` `3` `4`| Castle
-|`6` `S` `7` `5`|
+|`6` `_` `7` `5`|
 |`L`| Lava;
 |`l`| lava wave
 |`V`| VineTop

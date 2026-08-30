@@ -585,7 +585,7 @@ void Level::handlePlayerCollisions(Player* player, float dt) {
       player->setVelocity(player->getVelocity().x, 0.0f);
 
       auto spawnedItem =
-          block->hit(player->getPowerUpState() != PowerUpState::Small);
+          block->hit(enlargedPlayer);
       if (spawnedItem) {
         m_items.push_back(std::move(spawnedItem));
       }
@@ -599,7 +599,7 @@ void Level::handlePlayerCollisions(Player* player, float dt) {
       }
       if (result.side == CollisionDetector::Side::Top) {
         auto spawnedItem =
-            block->hit(player->getPowerUpState() != PowerUpState::Small);
+            block->hit(enlargedPlayer);
         if (spawnedItem) {
           m_items.push_back(std::move(spawnedItem));
         }
@@ -657,23 +657,23 @@ void Level::handlePlayerCollisions(Player* player, float dt) {
     }
   }
 
-  // Player vs FireBars (lethal rotating hazard)
+  // Player vs FireBars. Star power protects the player from fire hazards.
   for (auto &fb : m_fireBars) {
     if (!fb->isActive()) continue;
 
     for (int i = 0; i < fb->getSegmentCount(); ++i) {
       sf::FloatRect segBounds = fb->getSegmentBounds(i);
-      if (player->getBounds().intersects(segBounds)) {
+      if (!player->hasStarPower() && player->getBounds().intersects(segBounds)) {
         player->die();
         return;
       }
     }
   }
 
-  // Lava fireballs pass through level geometry and kill only on player
-  // contact while their launch/fall animation is visible.
+  // Lava fireballs pass through level geometry. Star power protects the
+  // player while their launch/fall animation is visible.
   for (auto &lavaFireball : m_lavaFireballs) {
-    if (lavaFireball->isActive() && lavaFireball->isVisible() &&
+    if (!player->hasStarPower() && lavaFireball->isActive() && lavaFireball->isVisible() &&
         player->getBounds().intersects(lavaFireball->getBounds())) {
       player->die();
       return;

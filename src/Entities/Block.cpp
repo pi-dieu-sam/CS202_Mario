@@ -62,13 +62,12 @@ std::unique_ptr<Item> Block::hit(bool playerIsBig) {
   if (m_used)
     return nullptr;
 
-  // Start bump animation
+  // Start bump animation.
   m_bumping = true;
   m_bumpTimer = 0.0f;
 
-  EventManager::getInstance().publish({EventType::BlockHit});
-
   if (m_blockType == BlockType::Question) {
+    EventManager::getInstance().publish({EventType::BlockHit});
     m_used = true;
 
     // Create the contained item above the block
@@ -104,11 +103,15 @@ std::unique_ptr<Item> Block::hit(bool playerIsBig) {
     }
   } else if (m_blockType == BlockType::Brick) {
     if (playerIsBig) {
-      // Break the brick
+      // A brick takes three empowered head hits. The break sound gives
+      // feedback for the first two hits as well as the final break.
+      ++m_brickHits;
       SoundManager::getInstance().playSound(SoundID::BlockBreak);
-      m_active = false;
+      if (m_brickHits >= 3) {
+        m_active = false;
+      }
     } else {
-      // Small player just bumps it
+      // A normal player can bump it but cannot damage it.
       SoundManager::getInstance().playSound(SoundID::BlockBump);
     }
   }

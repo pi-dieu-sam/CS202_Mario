@@ -5,7 +5,7 @@
 /// Power-up state for the player character.
 enum class PowerUpState {
   Small, // Default — dies on hit
-  Big,   // Mushroom — can break bricks, shrinks on hit
+  Big,   // Large state — can break bricks, shrinks on hit
   Fire   // FireFlower — can shoot fireballs
 };
 

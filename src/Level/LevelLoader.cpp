@@ -111,11 +111,11 @@ LevelLoader::LevelData LevelLoader::loadLevel(const std::string& filename,
                     break;
                 }
 
-                // Castle pieces ('Q','2','3','4','6','S','7','5') — each char
+                // Castle pieces ('Q','2','3','4','6','7','5') — each char
                 // is one 32x32 tile cut from Castle_piece.png. Assemble a
-                // castle with "Q234" above "6S75".
+                // castle with "Q234" above "6_75". ('S' is a breakable brick.)
                 case 'Q': case '2': case '3': case '4':
-                case '6': case 'S': case '7': case '5':
+                case '6': case '7': case '5':
                 {
                     auto piece = EntityFactory::createCastlePiece(c, x, y, theme);
                     if (piece) data.tiles.push_back(std::move(piece));
@@ -134,7 +134,7 @@ LevelLoader::LevelData LevelLoader::loadLevel(const std::string& filename,
                 }
 
                 // ── Blocks ──
-                case '?': case 'M': case 'F': case 's':
+                case '?': case 'S': case 'M': case 'F': case 's':
                 {
                     auto block = EntityFactory::createBlock(c, x, y, theme);
                     if (block) data.blocks.push_back(std::move(block));
