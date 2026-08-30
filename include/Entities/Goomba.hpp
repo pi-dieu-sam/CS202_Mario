@@ -1,4 +1,5 @@
 #pragma once
+// Goomba.hpp — basic walking enemy that dies on stomp
 #include "Enemy.hpp"
 
 /// Goomba — basic walking enemy. Dies on stomp.
