@@ -7,6 +7,8 @@ namespace {
 constexpr float BOWSER_SIZE = TILE_SIZE * 2.0f;
 constexpr float IDLE_DURATION = 2.0f;
 constexpr float BREATH_DURATION = 3.0f;
+constexpr float FIRE_RANGE = TILE_SIZE * 30.0f;
+constexpr int FIREBALLS_PER_IDLE = 3;
 }
 
 Bowser::Bowser() {
@@ -26,6 +28,19 @@ void Bowser::update(float dt) {
   m_stateTimer += dt;
 
   if (m_state == State::Idle) {
+    // Bowser is fixed facing left, so only a player within 30 tiles to his
+    // left can trigger these three evenly-spaced shots during the idle phase.
+    const float fireInterval = IDLE_DURATION / FIREBALLS_PER_IDLE;
+    while (m_nextFireTime < IDLE_DURATION &&
+           m_stateTimer >= m_nextFireTime) {
+      const float distanceLeft = m_position.x - m_playerPosition.x;
+      if (m_hasPlayerPosition && distanceLeft > 0.0f &&
+          distanceLeft <= FIRE_RANGE) {
+        ++m_pendingFireballs;
+      }
+      m_nextFireTime += fireInterval;
+    }
+
     if (m_stateTimer >= IDLE_DURATION) {
       m_state = State::Breathing;
       m_stateTimer -= IDLE_DURATION;
@@ -44,6 +59,7 @@ void Bowser::update(float dt) {
       m_state = State::Idle;
       m_stateTimer -= BREATH_DURATION;
       m_breathFrame = 0;
+      m_nextFireTime = 0.0f;
     }
   }
 }
@@ -66,6 +82,11 @@ void Bowser::draw(sf::RenderWindow &window) {
 
 sf::FloatRect Bowser::getBounds() const {
   return sf::FloatRect(m_position.x, m_position.y, BOWSER_SIZE, BOWSER_SIZE);
+}
+
+void Bowser::updatePlayerPosition(const sf::Vector2f &playerPos) {
+  m_playerPosition = playerPos;
+  m_hasPlayerPosition = true;
 }
 
 void Bowser::onStomped() {
@@ -92,3 +113,9 @@ Bowser::State Bowser::getState() const { return m_state; }
 int Bowser::getBreathFrame() const { return m_breathFrame; }
 
 int Bowser::getFireballHits() const { return m_fireballHits; }
+
+int Bowser::takePendingFireballs() {
+  const int count = m_pendingFireballs;
+  m_pendingFireballs = 0;
+  return count;
+}

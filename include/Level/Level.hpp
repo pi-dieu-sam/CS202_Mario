@@ -5,6 +5,7 @@
 #include "../Entities/Block.hpp"
 #include "../Entities/Enemy.hpp"
 #include "../Entities/Fireball.hpp"
+#include "../Entities/BowserFireball.hpp"
 #include "../Entities/Flagpole.hpp"
 #include "../Entities/Item.hpp"
 #include "../Entities/Player.hpp"
@@ -92,6 +93,7 @@ private:
   std::vector<std::unique_ptr<Enemy>> m_enemies;
   std::vector<std::unique_ptr<Item>> m_items;
   std::vector<std::unique_ptr<Fireball>> m_fireballs;
+  std::vector<std::unique_ptr<BowserFireball>> m_bowserFireballs;
   std::vector<std::unique_ptr<Escalater>>  m_escalaters;
   std::vector<std::unique_ptr<FireBar>>    m_fireBars;
   std::vector<std::unique_ptr<LavaFireball>> m_lavaFireballs;

@@ -47,7 +47,7 @@ public:
   /// Forward the player's current position to this enemy's AI strategy.
   /// No-op if there's no strategy, or if it doesn't use the position
   /// (e.g. PatrolStrategy).
-  void updatePlayerPosition(const sf::Vector2f& playerPos);
+  virtual void updatePlayerPosition(const sf::Vector2f& playerPos);
 
   /// Points awarded when this enemy is defeated.
   int getScoreValue() const;

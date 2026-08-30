@@ -54,6 +54,8 @@ public:
   static void applyBowserBreathFrame(sf::Sprite &sprite, int frame,
                                      const sf::FloatRect &box,
                                      bool flip = false);
+  static const std::string &bowserFirePath();
+  static int bowserFireFrameCount();
   static const std::string &piranhaPlantPath(int frame);
   static int piranhaFrameCount();
   /// Full source rectangle of one decoded Piranha GIF frame.

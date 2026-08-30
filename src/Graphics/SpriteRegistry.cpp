@@ -290,6 +290,14 @@ void SpriteRegistry::applyBowserBreathFrame(sf::Sprite &sprite, int frame,
   applyFrame(sprite, texture, bowserBreathFrameRect(frame), box, flip);
 }
 
+const std::string &SpriteRegistry::bowserFirePath() {
+  static const std::string sheet =
+      "assets/textures/Character/Bowser_Fire.png";
+  return sheet;
+}
+
+int SpriteRegistry::bowserFireFrameCount() { return 3; }
+
 const std::string &SpriteRegistry::piranhaPlantPath(int /*frame*/) {
   // This GIF contains the two classic, fixed-size mouth poses. Vertical
   // emergence is controlled by PiranhaPlant itself; the old 95-frame strip
