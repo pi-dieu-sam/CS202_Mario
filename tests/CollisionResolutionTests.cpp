@@ -16,6 +16,7 @@
 #include "Entities/Koopa.hpp"
 #include "Entities/Troopa.hpp"
 #include "Entities/Bowser.hpp"
+#include "Entities/BowserFireball.hpp"
 #include "Entities/Block.hpp"
 #include "Entities/Escalater.hpp"
 #include "Entities/PiranhaPlant.hpp"
@@ -268,6 +269,41 @@ static void testBowserBreathingCycle() {
   bowser.hitByFireball();
   CHECK(bowser.getFireballHits() == 5 && !bowser.isActive() && bowser.isDead(),
         "Bowser dies on the fifth fireball");
+}
+
+static void testBowserFireballs() {
+  CHECK(std::filesystem::exists(SpriteRegistry::bowserFirePath()) &&
+            SpriteRegistry::bowserFireFrameCount() == 3,
+        "Bowser fire uses its three-frame checked-in sprite sheet");
+
+  Bowser bowser;
+  bowser.setPosition(1000.0f, 200.0f);
+  bowser.updatePlayerPosition(
+      sf::Vector2f(1000.0f - TILE_SIZE * 30.0f, 200.0f));
+  bowser.update(0.01f);
+  CHECK(bowser.takePendingFireballs() == 1,
+        "Bowser fires the first idle-phase shot at a player within left range");
+  bowser.update(0.70f);
+  CHECK(bowser.takePendingFireballs() == 1,
+        "Bowser fires the second idle-phase shot on schedule");
+  bowser.update(0.70f);
+  CHECK(bowser.takePendingFireballs() == 1,
+        "Bowser fires the third idle-phase shot on schedule");
+
+  Bowser outOfRangeBowser;
+  outOfRangeBowser.setPosition(1000.0f, 200.0f);
+  outOfRangeBowser.updatePlayerPosition(sf::Vector2f(1001.0f, 200.0f));
+  outOfRangeBowser.update(1.5f);
+  CHECK(outOfRangeBowser.takePendingFireballs() == 0,
+        "Bowser does not fire at a player to its right or outside left range");
+
+  BowserFireball fireball(200.0f, 100.0f);
+  fireball.update(0.1f);
+  CHECK(fireball.getPosition().x < 200.0f,
+        "Bowser fireball travels left from Bowser");
+  fireball.update(5.0f);
+  CHECK(!fireball.isActive(),
+        "Bowser fireball expires if it does not hit a solid object");
 }
 
 static void testHorizontalEscalaterMovement() {
@@ -905,6 +941,7 @@ int main() {
   testKoopaDyingAndRespawn();
   testFlyingTroopa();
   testBowserBreathingCycle();
+  testBowserFireballs();
   testHorizontalEscalaterMovement();
   testLevel2LavaTilesKillPlayer();
   testLevel1VineEntersClimbState();

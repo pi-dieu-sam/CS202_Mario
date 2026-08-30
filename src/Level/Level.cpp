@@ -1,6 +1,8 @@
 #include "Level/Level.hpp"
 #include "AI/ChaseStrategy.hpp"
 #include "Entities/Koopa.hpp"
+#include "Entities/Bowser.hpp"
+#include "Entities/BowserFireball.hpp"
 #include "Factory/EntityFactory.hpp"
 #include "Level/LevelLoader.hpp"
 #include "Observers/EventManager.hpp"
@@ -113,6 +115,13 @@ void Level::update(float dt) {
     // Note: for simplicity in co-op, enemies will just track m_player.
     enemy->updatePlayerPosition(m_player->getPosition());
     enemy->update(dt);
+    if (auto *bowser = dynamic_cast<Bowser *>(enemy.get())) {
+      for (int shot = bowser->takePendingFireballs(); shot > 0; --shot) {
+        const sf::FloatRect bounds = bowser->getBounds();
+        m_bowserFireballs.push_back(std::make_unique<BowserFireball>(
+            bounds.left - 20.0f, bounds.top + bounds.height * 0.42f, -1));
+      }
+    }
   }
 
   // Update items
@@ -181,6 +190,11 @@ void Level::update(float dt) {
 
   // Update fireballs
   for (auto &fb : m_fireballs) {
+    if (fb->isActive())
+      fb->update(dt);
+  }
+
+  for (auto &fb : m_bowserFireballs) {
     if (fb->isActive())
       fb->update(dt);
   }
@@ -256,6 +270,11 @@ void Level::render(sf::RenderWindow &window, float cameraCenterX,
 
   // Draw fireballs
   for (auto &fb : m_fireballs) {
+    if (fb->isActive())
+      fb->draw(window);
+  }
+
+  for (auto &fb : m_bowserFireballs) {
     if (fb->isActive())
       fb->draw(window);
   }
@@ -661,6 +680,16 @@ void Level::handlePlayerCollisions(Player* player, float dt) {
     }
   }
 
+  // Bowser's fire disappears after a solid hit and is lethal on player
+  // contact. This is checked before enemies so it cannot be stomped or kicked.
+  for (auto &fb : m_bowserFireballs) {
+    if (fb->isActive() && player->getBounds().intersects(fb->getBounds())) {
+      fb->setActive(false);
+      player->die();
+      return;
+    }
+  }
+
   // Player vs Enemies
   Enemy *firstEnemyHit = nullptr;
   Enemy *stompedEnemy = nullptr;
@@ -1052,6 +1081,32 @@ void Level::handleCollisions(float dt) {
     }
   }
 
+  // Bowser fireballs do not bounce: contact with any tile or block removes
+  // them immediately.
+  for (auto &fb : m_bowserFireballs) {
+    if (!fb->isActive())
+      continue;
+
+    bool hitSolid = false;
+    for (Tile *tile : m_tileGrid.query(fb->getBounds())) {
+      if (CollisionDetector::checkCollision(*fb, *tile).collided) {
+        hitSolid = true;
+        break;
+      }
+    }
+    if (!hitSolid) {
+      for (auto &block : m_blocks) {
+        if (block->isActive() &&
+            CollisionDetector::checkCollision(*fb, *block).collided) {
+          hitSolid = true;
+          break;
+        }
+      }
+    }
+    if (hitSolid)
+      fb->setActive(false);
+  }
+
   // Items vs Tiles (for moving items like mushroom)
   for (auto &item : m_items) {
     if (!item->isActive() || !item->isMoving())
@@ -1084,7 +1139,12 @@ void Level::removeInactiveEntities() {
   m_fireballs.erase(
       std::remove_if(m_fireballs.begin(), m_fireballs.end(),
                      [](const auto &f) { return !f->isActive(); }),
-      m_fireballs.end());
+                m_fireballs.end());
+
+  m_bowserFireballs.erase(
+      std::remove_if(m_bowserFireballs.begin(), m_bowserFireballs.end(),
+                     [](const auto &f) { return !f->isActive(); }),
+      m_bowserFireballs.end());
 
   m_blocks.erase(std::remove_if(m_blocks.begin(), m_blocks.end(),
                                 [](const auto &b) { return !b->isActive(); }),
