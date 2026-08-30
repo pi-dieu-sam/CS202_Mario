@@ -45,7 +45,8 @@ jobs:
             libgl1-mesa-dev \
             libegl1-mesa-dev \
             libfreetype-dev \
-            libopenal-dev
+            libopenal-dev \
+            xvfb
 
       - name: Configure
         run: >
@@ -58,4 +59,9 @@ jobs:
         run: cmake --build build --config Release
 
       - name: Run Tests
-        run: ctest --test-dir build --output-on-failure --build-config Release
+        run: |
+          if [ "$RUNNER_OS" == "Linux" ]; then
+            xvfb-run ctest --test-dir build --output-on-failure --build-config Release
+          else
+            ctest --test-dir build --output-on-failure --build-config Release
+          fi
