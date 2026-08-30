@@ -1,4 +1,5 @@
 #pragma once
+// Tile.hpp — static collidable terrain: ground, pipes, castles, lava, vines
 #include "GameObject.hpp"
 #include "../Level/LevelTheme.hpp"
 #include "../Physics/PhysicsConstants.hpp"
