@@ -21,8 +21,8 @@ public:
     void draw(sf::RenderWindow& window) override;
     bool isVulnerable() const override;
 
-    KoopaState getKoopaState() const;
-    bool isSliding() const;
+    KoopaState getKoopaState() const noexcept;
+    bool isSliding() const noexcept;
 
     /// Kick the shell in the given direction (-1 = left, +1 = right).
     void kick(float direction);

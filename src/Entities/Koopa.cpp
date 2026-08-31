@@ -17,7 +17,7 @@ constexpr float WALL_BRAKE_DECELERATION =
 Koopa::Koopa() {
   m_speed = 60.0f;
   m_scoreValue = 200;
-  m_velocity.x = -m_speed;
+  m_velocity.x = -m_speed; // Walk left by default
 
   setAnimFrameCount(20, 0.08f);
 }
