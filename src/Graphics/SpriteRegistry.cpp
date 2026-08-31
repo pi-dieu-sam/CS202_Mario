@@ -74,7 +74,9 @@ const std::string &brickPath(LevelTheme theme) {
   static const std::string paths[THEME_COUNT] = {
       "assets/textures/SMB_Brick_Block_Sprite.png",
       "assets/textures/SMB_Underground_Brick_Block.png",
-      "assets/textures/SMB_Castle_Brick_Block.png",
+      // Level 3 uses the castle theme for its scenery, but its `S` blocks
+      // deliberately keep the classic brown brick appearance.
+      "assets/textures/SMB_Brick_Block_Sprite.png",
   };
   return paths[themeIndex(theme)];
 }

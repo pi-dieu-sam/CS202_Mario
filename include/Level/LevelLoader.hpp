@@ -44,7 +44,7 @@ class LavaFireball;
 /// - 'E' = vertical escalater; 'e' = horizontal escalater (five tiles each way)
 /// - 'O' = fire-bar anchor with eight rotating, lethal fireballs
 /// - 'i' = top lava tile with a repeating fireball launcher (waits 3 sec/arc)
-///   (in main level2.txt only, each pipe top <> is also a launcher)
+///   (in main level2.txt and level3.txt, each pipe top <> is also a launcher)
 /// - 'V' = vine top; a non-solid 32x32 tile rendered from VineTop.png
 ///
 /// VGLC has no notion of a spawn point or a flagpole. If a file has no '@'

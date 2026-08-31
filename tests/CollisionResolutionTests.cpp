@@ -15,6 +15,7 @@
 #include "Core/Command.hpp"
 #include "Graphics/SpriteRegistry.hpp"
 #include "Level/Level.hpp"
+#include "Level/LevelLoader.hpp"
 #include "Level/TileGrid.hpp"
 #include "Entities/Goomba.hpp"
 #include "Entities/Koopa.hpp"
@@ -28,6 +29,7 @@
 #include "Entities/Mario.hpp"
 #include "Entities/Mushroom.hpp"
 #include "Entities/Flagpole.hpp"
+#include "Entities/LavaFireball.hpp"
 #include "Entities/Tile.hpp"
 #include <cmath>
 #include <filesystem>
@@ -356,6 +358,26 @@ static void testLevel2LavaTilesKillPlayer() {
 
   checkLavaRow(17, "`l` flame tile kills a player on contact");
   checkLavaRow(18, "`L` lava tile kills a player on contact");
+}
+
+static void testCastlePipeLaunchersLoadInLevel2AndLevel3() {
+  const auto level2 = LevelLoader::loadLevel("assets/levels/level2.txt",
+                                              LevelTheme::Castle);
+  const auto level3 = LevelLoader::loadLevel("assets/levels/level3.txt",
+                                              LevelTheme::Castle);
+
+  CHECK(!level2.lavaFireballs.empty(),
+        "standard pipe in level 2 creates a repeating fireball launcher");
+  CHECK(!level3.lavaFireballs.empty(),
+        "standard pipe in level 3 creates a repeating fireball launcher");
+}
+
+static void testLevel3BricksUseBrownSprite() {
+  const std::string &brick = SpriteRegistry::blockPath(
+      BlockType::Brick, LevelTheme::Castle,
+      SpriteRegistry::BlockVisualState::Idle);
+  CHECK(brick == "assets/textures/SMB_Brick_Block_Sprite.png",
+        "level 3 castle-theme S blocks use the brown brick sprite");
 }
 
 static void testLevel1VineEntersClimbState() {
@@ -1024,6 +1046,8 @@ int main() {
   testHorizontalEscalaterMovement();
   testLevel2LavaTilesKillPlayer();
   testLevel1VineEntersClimbState();
+  testCastlePipeLaunchersLoadInLevel2AndLevel3();
+  testLevel3BricksUseBrownSprite();
   testGoombaStompDisablesCollisionImmediately();
   testEnlargedPlayersCanHitBlocksWithCompactBody();
   testResolveCollisionAloneStillZeroesVelocity();
