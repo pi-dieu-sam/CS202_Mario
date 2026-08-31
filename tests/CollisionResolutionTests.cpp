@@ -12,6 +12,7 @@
 #include "Graphics/SpriteRegistry.hpp"
 #include "Level/Level.hpp"
 #include "Level/TileGrid.hpp"
+#include "Observers/EventManager.hpp"
 #include "Entities/Goomba.hpp"
 #include "Entities/Koopa.hpp"
 #include "Entities/Troopa.hpp"
@@ -934,6 +935,70 @@ static void testPlayerDeathAnimationUsesFacingPoses() {
   }
 }
 
+// Regression tests for issue #19: a single gameplay incident (an enemy
+// cluster overlapping the player, or several fixed-step sub-updates running
+// within one rendered frame) must not publish more than one PlayerDied
+// event or remove more than one life. Player::die() guards on m_dead as the
+// single source of truth every damage/hazard/timer path funnels through.
+static void testPlayerDeathIsIdempotentUnderEnemyCluster() {
+  Mario player;
+  player.setPosition(100.0f, 100.0f);
+
+  int deathEvents = 0;
+  auto sub = ScopedEventSubscription(
+      EventType::PlayerDied,
+      [&deathEvents](const GameEvent &) { ++deathEvents; });
+
+  // Simulate a cluster of overlapping enemies each independently landing a
+  // lethal hit within the same collision pass -- the exact scenario the
+  // pre-fix per-enemy takeDamage() loop produced.
+  for (int i = 0; i < 4; ++i) {
+    player.takeDamage();
+  }
+
+  CHECK(deathEvents == 1, "an enemy cluster hitting the player in one pass "
+                          "publishes exactly one PlayerDied event");
+  CHECK(player.isDead(), "the player is dead after the cluster hit");
+
+  // A later, independent death source (e.g. a lava tile checked after the
+  // enemy loop) must also be swallowed once the player is already dead.
+  player.die();
+  player.die();
+  CHECK(deathEvents == 1, "calling die() again after death does not "
+                          "publish additional PlayerDied events");
+}
+
+static void testPlayerDeathSurvivesMultipleFixedUpdatesPerFrame() {
+  Mario player;
+  player.setPosition(100.0f, 100.0f);
+
+  int deathEvents = 0;
+  auto sub = ScopedEventSubscription(
+      EventType::PlayerDied,
+      [&deathEvents](const GameEvent &) { ++deathEvents; });
+
+  player.die();
+  CHECK(deathEvents == 1, "the first die() call publishes PlayerDied");
+
+  // Several fixed sub-steps within one rendered frame, mirroring
+  // PlayingState's fixed-step catch-up loop. A timer-expiry (or other
+  // hazard) re-check that fires again partway through must not add another
+  // event, and the death animation must keep advancing instead of
+  // resetting.
+  const float startY = player.getPosition().y;
+  for (int step = 0; step < 3; ++step) {
+    player.die(); // simulates a repeated timer-expiry / damage source
+    player.update(FIXED_DT);
+  }
+
+  CHECK(deathEvents == 1,
+        "repeated die() calls across several fixed updates in one frame "
+        "still publish only one PlayerDied event");
+  CHECK(player.isDead() && player.getPosition().y != startY,
+        "the death animation keeps progressing across the repeated "
+        "sub-steps instead of restarting");
+}
+
 int main() {
   testReflectHelperPure();
   testGoombaBouncesBothDirections();
@@ -958,6 +1023,8 @@ int main() {
   testPiranhaFramesAndEmergenceStayStable();
   testFlagpoleSlideFramesAndCutscene();
   testPlayerDeathAnimationUsesFacingPoses();
+  testPlayerDeathIsIdempotentUnderEnemyCluster();
+  testPlayerDeathSurvivesMultipleFixedUpdatesPerFrame();
 
   if (g_failures == 0) {
     std::cout << "All collision-resolution tests passed.\n";
