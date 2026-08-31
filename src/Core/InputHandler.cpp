@@ -48,6 +48,7 @@ void InputHandler::setPlayer2Bindings() {
     m_pressBindings[sf::Keyboard::Up]       = std::make_unique<JumpCommand>();
     m_pressBindings[sf::Keyboard::Numpad0]  = std::make_unique<JumpCommand>();
     m_pressBindings[sf::Keyboard::RShift]   = std::make_unique<FireCommand>();
+    m_pressBindings[sf::Keyboard::K]        = std::make_unique<FireCommand>();
 
     m_jumpKeys = {sf::Keyboard::Up, sf::Keyboard::Numpad0};
     m_sprintKeys = {sf::Keyboard::RShift};

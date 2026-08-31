@@ -41,12 +41,15 @@ Mỗi ký tự đại diện cho **một ô vuông 32×32 pixel** trong map.
 | `P` | Piranha Plant (đặt ngay phía trên nửa trái miệng ống `<`) |
 | `@` | Điểm spawn Player 1 |
 | `9` | Điểm spawn Player 2 (PvP / Co-op) |
+|`F`| Fireball of player 1 (in map 2 player) and for player in map 1 player
+|`K`| Fireball of player 2 (in map 2 player) 
 | `f` | Cột cờ (đích của level) |
 |`Q` `2` `3` `4`| Castle
 |`6` `_` `7` `5`|
 |`L`| Lava;
 |`l`| lava wave
 |`V`| VineTop
+
 
 
 **Lưu ý:**

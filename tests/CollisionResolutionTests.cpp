@@ -10,7 +10,9 @@
 #include "Physics/PhysicsConstants.hpp"
 #include "Core/AssetManager.hpp"
 #include "Core/Game.hpp"
+#include "Core/InputHandler.hpp"
 #include "Core/PlayerProgress.hpp"
+#include "Core/Command.hpp"
 #include "Graphics/SpriteRegistry.hpp"
 #include "Level/Level.hpp"
 #include "Level/TileGrid.hpp"
@@ -683,6 +685,26 @@ static void testAllMarioSpriteStatesLoad() {
   }
 }
 
+static void testPlayer2FireKeyUsesK() {
+  InputHandler player1Input;
+  InputHandler player2Input;
+  player1Input.setPlayer1Bindings();
+  player2Input.setPlayer2Bindings();
+
+  sf::Event keyPress{};
+  keyPress.type = sf::Event::KeyPressed;
+
+  keyPress.key.code = sf::Keyboard::F;
+  CHECK(dynamic_cast<FireCommand*>(player1Input.handleEvent(keyPress)) != nullptr,
+        "Player 1 fires with F");
+  CHECK(player2Input.handleEvent(keyPress) == nullptr,
+        "F is not bound to Player 2");
+
+  keyPress.key.code = sf::Keyboard::K;
+  CHECK(dynamic_cast<FireCommand*>(player2Input.handleEvent(keyPress)) != nullptr,
+        "Player 2 fires with K");
+}
+
 static void testVineClimbingControls() {
   Mario player;
   player.setPosition(128.0f, 128.0f);
@@ -983,6 +1005,7 @@ int main() {
   testUpwardEdgeHitResolvesAsWall();
   testSweptStompCatchesTunneling();
   testSprintDoesNotCompoundVelocity();
+  testPlayer2FireKeyUsesK();
   testAllLuigiSpriteStatesLoad();
   testAllMarioSpriteStatesLoad();
   testVineClimbingControls();
