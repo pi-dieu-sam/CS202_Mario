@@ -709,7 +709,12 @@ void Level::handlePlayerCollisions(Player* player, float dt) {
     if (player->hasStarPower()) {
       const sf::Vector2f scorePosition = boundsCenter(*enemy);
       enemy->onStomped();
-      publishEnemyDefeated(*enemy, scorePosition);
+      // onStomped() may only change state (Koopa -> Shell) or do nothing
+      // (Bowser, which cannot be defeated by contact). Only a real kill
+      // should report a defeat and award points.
+      if (enemy->isDead()) {
+        publishEnemyDefeated(*enemy, scorePosition);
+      }
       continue;
     }
 

@@ -19,6 +19,7 @@ public:
     void kill() override;
     void update(float dt) override;
     void draw(sf::RenderWindow& window) override;
+    sf::FloatRect getBounds() const override;
     bool isVulnerable() const override;
 
     KoopaState getKoopaState() const noexcept;

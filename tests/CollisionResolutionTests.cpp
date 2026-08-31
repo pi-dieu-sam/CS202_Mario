@@ -204,6 +204,31 @@ static void testKoopaDyingAndRespawn() {
   }
 }
 
+// Regression test for issue #22: the Walking-state sprite stands 1.5
+// tiles tall, drawn raised half a tile above position.y, but getBounds()
+// used to inherit Enemy's plain 1-tile box -- the top half of the visible
+// Koopa could not be hit by anything landing from above.
+static void testWalkingKoopaHitboxMatchesSprite() {
+  Koopa koopa;
+  koopa.setPosition(100.0f, 200.0f);
+
+  sf::FloatRect bounds = koopa.getBounds();
+  CHECK(std::abs(bounds.height - (TILE_SIZE * 1.5f - 2.0f)) < 0.001f,
+        "a Walking Koopa's hitbox is 1.5 tiles tall, matching its sprite");
+  CHECK(std::abs(bounds.top - (200.0f - TILE_SIZE * 0.5f + 1.0f)) < 0.001f,
+        "a Walking Koopa's hitbox extends upward to cover its raised head");
+  CHECK(std::abs((bounds.top + bounds.height) - (200.0f + TILE_SIZE - 1.0f)) <
+            0.001f,
+        "a Walking Koopa's hitbox keeps the same ground-aligned bottom edge "
+        "its old 1-tile box had");
+
+  koopa.onStomped();
+  sf::FloatRect shellBounds = koopa.getBounds();
+  CHECK(std::abs(shellBounds.height - (TILE_SIZE - 2.0f)) < 0.001f &&
+            std::abs(shellBounds.top - 201.0f) < 0.001f,
+        "a Shell Koopa keeps the standard 1-tile hitbox");
+}
+
 static void testFlyingTroopa() {
   CHECK(std::filesystem::exists(SpriteRegistry::troopaPath()),
         "Troopa animation uses the checked-in asset");
@@ -305,6 +330,74 @@ static void testBowserFireballs() {
   fireball.update(5.0f);
   CHECK(!fireball.isActive(),
         "Bowser fireball expires if it does not hit a solid object");
+}
+
+// Regression tests for issue #22: Level's star-power branch used to call
+// onStomped() and publish EnemyDefeated unconditionally. onStomped() only
+// changes state for some enemies -- a no-op for Bowser (he is immune to
+// contact and dies only to five fireballs), Walking -> Shell for Koopa --
+// so touching them with star power falsely reported a kill and paid out
+// score while the enemy stayed fully alive on the field. The fix only
+// publishes when onStomped() actually leaves the enemy dead.
+static void testStarPowerOnlyDefeatsEnemiesItActuallyKills() {
+  // level2.txt places a Bowser ('B') at map column 180, row 6 (world row
+  // 10 once the four-row offset for its 15-row map is applied).
+  {
+    Level level;
+    CHECK(level.loadFromFile("assets/levels/level2.txt", "Mario",
+                             LevelTheme::Castle),
+          "level 2 loads for the star-power-vs-Bowser test");
+    Player *player = level.getPlayer();
+    CHECK(player != nullptr, "level 2 creates a player");
+    if (!player) return;
+
+    int defeatedEvents = 0;
+    auto sub = ScopedEventSubscription(
+        EventType::EnemyDefeated,
+        [&defeatedEvents](const GameEvent &) { ++defeatedEvents; });
+
+    player->setStarPower(5.0f);
+    player->setPosition(180.0f * TILE_SIZE, 10.0f * TILE_SIZE);
+    level.update(0.0f);
+
+    CHECK(defeatedEvents == 0,
+          "star power touching Bowser does not publish a false EnemyDefeated");
+  }
+
+  // level1.txt places a Koopa ('K') and, on the same row, a Goomba ('G')
+  // at world row 17 (map row 12 plus the five-row offset for its 14-row
+  // map) -- map columns 16 and 24, eight tiles apart.
+  {
+    Level level;
+    CHECK(level.loadFromFile("assets/levels/level1.txt", "Mario",
+                             LevelTheme::Overworld),
+          "level 1 loads for the star-power-vs-Koopa test");
+    Player *player = level.getPlayer();
+    CHECK(player != nullptr, "level 1 creates a player");
+    if (!player) return;
+
+    int defeatedEvents = 0;
+    auto sub = ScopedEventSubscription(
+        EventType::EnemyDefeated,
+        [&defeatedEvents](const GameEvent &) { ++defeatedEvents; });
+
+    player->setStarPower(5.0f);
+    player->setPosition(16.0f * TILE_SIZE, 17.0f * TILE_SIZE);
+    level.update(0.0f);
+
+    CHECK(defeatedEvents == 0,
+          "star power turning a Walking Koopa into a Shell is a state "
+          "change, not a defeat, and must not publish EnemyDefeated");
+
+    // Move to the Goomba eight tiles over -- far enough from the Koopa's
+    // tile that only this second touch can collide.
+    player->setPosition(24.0f * TILE_SIZE, 17.0f * TILE_SIZE);
+    level.update(0.0f);
+
+    CHECK(defeatedEvents == 1,
+          "star power still defeats -- and reports -- an enemy that "
+          "onStomped() actually kills");
+  }
 }
 
 static void testHorizontalEscalaterMovement() {
@@ -1004,9 +1097,11 @@ int main() {
   testGoombaBouncesBothDirections();
   testMushroomReversesInsteadOfStopping();
   testKoopaDyingAndRespawn();
+  testWalkingKoopaHitboxMatchesSprite();
   testFlyingTroopa();
   testBowserBreathingCycle();
   testBowserFireballs();
+  testStarPowerOnlyDefeatsEnemiesItActuallyKills();
   testHorizontalEscalaterMovement();
   testLevel2LavaTilesKillPlayer();
   testLevel1VineEntersClimbState();

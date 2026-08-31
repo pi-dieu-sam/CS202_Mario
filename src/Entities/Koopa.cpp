@@ -103,9 +103,7 @@ void Koopa::draw(sf::RenderWindow &window) {
     return;
 
   if (m_koopaState == KoopaState::Walking) {
-    sf::FloatRect box(m_position.x + 1, m_position.y - TILE_SIZE * 0.5f + 1,
-                       TILE_SIZE - 2, TILE_SIZE * 1.5f - 2);
-    SpriteRegistry::applyKoopaFrame(m_sprite, m_animFrame, box, m_facingRight);
+    SpriteRegistry::applyKoopaFrame(m_sprite, m_animFrame, getBounds(), m_facingRight);
     window.draw(m_sprite);
   } else {
     // Shell (sitting or sliding)
@@ -113,6 +111,16 @@ void Koopa::draw(sf::RenderWindow &window) {
                        TILE_SIZE - 4);
     drawSprite(window, SpriteRegistry::koopaDiePath(), box);
   }
+}
+
+sf::FloatRect Koopa::getBounds() const {
+  if (m_koopaState == KoopaState::Walking) {
+    // The walking sprite stands 1.5 tiles tall; match its collision box to
+    // what is actually drawn instead of inheriting Enemy's 1-tile box.
+    return sf::FloatRect(m_position.x + 1, m_position.y - TILE_SIZE * 0.5f + 1,
+                          TILE_SIZE - 2, TILE_SIZE * 1.5f - 2);
+  }
+  return Enemy::getBounds();
 }
 
 bool Koopa::isVulnerable() const {
