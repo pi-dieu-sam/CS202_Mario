@@ -896,6 +896,34 @@ static void testPiranhaFramesAndEmergenceStayStable() {
         "Piranha begins the next emergence cycle at the same pipe center");
 }
 
+// Regression tests for issue #22: every way the player can hit a Piranha
+// Plant needs its own defined outcome. A stomp must never defeat it (it
+// opts out through canBeStomped()), while onStomped() (the method star
+// power uses) and a fireball hit must both actually kill it -- onStomped()
+// used to do nothing, so a stomp or a star touch could report a defeat
+// and award score without the plant ever dying.
+static void testPiranhaPlantAttackTypes() {
+  {
+    PiranhaPlant plant;
+    CHECK(!plant.canBeStomped(),
+          "a Piranha Plant opts out of being defeated by an ordinary stomp");
+  }
+  {
+    PiranhaPlant plant;
+    plant.onStomped();
+    CHECK(plant.isDead() && !plant.isActive(),
+          "onStomped() (used by star power) fully defeats a Piranha Plant "
+          "instead of doing nothing");
+  }
+  {
+    PiranhaPlant plant;
+    CHECK(plant.hitByFireball(),
+          "a fireball hit reports a successful defeat");
+    CHECK(plant.isDead() && !plant.isActive(),
+          "a fireball hit fully defeats a Piranha Plant");
+  }
+}
+
 static void testFlagpoleSlideFramesAndCutscene() {
   const std::string& sheet = SpriteRegistry::playerFlagpoleSlideSheetPath();
   CHECK(std::filesystem::exists(sheet),
@@ -1116,6 +1144,7 @@ int main() {
   testAllMarioSpriteStatesLoad();
   testVineClimbingControls();
   testPiranhaFramesAndEmergenceStayStable();
+  testPiranhaPlantAttackTypes();
   testFlagpoleSlideFramesAndCutscene();
   testPlayerDeathAnimationUsesFacingPoses();
   testPlayerDeathIsIdempotentUnderEnemyCluster();
