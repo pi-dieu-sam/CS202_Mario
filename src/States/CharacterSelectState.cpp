@@ -18,7 +18,9 @@ void CharacterSelectState::onEnter() {
     m_background.setFillColor(sf::Color(35, 35, 65));
 
     m_title.setFont(font);
-    m_title.setString("SELECT CHARACTER");
+    m_title.setString(Game::getInstance().getProgress().isMultiplayer()
+                          ? "PLAYER 1: SELECT CHARACTER"
+                          : "SELECT CHARACTER");
     m_title.setCharacterSize(30);
     m_title.setFillColor(sf::Color::White);
     auto tb = m_title.getLocalBounds();
@@ -149,7 +151,9 @@ void CharacterSelectState::onEnter() {
 
     // 4. Help Text (Compact shortcuts display)
     m_helpText.setFont(font);
-    m_helpText.setString("[M] Mute  |  [-/+] Vol  |  [N] Music  |  [A/D] Hero");
+    m_helpText.setString(Game::getInstance().getProgress().isMultiplayer()
+                             ? "PLAYER 1: [A/D or LEFT/RIGHT] Select  |  PLAYER 2 uses the other hero"
+                             : "[M] Mute  |  [-/+] Vol  |  [N] Music  |  [A/D] Hero");
     m_helpText.setCharacterSize(10);
     m_helpText.setFillColor(sf::Color(180, 180, 210));
     auto hb = m_helpText.getLocalBounds();

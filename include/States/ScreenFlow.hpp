@@ -71,8 +71,8 @@ struct Transition {
 inline Transition onMenuOption(int option, bool saveLoaded) {
     switch (option) {
         case 0: return {Op::Push, Screen::CharacterSelect};
-        case 1: return {Op::Push, Screen::LevelSelect};
-        case 2: return {Op::ResetTo, Screen::Playing};
+        case 1: return {Op::Push, Screen::CharacterSelect};
+        case 2: return {Op::Push, Screen::CharacterSelect};
         case 3: return saveLoaded ? Transition{Op::ResetTo, Screen::Playing}
                                    : Transition{Op::None, Screen::MainMenu};
         case 4: return {Op::QuitApp, Screen::MainMenu};
@@ -85,9 +85,11 @@ inline Transition onMenuOption(int option, bool saveLoaded) {
 /// to the same next screen regardless of game mode — but is accepted for
 /// symmetry with onBack() and in case a mode-specific confirm target is
 /// ever needed.
-inline Transition onConfirm(Screen current, GameMode /*mode*/) {
+inline Transition onConfirm(Screen current, GameMode mode) {
     switch (current) {
-        case Screen::CharacterSelect: return {Op::Push, Screen::LevelSelect};
+        case Screen::CharacterSelect:
+            return mode == GameMode::PvP ? Transition{Op::ResetTo, Screen::Playing}
+                                         : Transition{Op::Push, Screen::LevelSelect};
         case Screen::LevelSelect:     return {Op::ResetTo, Screen::Playing};
         default:                      return {Op::None, current};
     }
@@ -96,10 +98,9 @@ inline Transition onConfirm(Screen current, GameMode /*mode*/) {
 /// Escape pressed on a selection screen. Always just "go back" — which
 /// screen that resolves to depends on what's actually beneath it on the
 /// stack (Navigator/StateManager handle that), not on game mode. This is
-/// what makes back-navigation correct for both the SinglePlayer flow
-/// (Menu -> CharacterSelect -> LevelSelect) and the Co-op flow
-/// (Menu -> LevelSelect, skipping CharacterSelect) without hardcoding
-/// either one.
+/// what makes back-navigation correct for every normal game flow
+/// (Menu -> CharacterSelect -> LevelSelect) without hardcoding the
+/// screen beneath the current one.
 inline Transition onBack(Screen current) {
     switch (current) {
         case Screen::CharacterSelect:
@@ -146,9 +147,6 @@ inline std::vector<Screen> canonicalStack(Screen screen, GameMode mode) {
         case Screen::CharacterSelect:
             return {Screen::MainMenu, Screen::CharacterSelect};
         case Screen::LevelSelect:
-            if (mode == GameMode::Coop) {
-                return {Screen::MainMenu, Screen::LevelSelect};
-            }
             return {Screen::MainMenu, Screen::CharacterSelect, Screen::LevelSelect};
         case Screen::Playing:
             // Gameplay is always a fresh root: no selection screen is ever

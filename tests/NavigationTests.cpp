@@ -188,10 +188,10 @@ static void testMenuOptionsMapToPushOrResetOrQuit() {
 
     CHECK(onMenuOption(0, false).op == Op::Push && onMenuOption(0, false).target == Screen::CharacterSelect,
           "1 Player pushes Character Select");
-    CHECK(onMenuOption(1, false).op == Op::Push && onMenuOption(1, false).target == Screen::LevelSelect,
-          "Co-op pushes Level Select directly, skipping Character Select");
-    CHECK(onMenuOption(2, false).op == Op::ResetTo && onMenuOption(2, false).target == Screen::Playing,
-          "PvP resets straight into gameplay");
+    CHECK(onMenuOption(1, false).op == Op::Push && onMenuOption(1, false).target == Screen::CharacterSelect,
+          "Co-op opens Character Select for Player 1");
+    CHECK(onMenuOption(2, false).op == Op::Push && onMenuOption(2, false).target == Screen::CharacterSelect,
+          "PvP opens Character Select for Player 1");
     CHECK(onMenuOption(3, true).op == Op::ResetTo && onMenuOption(3, true).target == Screen::Playing,
           "Load Game resets into gameplay once the save has loaded");
     CHECK(onMenuOption(3, false).op == Op::None, "Load Game is a no-op when there's no save to load");
@@ -217,20 +217,31 @@ static void testSinglePlayerForwardBackMatchesCanonicalStack() {
           "SinglePlayer's canonical stack is Main Menu -> Character Select -> Level Select");
 }
 
-static void testCoopBackSkipsCharacterSelect() {
+static void testCoopCharacterSelectionMatchesSinglePlayerFlow() {
     using namespace ScreenFlow;
     const GameMode mode = GameMode::Coop;
 
+    CHECK(onConfirm(Screen::CharacterSelect, mode).op == Op::Push &&
+              onConfirm(Screen::CharacterSelect, mode).target == Screen::LevelSelect,
+          "confirming a co-op character pushes Level Select");
+
     const std::vector<Screen> stack = canonicalStack(Screen::LevelSelect, mode);
-    const std::vector<Screen> expected = {Screen::MainMenu, Screen::LevelSelect};
-    CHECK(stack == expected, "Co-op's canonical stack skips Character Select entirely");
+    const std::vector<Screen> expected = {Screen::MainMenu, Screen::CharacterSelect, Screen::LevelSelect};
+    CHECK(stack == expected, "Co-op includes Character Select before Level Select");
 
     // The invariant that makes Back correct without hardcoding "the screen
     // before this one": popping one screen off canonicalStack(current, mode)
     // must land on exactly canonicalStack(whatever's now on top, mode).
     const std::vector<Screen> afterBack(stack.begin(), stack.end() - 1);
-    CHECK(afterBack == canonicalStack(Screen::MainMenu, mode),
-          "back from Level Select in Co-op lands on Main Menu, not Character Select");
+    CHECK(afterBack == canonicalStack(Screen::CharacterSelect, mode),
+          "back from Level Select in Co-op returns to Character Select");
+}
+
+static void testPvpCharacterSelectionStartsArena() {
+    using namespace ScreenFlow;
+    const Transition transition = onConfirm(Screen::CharacterSelect, GameMode::PvP);
+    CHECK(transition.op == Op::ResetTo && transition.target == Screen::Playing,
+          "confirming a PvP character starts the arena directly");
 }
 
 static void testPlayingIsAlwaysAFreshRoot() {
@@ -282,7 +293,8 @@ int main() {
 
     testMenuOptionsMapToPushOrResetOrQuit();
     testSinglePlayerForwardBackMatchesCanonicalStack();
-    testCoopBackSkipsCharacterSelect();
+    testCoopCharacterSelectionMatchesSinglePlayerFlow();
+    testPvpCharacterSelectionStartsArena();
     testPlayingIsAlwaysAFreshRoot();
     testGameOverPrimaryTargetsMatchResult();
     testPauseOptionsMapToBackOrMainMenu();
