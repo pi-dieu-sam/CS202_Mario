@@ -1,4 +1,5 @@
 #pragma once
+// Koopa.hpp — shelled enemy with walking, shell, and sliding states
 #include "Enemy.hpp"
 
 /// Koopa states.
