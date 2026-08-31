@@ -25,6 +25,32 @@ constexpr int LEVEL1_SECRET_RETURN_PIPE_COLUMN = 73; // B: emerge 14 tiles to th
 constexpr float PIPE_VERTICAL_TRAVEL_TIME = 0.45f;
 constexpr float PIPE_HORIZONTAL_TRAVEL_TIME = 0.80f;
 constexpr float PIPE_FADE_DURATION = 0.12f;
+
+void applyDirectionalInput(Player& player, const InputHandler& input,
+                           float dt) {
+    const InputHandler::DirectionalInput direction =
+        input.readDirectionalInput();
+
+    player.setVineHorizontalInput(direction.left || direction.right);
+
+    // Opposite directions cancel explicitly. This keeps execution order from
+    // deciding which key wins and makes WASD and arrow keys use one path.
+    if (direction.left != direction.right) {
+        if (direction.left) {
+            player.moveLeft(dt);
+        } else {
+            player.moveRight(dt);
+        }
+    }
+
+    if (direction.up != direction.down) {
+        if (direction.up) {
+            player.climbUp(dt);
+        } else {
+            player.climbDown(dt);
+        }
+    }
+}
 }
 
 PlayingState::PlayingState() : m_hud(std::make_unique<HUD>()) {
@@ -239,11 +265,7 @@ void PlayingState::update(float dt) {
     if (!m_player->isDead()) {
         m_player->setSprinting(m_inputP1.isSprintHeld());
         m_player->setJumpHeld(m_inputP1.isJumpHeld());
-        m_player->setVineHorizontalInput(m_inputP1.isHorizontalHeld());
-        auto commands1 = m_inputP1.handleInput();
-        for (auto* cmd : commands1) {
-            cmd->execute(*m_player, dt);
-        }
+        applyDirectionalInput(*m_player, m_inputP1, dt);
         if (m_player->wantsToShoot()) {
             m_player->clearShootFlag();
             int dir = m_player->isFacingRight() ? 1 : -1;
@@ -260,11 +282,7 @@ void PlayingState::update(float dt) {
     if (m_player2 && !m_player2->isDead()) {
         m_player2->setSprinting(m_inputP2.isSprintHeld());
         m_player2->setJumpHeld(m_inputP2.isJumpHeld());
-        m_player2->setVineHorizontalInput(m_inputP2.isHorizontalHeld());
-        auto commands2 = m_inputP2.handleInput();
-        for (auto* cmd : commands2) {
-            cmd->execute(*m_player2, dt);
-        }
+        applyDirectionalInput(*m_player2, m_inputP2, dt);
         if (m_player2->wantsToShoot()) {
             m_player2->clearShootFlag();
             int dir = m_player2->isFacingRight() ? 1 : -1;

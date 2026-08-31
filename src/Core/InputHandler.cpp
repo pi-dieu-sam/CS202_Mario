@@ -25,6 +25,10 @@ void InputHandler::setPlayer1Bindings() {
     m_jumpKeys = {sf::Keyboard::W, sf::Keyboard::Space};
     m_sprintKeys = {sf::Keyboard::LShift};
     m_horizontalKeys = {sf::Keyboard::A, sf::Keyboard::D};
+    m_leftKeys = {sf::Keyboard::A};
+    m_rightKeys = {sf::Keyboard::D};
+    m_upKeys = {sf::Keyboard::W};
+    m_downKeys = {sf::Keyboard::S};
 
     m_heldKeys.clear();
     seedHeldKeys();
@@ -48,6 +52,10 @@ void InputHandler::setPlayer2Bindings() {
     m_jumpKeys = {sf::Keyboard::Up, sf::Keyboard::Numpad0};
     m_sprintKeys = {sf::Keyboard::RShift};
     m_horizontalKeys = {sf::Keyboard::Left, sf::Keyboard::Right};
+    m_leftKeys = {sf::Keyboard::Left};
+    m_rightKeys = {sf::Keyboard::Right};
+    m_upKeys = {sf::Keyboard::Up};
+    m_downKeys = {sf::Keyboard::Down};
 
     m_heldKeys.clear();
     seedHeldKeys();
@@ -81,6 +89,10 @@ void InputHandler::setSinglePlayerBindings() {
     m_sprintKeys = {sf::Keyboard::LShift, sf::Keyboard::RShift};
     m_horizontalKeys = {sf::Keyboard::A, sf::Keyboard::D,
                         sf::Keyboard::Left, sf::Keyboard::Right};
+    m_leftKeys = {sf::Keyboard::A, sf::Keyboard::Left};
+    m_rightKeys = {sf::Keyboard::D, sf::Keyboard::Right};
+    m_upKeys = {sf::Keyboard::W, sf::Keyboard::Up};
+    m_downKeys = {sf::Keyboard::S, sf::Keyboard::Down};
 
     m_heldKeys.clear();
     seedHeldKeys();
@@ -123,25 +135,41 @@ std::vector<Command*> InputHandler::handleInput() {
     return commands;
 }
 
+InputHandler::DirectionalInput InputHandler::readDirectionalInput() const {
+    const auto anyPressed = [](const std::vector<sf::Keyboard::Key>& keys) {
+        for (const auto key : keys) {
+            if (sf::Keyboard::isKeyPressed(key)) {
+                return true;
+            }
+        }
+        return false;
+    };
+
+    return {
+        anyPressed(m_leftKeys),
+        anyPressed(m_rightKeys),
+        anyPressed(m_upKeys),
+        anyPressed(m_downKeys),
+    };
+}
+
 bool InputHandler::isJumpHeld() const {
     for (auto k : m_jumpKeys) {
-        if (m_heldKeys.count(k)) return true;
+        if (sf::Keyboard::isKeyPressed(k)) return true;
     }
     return false;
 }
 
 bool InputHandler::isSprintHeld() const {
     for (auto k : m_sprintKeys) {
-        if (m_heldKeys.count(k)) return true;
+        if (sf::Keyboard::isKeyPressed(k)) return true;
     }
     return false;
 }
 
 bool InputHandler::isHorizontalHeld() const {
-    for (auto k : m_horizontalKeys) {
-        if (m_heldKeys.count(k)) return true;
-    }
-    return false;
+    const DirectionalInput input = readDirectionalInput();
+    return input.left || input.right;
 }
 
 Command* InputHandler::handleEvent(const sf::Event& event) {

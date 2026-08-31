@@ -9,6 +9,8 @@
 #include "Physics/CollisionDetector.hpp"
 #include "Physics/PhysicsConstants.hpp"
 #include "Core/AssetManager.hpp"
+#include "Core/Game.hpp"
+#include "Core/PlayerProgress.hpp"
 #include "Graphics/SpriteRegistry.hpp"
 #include "Level/Level.hpp"
 #include "Level/TileGrid.hpp"
@@ -727,6 +729,35 @@ static void testVineClimbingControls() {
         "leaving the vine tile re-enables climbing on the next contact");
 }
 
+static void testCoopPlayersDoNotBlockHorizontalMovement() {
+  PlayerProgress& progress = Game::getInstance().getProgress();
+  const GameMode previousMode = progress.getGameMode();
+  progress.setGameMode(GameMode::Coop);
+
+  Level level;
+  CHECK(level.loadFromFile("assets/levels/level1.txt", "Mario",
+                           LevelTheme::Overworld),
+        "co-op level loads with two players");
+  Player* p1 = level.getPlayer();
+  Player* p2 = level.getPlayer2();
+  CHECK(p1 != nullptr && p2 != nullptr,
+        "co-op level creates both players");
+  if (p1 && p2) {
+    // Keep both players in the empty sky and deliberately overlap them.
+    // This reproduces the fallback co-op spawn collision without terrain
+    // affecting the result.
+    p1->setPosition(160.0f, 120.0f);
+    p2->setPosition(160.0f, 120.0f);
+    p1->moveRight(FIXED_DT);
+    level.update(FIXED_DT);
+
+    CHECK(p1->getPosition().x > 160.0f,
+          "co-op partner overlap does not cancel P1 horizontal movement");
+  }
+
+  progress.setGameMode(previousMode);
+}
+
 static void testPiranhaFramesAndEmergenceStayStable() {
   const std::string &path = SpriteRegistry::piranhaPlantPath(0);
   CHECK(std::filesystem::exists(path),
@@ -955,6 +986,7 @@ int main() {
   testAllLuigiSpriteStatesLoad();
   testAllMarioSpriteStatesLoad();
   testVineClimbingControls();
+  testCoopPlayersDoNotBlockHorizontalMovement();
   testPiranhaFramesAndEmergenceStayStable();
   testFlagpoleSlideFramesAndCutscene();
   testPlayerDeathAnimationUsesFacingPoses();
