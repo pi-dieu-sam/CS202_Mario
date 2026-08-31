@@ -78,14 +78,21 @@ void Level::update(float dt) {
   if (!m_player)
     return;
 
-  // Update players
-  bool anyDead = (m_player && m_player->isDead()) || (m_player2 && m_player2->isDead());
-  
-  if (m_player) {
-      if (m_player->isDead() || !anyDead) m_player->update(dt);
+  // In Co-op, a fallen player stays dead until the next level while their
+  // partner keeps the world moving. Non-Co-op modes (and a Co-op team with
+  // both players dead) retain the death freeze used by their transitions.
+  const bool p1Dead = m_player && m_player->isDead();
+  const bool p2Dead = m_player2 && m_player2->isDead();
+  const bool anyDead = p1Dead || p2Dead;
+  const bool bothDead = p1Dead && (!m_player2 || p2Dead);
+  const bool freezeForDeath = anyDead &&
+      (!Game::getInstance().getProgress().isCoop() || bothDead);
+
+  if (m_player && (m_player->isDead() || !freezeForDeath)) {
+    m_player->update(dt);
   }
-  if (m_player2) {
-      if (m_player2->isDead() || !anyDead) m_player2->update(dt);
+  if (m_player2 && (m_player2->isDead() || !freezeForDeath)) {
+    m_player2->update(dt);
   }
 
   // Use level height instead of a hardcoded world-space Y to decide abyss death.
@@ -98,10 +105,9 @@ void Level::update(float dt) {
     m_player2->die();
   }
 
-  // During the visible death sequence, Mario/Luigi is the only entity that
-  // advances. Freezing the rest of the level keeps enemies, items, fireballs,
-  // and block animations at their exact death-frame positions until respawn.
-  if (m_player->isDead() || (m_player2 && m_player2->isDead())) {
+  // During a death transition, freeze everything other than the death poses.
+  // Co-op intentionally skips this while exactly one partner is still alive.
+  if (freezeForDeath) {
     return;
   }
 
@@ -110,10 +116,13 @@ void Level::update(float dt) {
     if (!enemy->isActive())
       continue;
 
-    // Feed chase strategies the player position (ignored by strategies
-    // that don't use it, e.g. PatrolStrategy).
-    // Note: for simplicity in co-op, enemies will just track m_player.
-    enemy->updatePlayerPosition(m_player->getPosition());
+    // Feed chase strategies the position of a living player. When one
+    // co-op partner is dead, the survivor remains the target instead of
+    // enemies chasing an immobile death animation.
+    Player* chaseTarget = !m_player->isDead() ? m_player.get() : m_player2.get();
+    if (chaseTarget) {
+      enemy->updatePlayerPosition(chaseTarget->getPosition());
+    }
     enemy->update(dt);
     if (auto *bowser = dynamic_cast<Bowser *>(enemy.get())) {
       for (int shot = bowser->takePendingFireballs(); shot > 0; --shot) {

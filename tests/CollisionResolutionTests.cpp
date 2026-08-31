@@ -780,6 +780,32 @@ static void testCoopPlayersDoNotBlockHorizontalMovement() {
   progress.setGameMode(previousMode);
 }
 
+static void testCoopSurvivorContinuesAfterPartnerDies() {
+  PlayerProgress& progress = Game::getInstance().getProgress();
+  const GameMode previousMode = progress.getGameMode();
+  progress.setGameMode(GameMode::Coop);
+
+  Level level;
+  CHECK(level.loadFromFile("assets/levels/level1.txt", "Mario",
+                           LevelTheme::Overworld),
+        "co-op level loads for survivor test");
+  Player* p1 = level.getPlayer();
+  Player* p2 = level.getPlayer2();
+  CHECK(p1 != nullptr && p2 != nullptr,
+        "survivor test has both co-op players");
+  if (p1 && p2) {
+    p1->die();
+    p2->setPosition(320.0f, 120.0f);
+    p2->moveRight(FIXED_DT);
+    level.update(FIXED_DT);
+
+    CHECK(p2->getPosition().x > 320.0f,
+          "the surviving co-op player continues moving after their partner dies");
+  }
+
+  progress.setGameMode(previousMode);
+}
+
 static void testPiranhaFramesAndEmergenceStayStable() {
   const std::string &path = SpriteRegistry::piranhaPlantPath(0);
   CHECK(std::filesystem::exists(path),
@@ -1010,6 +1036,7 @@ int main() {
   testAllMarioSpriteStatesLoad();
   testVineClimbingControls();
   testCoopPlayersDoNotBlockHorizontalMovement();
+  testCoopSurvivorContinuesAfterPartnerDies();
   testPiranhaFramesAndEmergenceStayStable();
   testFlagpoleSlideFramesAndCutscene();
   testPlayerDeathAnimationUsesFacingPoses();

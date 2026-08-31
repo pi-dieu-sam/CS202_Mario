@@ -55,6 +55,8 @@ private:
     void finishLevelTransition();
     void beginPlayerDeath();
     void finishPlayerDeath();
+    Player* getSurvivingPlayer() const;
+    void updateCameraForLivingPlayers();
 
     std::string getLevelPath(int levelNumber, bool secretRoom) const;
     LevelTheme   getLevelTheme(int levelNumber, bool secretRoom) const;
