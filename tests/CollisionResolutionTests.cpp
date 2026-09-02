@@ -695,6 +695,25 @@ static void testLevel1PlacesAReachableMushroomBlock() {
         "(regresses if the M placement is ever removed from level1.txt)");
 }
 
+static void testLevel2PlacesAReachableFireFlowerBlock() {
+  Level level;
+  CHECK(level.loadFromFile("assets/levels/level2.txt", "Mario",
+                           LevelTheme::Castle),
+        "level 2 loads for the Fire Flower-placement guard test");
+
+  const auto blocks = level.captureSnapshot().blocks;
+  bool foundFireFlowerBlock = false;
+  for (const auto &block : blocks) {
+    if (block.containedItem == static_cast<int>(ObjectType::FireFlower)) {
+      foundFireFlowerBlock = true;
+      break;
+    }
+  }
+  CHECK(foundFireFlowerBlock,
+        "level 2's shipped map contains a block that spawns a Fire Flower "
+        "(regresses if the F placement is ever removed from level2.txt)");
+}
+
 // Confirms resolveCollision() itself is unchanged: the player's wall-stop
 // behavior (which never calls reflectHorizontalVelocity) must keep zeroing
 // horizontal velocity on Left/Right and vertical velocity on Bottom/Top.
@@ -1323,6 +1342,7 @@ int main() {
   testCollectingMushroomGrowsPlayer();
   testCollectingFireFlowerGrantsFireState();
   testLevel1PlacesAReachableMushroomBlock();
+  testLevel2PlacesAReachableFireFlowerBlock();
   testResolveCollisionAloneStillZeroesVelocity();
   testTileGridExcludesDistantTiles();
   testUpwardEdgeHitResolvesAsWall();
