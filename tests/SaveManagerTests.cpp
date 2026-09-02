@@ -7,6 +7,7 @@
 #include <chrono>
 #include <filesystem>
 #include <fstream>
+#include <functional>
 #include <iostream>
 #include <optional>
 #include <string>
@@ -287,6 +288,62 @@ void testCorruptAndMultiplayerSavesAreRejectedSafely() {
         "replacing the corrupt file restores a normal occupied slot");
 }
 
+void testValidateSnapshotRejectsOutOfRangeProgressValues() {
+  std::string error;
+
+  auto rejects = [&](const char *reason,
+                      const std::function<void(SaveData::GameSnapshot &)> &mutate) {
+    SaveData::GameSnapshot snapshot = makeSnapshot();
+    mutate(snapshot);
+    CHECK(!SaveManager::saveSlot(5, snapshot, &error), reason);
+  };
+
+  rejects("level 0 is below the valid range",
+          [](SaveData::GameSnapshot &s) { s.progress.level = 0; });
+  rejects("level 4 is above the valid range (only 3 levels exist)",
+          [](SaveData::GameSnapshot &s) { s.progress.level = 4; });
+  rejects("zero lives is below the valid range",
+          [](SaveData::GameSnapshot &s) { s.progress.lives = 0; });
+  rejects("100 lives is above the valid range",
+          [](SaveData::GameSnapshot &s) { s.progress.lives = 100; });
+  rejects("negative coins are invalid",
+          [](SaveData::GameSnapshot &s) { s.progress.coins = -1; });
+  rejects("10000 coins is above the valid range",
+          [](SaveData::GameSnapshot &s) { s.progress.coins = 10000; });
+  rejects("negative score is invalid",
+          [](SaveData::GameSnapshot &s) { s.progress.score = -1; });
+  rejects("an empty character name is invalid",
+          [](SaveData::GameSnapshot &s) { s.progress.character = ""; });
+  rejects("a character name over 64 characters is invalid",
+          [](SaveData::GameSnapshot &s) {
+            s.progress.character = std::string(65, 'x');
+          });
+
+  const SaveData::GameSnapshot valid = makeSnapshot();
+  CHECK(SaveManager::saveSlot(5, valid, &error),
+        "a snapshot with every value back in range is accepted again");
+}
+
+void testTruncatedSaveFileFailsGracefullyWithoutCrashing() {
+  const SaveData::GameSnapshot source = makeSnapshot();
+  std::string error;
+  CHECK(SaveManager::saveSlot(4, source, &error),
+        "setup: a valid snapshot writes to slot 4");
+
+  const std::filesystem::path path = SaveManager::slotPath(4);
+  const auto fullSize = std::filesystem::file_size(path);
+
+  std::error_code ec;
+  std::filesystem::resize_file(path, fullSize / 2, ec);
+  CHECK(!ec, "setup: the slot file can be truncated to half its size");
+
+  const auto loaded = SaveManager::loadSlot(4, &error);
+  CHECK(!loaded.has_value(),
+        "a snapshot truncated mid-record cannot be decoded");
+  CHECK(!error.empty(),
+        "a truncated file reports an error instead of leaving it blank");
+}
+
 } // namespace
 
 int main() {
@@ -296,6 +353,8 @@ int main() {
   testLoadingAnEmptySlotFailsGracefully();
   testSnapshotRoundTripAndSlotLimit();
   testCorruptAndMultiplayerSavesAreRejectedSafely();
+  testValidateSnapshotRejectsOutOfRangeProgressValues();
+  testTruncatedSaveFileFailsGracefullyWithoutCrashing();
 
   if (g_failures == 0) {
     std::cout << "All save manager tests passed.\n";
