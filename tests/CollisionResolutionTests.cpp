@@ -644,6 +644,22 @@ static void testFireFlowerBlockSpawnsFireFlowerItem() {
         "an F block spawns a Fire Flower, not a Coin or anything else");
 }
 
+static void testCollectingMushroomGrowsPlayer() {
+  auto block = EntityFactory::createBlock('M', 100.0f, 128.0f,
+                                          LevelTheme::Overworld);
+  if (!block) return;
+  auto spawned = block->hit(false);
+  if (!spawned) return;
+
+  Mario player; // starts PowerUpState::Small
+  CHECK(player.getPowerUpState() == PowerUpState::Small,
+        "setup: player starts Small before collecting the Mushroom");
+
+  spawned->activate(player);
+  CHECK(player.getPowerUpState() == PowerUpState::Big,
+        "collecting the spawned Mushroom actually grows the player to Big");
+}
+
 // Confirms resolveCollision() itself is unchanged: the player's wall-stop
 // behavior (which never calls reflectHorizontalVelocity) must keep zeroing
 // horizontal velocity on Left/Right and vertical velocity on Bottom/Top.
@@ -1269,6 +1285,7 @@ int main() {
   testBrickBreaksOnThirdHit();
   testMushroomBlockSpawnsMushroomItem();
   testFireFlowerBlockSpawnsFireFlowerItem();
+  testCollectingMushroomGrowsPlayer();
   testResolveCollisionAloneStillZeroesVelocity();
   testTileGridExcludesDistantTiles();
   testUpwardEdgeHitResolvesAsWall();
