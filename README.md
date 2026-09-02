@@ -1,5 +1,7 @@
 # Super Mario 2D Platformer (C++ / SFML 2.6)
 
+**Demo Video:** [Watch on YouTube](https://youtu.be/3hM-mTqIGVo?si=lu5jZxW2iqd32Etd)
+
 A 2D Super Mario clone built using C++17 and SFML 2.6, implementing strong Object-Oriented Programming (OOP) principles and 6 design patterns.
 
 ## Features
