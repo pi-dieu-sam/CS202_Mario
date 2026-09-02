@@ -8,12 +8,12 @@ class Item;
 
 /// BlockType — identifies what kind of block this is.
 enum class BlockType {
-  Brick,   // Breakable when player is Big
+  Brick,   // Breaks after three hits from below
   Question // Contains an item, becomes empty after hit
 };
 
 /// Block — interactive blocks that can be hit from below.
-/// QuestionBlocks spawn items; BrickBlocks break when the player is Big.
+/// QuestionBlocks spawn items; BrickBlocks break after three hits from below.
 class Block : public GameObject {
   friend class SnapshotAccess;
 public:
@@ -45,4 +45,5 @@ private:
   float m_bumpOffset = 0.0f;
   float m_bumpTimer = 0.0f;
   bool m_bumping = false;
+  int m_hitCount = 0;
 };

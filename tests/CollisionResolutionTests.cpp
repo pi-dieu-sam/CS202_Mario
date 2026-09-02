@@ -19,6 +19,7 @@
 #include "Entities/Bowser.hpp"
 #include "Entities/BowserFireball.hpp"
 #include "Entities/Block.hpp"
+#include "Factory/EntityFactory.hpp"
 #include "Entities/Escalater.hpp"
 #include "Entities/PiranhaPlant.hpp"
 #include "Entities/Luigi.hpp"
@@ -536,6 +537,21 @@ static void testEnlargedPlayersCanHitBlocksWithCompactBody() {
         "FlowersBuff Luigi has an enlarged terrain/render body");
   checkHeadHit(buffLuigi,
                "FlowersBuff Luigi's compact body reports a hit from below");
+}
+
+static void testBrickBreaksOnThirdHit() {
+  auto brick = EntityFactory::createBlock('S', 100.0f, 128.0f,
+                                          LevelTheme::Overworld);
+  CHECK(brick && brick->getBlockType() == BlockType::Brick,
+        "S loads as a brick block");
+  if (!brick) return;
+
+  brick->hit(false);
+  CHECK(brick->isActive(), "brick remains after its first hit");
+  brick->hit(false);
+  CHECK(brick->isActive(), "brick remains after its second hit");
+  brick->hit(false);
+  CHECK(!brick->isActive(), "brick breaks on its third hit");
 }
 
 // Confirms resolveCollision() itself is unchanged: the player's wall-stop
@@ -1135,6 +1151,7 @@ int main() {
   testLevel1VineEntersClimbState();
   testGoombaStompDisablesCollisionImmediately();
   testEnlargedPlayersCanHitBlocksWithCompactBody();
+  testBrickBreaksOnThirdHit();
   testResolveCollisionAloneStillZeroesVelocity();
   testTileGridExcludesDistantTiles();
   testUpwardEdgeHitResolvesAsWall();

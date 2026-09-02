@@ -2,6 +2,7 @@
 #include "Core/SoundManager.hpp"
 #include "Entities/Coin.hpp"
 #include "Entities/FireFlower.hpp"
+#include "Entities/FlowersBuff.hpp"
 #include "Entities/Mushroom.hpp"
 #include "Entities/Star.hpp"
 #include "Graphics/SpriteRegistry.hpp"
@@ -58,8 +59,8 @@ sf::FloatRect Block::getBounds() const {
                        TILE_SIZE);
 }
 
-std::unique_ptr<Item> Block::hit(bool playerIsBig) {
-  if (m_used)
+std::unique_ptr<Item> Block::hit(bool /*playerIsBig*/) {
+  if (m_used || !m_active)
     return nullptr;
 
   // Start bump animation
@@ -99,17 +100,22 @@ std::unique_ptr<Item> Block::hit(bool playerIsBig) {
       star->setTheme(m_theme);
       return star;
     }
+    case ObjectType::FlowersBuff: {
+      auto flowersBuff = std::make_unique<FlowersBuff>();
+      flowersBuff->setPosition(spawnPos);
+      flowersBuff->setTheme(m_theme);
+      return flowersBuff;
+    }
     default:
       break;
     }
   } else if (m_blockType == BlockType::Brick) {
-    if (playerIsBig) {
-      // Break the brick
-      SoundManager::getInstance().playSound(SoundID::BlockBreak);
+    // A brick endures three upward hits. The break sound plays on every hit,
+    // including the two hits before it disappears.
+    SoundManager::getInstance().playSound(SoundID::BlockBreak);
+    ++m_hitCount;
+    if (m_hitCount >= 3) {
       m_active = false;
-    } else {
-      // Small player just bumps it
-      SoundManager::getInstance().playSound(SoundID::BlockBump);
     }
   }
 
