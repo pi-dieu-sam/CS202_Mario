@@ -630,6 +630,20 @@ static void testMushroomBlockSpawnsMushroomItem() {
         "an M block spawns a Mushroom, not a Coin or anything else");
 }
 
+static void testFireFlowerBlockSpawnsFireFlowerItem() {
+  auto block = EntityFactory::createBlock('F', 100.0f, 128.0f,
+                                          LevelTheme::Overworld);
+  CHECK(block && block->getBlockType() == BlockType::Question,
+        "F loads as a Question block");
+  if (!block) return;
+
+  auto spawned = block->hit(false);
+  CHECK(spawned != nullptr, "hitting an F block spawns an item");
+  if (!spawned) return;
+  CHECK(spawned->getType() == ObjectType::FireFlower,
+        "an F block spawns a Fire Flower, not a Coin or anything else");
+}
+
 // Confirms resolveCollision() itself is unchanged: the player's wall-stop
 // behavior (which never calls reflectHorizontalVelocity) must keep zeroing
 // horizontal velocity on Left/Right and vertical velocity on Bottom/Top.
@@ -1254,6 +1268,7 @@ int main() {
   testEnlargedPlayersCanHitBlocksWithCompactBody();
   testBrickBreaksOnThirdHit();
   testMushroomBlockSpawnsMushroomItem();
+  testFireFlowerBlockSpawnsFireFlowerItem();
   testResolveCollisionAloneStillZeroesVelocity();
   testTileGridExcludesDistantTiles();
   testUpwardEdgeHitResolvesAsWall();
