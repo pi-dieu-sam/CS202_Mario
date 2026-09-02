@@ -25,6 +25,9 @@
 #include "Entities/Luigi.hpp"
 #include "Entities/Mario.hpp"
 #include "Entities/Mushroom.hpp"
+#include "Entities/FireFlower.hpp"
+#include "Entities/FlowersBuff.hpp"
+#include "Entities/Coin.hpp"
 #include "Entities/Star.hpp"
 #include "Entities/Flagpole.hpp"
 #include "Entities/Tile.hpp"
@@ -696,6 +699,59 @@ static void testCollectingFireFlowerGrantsFireState() {
   spawned->activate(player);
   CHECK(player.getPowerUpState() == PowerUpState::Fire,
         "collecting the spawned Fire Flower actually grants the Fire state");
+}
+
+static void testCoinCollectionPublishesConfiguredScore() {
+  Coin coin;
+  Mario player;
+
+  int lastScore = -1;
+  int publishCount = 0;
+  auto sub = ScopedEventSubscription(
+      EventType::CoinCollected, [&](const GameEvent &e) {
+        ++publishCount;
+        lastScore = e.intData;
+      });
+
+  coin.activate(player);
+
+  CHECK(publishCount == 1, "collecting a coin publishes exactly one CoinCollected event");
+  CHECK(lastScore == COIN_SCORE,
+        "the CoinCollected payload carries the configured coin score");
+}
+
+static void testPowerUpCollectionPublishesFlatBonusScore() {
+  // Every power-up (Mushroom, Fire Flower, Flowers Buff, Star) publishes
+  // PowerUpCollected with the same flat 1000-point bonus regardless of
+  // which effect it grants (see each Item subclass's activate()).
+  Mario player;
+  int lastScore = -1;
+  int publishCount = 0;
+  auto sub = ScopedEventSubscription(
+      EventType::PowerUpCollected, [&](const GameEvent &e) {
+        ++publishCount;
+        lastScore = e.intData;
+      });
+
+  Mushroom mushroom;
+  mushroom.activate(player);
+  CHECK(publishCount == 1 && lastScore == 1000,
+        "collecting a Mushroom publishes a 1000-point PowerUpCollected event");
+
+  FireFlower fireFlower;
+  fireFlower.activate(player);
+  CHECK(publishCount == 2 && lastScore == 1000,
+        "collecting a Fire Flower publishes a 1000-point PowerUpCollected event");
+
+  FlowersBuff flowersBuff;
+  flowersBuff.activate(player);
+  CHECK(publishCount == 3 && lastScore == 1000,
+        "collecting a Flowers Buff publishes a 1000-point PowerUpCollected event");
+
+  Star star;
+  star.activate(player);
+  CHECK(publishCount == 4 && lastScore == 1000,
+        "collecting a Star publishes a 1000-point PowerUpCollected event");
 }
 
 static void testLevel1PlacesAReachableMushroomBlock() {
@@ -1412,6 +1468,8 @@ int main() {
   testFireFlowerBlockSpawnsFireFlowerItem();
   testCollectingMushroomGrowsPlayer();
   testCollectingFireFlowerGrantsFireState();
+  testCoinCollectionPublishesConfiguredScore();
+  testPowerUpCollectionPublishesFlatBonusScore();
   testLevel1PlacesAReachableMushroomBlock();
   testLevel1PlacesAReachableFireFlowerBlock();
   testLevel2PlacesAReachableFireFlowerBlock();
