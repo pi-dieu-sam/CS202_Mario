@@ -26,7 +26,12 @@ void EventManager::unsubscribe(const SubscriptionHandle& handle) {
 void EventManager::publish(const GameEvent& event) {
     auto it = m_subscribers.find(event.type);
     if (it != m_subscribers.end()) {
-        for (auto& entry : it->second) {
+        // Dispatch over a copy: a callback that subscribes or unsubscribes
+        // (including its own ScopedEventSubscription being destroyed as a
+        // side effect of handling this very event) must not invalidate the
+        // iterator we're currently walking.
+        auto entries = it->second;
+        for (auto& entry : entries) {
             if (entry.callback) {
                 entry.callback(event);
             }

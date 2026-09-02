@@ -100,6 +100,53 @@ static void testReflectHelperPure() {
         "zero-velocity fallback derives direction from side (Left -> push right)");
 }
 
+// EventManager::publish() used to iterate the live subscriber vector
+// directly, so a handler that subscribed or unsubscribed (including its own
+// ScopedEventSubscription being destroyed as a side effect of handling the
+// very event it's reacting to) mid-dispatch could invalidate the iterator
+// being walked. It now dispatches over a snapshot instead.
+static void testPublishIsSafeWhenHandlersMutateSubscriptionsMidDispatch() {
+  constexpr EventType type = EventType::BlockHit;
+
+  int selfUnsubCount = 0;
+  int otherCount = 0;
+  ScopedEventSubscription selfUnsubSub;
+  selfUnsubSub = ScopedEventSubscription(type, [&](const GameEvent &) {
+    ++selfUnsubCount;
+    selfUnsubSub.reset(); // unsubscribe self, mid-dispatch
+  });
+  auto otherSub =
+      ScopedEventSubscription(type, [&](const GameEvent &) { ++otherCount; });
+
+  EventManager::getInstance().publish(GameEvent{type});
+  CHECK(selfUnsubCount == 1,
+        "a handler that unsubscribes itself still runs exactly once");
+  CHECK(otherCount == 1,
+        "a sibling subscriber still runs even though another handler "
+        "mutated the subscriber list mid-dispatch");
+
+  EventManager::getInstance().publish(GameEvent{type});
+  CHECK(selfUnsubCount == 1,
+        "the self-unsubscribing handler does not run again on a later publish");
+  CHECK(otherCount == 2, "the sibling subscriber keeps running normally");
+
+  int lateSubscriberCount = 0;
+  ScopedEventSubscription lateSub;
+  auto spawnerSub = ScopedEventSubscription(type, [&](const GameEvent &) {
+    lateSub = ScopedEventSubscription(
+        type, [&](const GameEvent &) { ++lateSubscriberCount; });
+  });
+
+  EventManager::getInstance().publish(GameEvent{type});
+  CHECK(lateSubscriberCount == 0,
+        "a subscriber added mid-dispatch does not receive the publish that "
+        "spawned it");
+
+  EventManager::getInstance().publish(GameEvent{type});
+  CHECK(lateSubscriberCount == 1,
+        "the newly-added subscriber does receive the next publish");
+}
+
 static void testGoombaBouncesBothDirections() {
   using Side = CollisionDetector::Side;
   {
@@ -1449,6 +1496,7 @@ static void testFireDamageFollowsBigThenSmallProgression() {
 
 int main() {
   testReflectHelperPure();
+  testPublishIsSafeWhenHandlersMutateSubscriptionsMidDispatch();
   testGoombaBouncesBothDirections();
   testMushroomReversesInsteadOfStopping();
   testStarBouncesOffFloor();
