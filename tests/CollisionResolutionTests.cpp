@@ -754,65 +754,42 @@ static void testPowerUpCollectionPublishesFlatBonusScore() {
         "collecting a Star publishes a 1000-point PowerUpCollected event");
 }
 
-static void testLevel1PlacesAReachableMushroomBlock() {
+static void testLevel1PlacesReachableCoinBlocks() {
   Level level;
   CHECK(level.loadFromFile("assets/levels/level1.txt", "Mario",
                            LevelTheme::Overworld),
-        "level 1 loads for the Mushroom-placement guard test");
+        "level 1 loads for the coin-block placement guard test");
 
   const auto blocks = level.captureSnapshot().blocks;
-  bool foundMushroomBlock = false;
+  int coinQuestionBlockCount = 0;
   for (const auto &block : blocks) {
-    if (block.containedItem == static_cast<int>(ObjectType::Mushroom)) {
-      foundMushroomBlock = true;
-      break;
+    if (block.containedItem == static_cast<int>(ObjectType::Coin)) {
+      ++coinQuestionBlockCount;
     }
   }
-  CHECK(foundMushroomBlock,
-        "level 1's shipped map contains a block that spawns a Mushroom "
-        "(regresses if the M placement is ever removed from level1.txt)");
+  CHECK(coinQuestionBlockCount >= 2,
+        "level 1's shipped map retains its two coin question blocks");
 }
 
-static void testLevel1PlacesAReachableFireFlowerBlock() {
-  Level level;
-  CHECK(level.loadFromFile("assets/levels/level1.txt", "Mario",
-                           LevelTheme::Overworld),
-        "level 1 loads for the Fire Flower-placement guard test");
-
-  const auto blocks = level.captureSnapshot().blocks;
-  bool foundFireFlowerBlock = false;
-  for (const auto &block : blocks) {
-    if (block.containedItem == static_cast<int>(ObjectType::FireFlower)) {
-      foundFireFlowerBlock = true;
-      break;
-    }
-  }
-  CHECK(foundFireFlowerBlock,
-        "level 1's shipped map also contains a block that spawns a Fire "
-        "Flower, close to the Mushroom, for quick manual power-up testing "
-        "(regresses if that placement is ever removed from level1.txt)");
-}
-
-static void testLevel2PlacesAReachableFireFlowerBlock() {
+static void testLevel2PlacesAReachableCoinBlock() {
   Level level;
   CHECK(level.loadFromFile("assets/levels/level2.txt", "Mario",
                            LevelTheme::Castle),
-        "level 2 loads for the Fire Flower-placement guard test");
+        "level 2 loads for the coin-block placement guard test");
 
   const auto blocks = level.captureSnapshot().blocks;
-  bool foundFireFlowerBlock = false;
+  bool foundCoinQuestionBlock = false;
   for (const auto &block : blocks) {
-    if (block.containedItem == static_cast<int>(ObjectType::FireFlower)) {
-      foundFireFlowerBlock = true;
+    if (block.containedItem == static_cast<int>(ObjectType::Coin)) {
+      foundCoinQuestionBlock = true;
       break;
     }
   }
-  CHECK(foundFireFlowerBlock,
-        "level 2's shipped map contains a block that spawns a Fire Flower "
-        "(regresses if the F placement is ever removed from level2.txt)");
+  CHECK(foundCoinQuestionBlock,
+        "level 2's shipped map contains at least one coin question block");
 }
 
-static void testShippedLevelsAdvertiseEveryEnemyAndPowerUp() {
+static void testShippedLevelsAdvertiseConfiguredEnemiesAndPowerUps() {
   const char *levelFiles[] = {"assets/levels/level1.txt",
                               "assets/levels/level2.txt",
                               "assets/levels/level3.txt"};
@@ -831,7 +808,7 @@ static void testShippedLevelsAdvertiseEveryEnemyAndPowerUp() {
   };
   const AdvertisedSymbol advertised[] = {
       {'G', "Goomba"},      {'K', "Koopa"},      {'P', "Piranha Plant"},
-      {'M', "Mushroom"},    {'F', "Fire Flower"}, {'s', "Star"},
+      {'?', "coin Question Block"}, {'s', "Star"}, {'W', "Flowers Buff"},
   };
   for (const auto &entry : advertised) {
     CHECK(combined.find(entry.symbol) != std::string::npos,
@@ -1470,10 +1447,9 @@ int main() {
   testCollectingFireFlowerGrantsFireState();
   testCoinCollectionPublishesConfiguredScore();
   testPowerUpCollectionPublishesFlatBonusScore();
-  testLevel1PlacesAReachableMushroomBlock();
-  testLevel1PlacesAReachableFireFlowerBlock();
-  testLevel2PlacesAReachableFireFlowerBlock();
-  testShippedLevelsAdvertiseEveryEnemyAndPowerUp();
+  testLevel1PlacesReachableCoinBlocks();
+  testLevel2PlacesAReachableCoinBlock();
+  testShippedLevelsAdvertiseConfiguredEnemiesAndPowerUps();
   testResolveCollisionAloneStillZeroesVelocity();
   testTileGridExcludesDistantTiles();
   testUpwardEdgeHitResolvesAsWall();

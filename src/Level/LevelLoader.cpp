@@ -95,10 +95,11 @@ LevelLoader::LevelData LevelLoader::loadLevel(const std::string& filename,
     data.height = std::max(rows + rowOffset, targetRows) * TILE_SIZE;
 
     bool foundSpawn = false;
-    // Pipe launchers are deliberately a Level 2-only set piece. Other
-    // levels keep their ordinary pipe behaviour.
-    const bool level2PipeLaunchers =
-        filename == "assets/levels/level2.txt";
+    // Main maps 2 and 3 use pipes as vertical FireDownUP launchers. Other
+    // levels, including secret maps, keep their ordinary pipe behaviour.
+    const bool pipeLaunchers =
+        filename == "assets/levels/level2.txt" ||
+        filename == "assets/levels/level3.txt";
 
     for (int row = 0; row < rows; row++) {
         for (int col = 0; col < static_cast<int>(lines[row].size()); col++) {
@@ -120,9 +121,9 @@ LevelLoader::LevelData LevelLoader::loadLevel(const std::string& filename,
 
                     // A pipe is two tiles wide. Spawn only from its left
                     // mouth piece (<) so each <> pair gets one fireball at
-                    // the middle of the opening. This applies only to the
-                    // main Level 2 map.
-                    if (level2PipeLaunchers && c == '<' &&
+                    // the middle of the opening. This applies only to main
+                    // maps that opt into pipe launchers.
+                    if (pipeLaunchers && c == '<' &&
                         col + 1 < static_cast<int>(lines[row].size()) &&
                         lines[row][col + 1] == '>') {
                         data.lavaFireballs.push_back(
