@@ -66,13 +66,14 @@ bounceOnce(GameObject &obj, GameObject &wall, float fallbackSpeed) {
 
 // Positions `wall` so it overlaps `obj`'s right edge by 1px, with a large
 // vertical overlap -> checkCollision() resolves this as Side::Right.
-static void placeWallRightOf(const GameObject &obj, Tile &wall) {
+// Takes GameObject& (not Tile&) so callers can also place a Block wall.
+static void placeWallRightOf(const GameObject &obj, GameObject &wall) {
   sf::FloatRect b = obj.getBounds();
   wall.setPosition(b.left + b.width - 1.0f, b.top);
 }
 
 // Mirror of placeWallRightOf: overlaps obj's left edge by 1px -> Side::Left.
-static void placeWallLeftOf(const GameObject &obj, Tile &wall) {
+static void placeWallLeftOf(const GameObject &obj, GameObject &wall) {
   sf::FloatRect b = obj.getBounds();
   wall.setPosition(b.left - (TILE_SIZE - 1.0f), b.top);
 }
@@ -157,6 +158,20 @@ static void testStarBouncesOffFloor() {
   star.onLanded();
   CHECK(star.getVelocity().y < 0.0f,
         "Star::onLanded() restores upward bounce velocity instead of resting at zero");
+}
+
+static void testMovingItemCollidesWithBlocks() {
+  Mushroom item; // constructor sets velocity.x = +80
+  Block wall(BlockType::Question, 0.0f, 0.0f, LevelTheme::Overworld);
+  placeWallRightOf(item, wall);
+
+  auto result = CollisionDetector::checkCollision(item, wall);
+  CHECK(result.collided && result.side == CollisionDetector::Side::Right,
+        "setup overlaps the Mushroom's right edge against a solid block");
+
+  bounceOnce(item, wall, 0.0f);
+  CHECK(item.getVelocity().x == -80.0f,
+        "a moving item reverses off a block just like it does off a tile");
 }
 
 static void testKoopaDyingAndRespawn() {
@@ -1163,6 +1178,7 @@ int main() {
   testGoombaBouncesBothDirections();
   testMushroomReversesInsteadOfStopping();
   testStarBouncesOffFloor();
+  testMovingItemCollidesWithBlocks();
   testKoopaDyingAndRespawn();
   testWalkingKoopaHitboxMatchesSprite();
   testFlyingTroopa();
