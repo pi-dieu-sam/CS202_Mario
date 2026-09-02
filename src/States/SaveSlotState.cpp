@@ -11,16 +11,23 @@
 #include <memory>
 
 namespace {
-constexpr float SLOT_X = 110.0f;
-constexpr float SLOT_WIDTH = 580.0f;
-constexpr float SLOT_HEIGHT = 72.0f;
+constexpr float SLOT_X = 54.0f;
+constexpr float SLOT_WIDTH = 692.0f;
+constexpr float SLOT_HEIGHT = 78.0f;
 constexpr float SLOT_TOP = 92.0f;
-constexpr float SLOT_GAP = 82.0f;
+constexpr float SLOT_GAP = 84.0f;
+constexpr std::size_t SLOT_COLUMN_WIDTH = 14;
+constexpr std::size_t SLOT_DETAIL_WIDTH = 20;
 
 std::string limitText(const std::string& value, std::size_t maxCharacters) {
     if (value.size() <= maxCharacters) return value;
     if (maxCharacters <= 3) return value.substr(0, maxCharacters);
     return value.substr(0, maxCharacters - 3) + "...";
+}
+
+std::string fixedColumn(const std::string& value, std::size_t width) {
+    const std::string clipped = limitText(value, width);
+    return clipped + std::string(width - clipped.size(), ' ');
 }
 }
 
@@ -52,9 +59,9 @@ void SaveSlotState::onEnter() {
 
         sf::Text& text = m_slotTexts[static_cast<std::size_t>(i)];
         text.setFont(font);
-        text.setCharacterSize(14);
-        text.setLineSpacing(0.9f);
-        text.setPosition(SLOT_X + 18.0f, y + 7.0f);
+        text.setCharacterSize(13);
+        text.setLineSpacing(1.55f);
+        text.setPosition(SLOT_X + 22.0f, y + 8.0f);
     }
 
     m_status.setFont(font);
@@ -88,13 +95,21 @@ std::string SaveSlotState::slotLabel(const SaveSlotInfo& info) const {
         return prefix + "\nEMPTY SLOT";
     case SaveSlotStatus::Corrupt:
         return prefix + "\nCORRUPT SAVE: " + limitText(info.error, 47);
-    case SaveSlotStatus::Occupied:
-        return prefix + "    " + limitText(info.character, 16) +
-               "\nLEVEL " + std::to_string(info.level) +
-               "   SCORE " + std::to_string(info.score) +
-               "   LIVES " + std::to_string(info.lives) +
-               "   COINS " + std::to_string(info.coins) +
-               "   TIME " + std::to_string(info.remainingSeconds);
+    case SaveSlotStatus::Occupied: {
+        // Keep the same three columns on both lines so the slot information
+        // reads as two balanced rows instead of one short and one crowded row.
+        const std::string firstLine =
+            fixedColumn(prefix, SLOT_COLUMN_WIDTH) +
+            fixedColumn(info.character, SLOT_COLUMN_WIDTH) +
+            fixedColumn("LEVEL " + std::to_string(info.level), SLOT_DETAIL_WIDTH);
+        const std::string secondLine =
+            fixedColumn("S " + std::to_string(info.score), SLOT_COLUMN_WIDTH) +
+            fixedColumn("LIVES " + std::to_string(info.lives), SLOT_COLUMN_WIDTH) +
+            fixedColumn("COINS " + std::to_string(info.coins) +
+                            " / T " + std::to_string(info.remainingSeconds),
+                        SLOT_DETAIL_WIDTH);
+        return firstLine + "\n" + secondLine;
+    }
     }
     return prefix;
 }
