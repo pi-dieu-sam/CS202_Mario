@@ -159,13 +159,19 @@ std::unique_ptr<Block> EntityFactory::createBlock(char blockChar, float x, float
 std::unique_ptr<Player> EntityFactory::createPlayer(const std::string& characterName, sf::Vector2f pos) {
     std::unique_ptr<Player> player;
 
-    if (characterName == "Luigi") {
-        player = std::make_unique<Luigi>();
-    } else {
+    if (characterName == "Mario") {
         player = std::make_unique<Mario>();
+    } else if (characterName == "Luigi") {
+        player = std::make_unique<Luigi>();
     }
+    // Any other name is unsupported (e.g. a corrupted/tampered save's
+    // character field) -- leave player null rather than silently guessing
+    // Mario. Callers (Level::loadFromFile, PlayingState::restoreSnapshot)
+    // already treat a null player as a load failure.
 
-    player->setPosition(pos);
+    if (player) {
+        player->setPosition(pos);
+    }
     return player;
 }
 
