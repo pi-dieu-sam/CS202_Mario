@@ -60,9 +60,12 @@ void PlayingState::onEnter() {
         m_levelComplete = false;
     }
 
-    m_hud->init();
+    m_hud->init(progress.getGameMode());
     m_scorePopups.init();
     m_hud->setCharacterName(progress.getSelectedCharacter());
+    if (progress.isMultiplayer()) {
+        m_hud->setPlayer2Name(progress.getSelectedCharacter() == "Mario" ? "Luigi" : "Mario");
+    }
     m_hud->setLevel(progress.getCurrentLevel());
     m_hud->setLives(progress.getLives());
     m_hud->setScore(progress.getScore());
@@ -372,7 +375,7 @@ void PlayingState::render(sf::RenderWindow& window) {
     }
 
     // Reset view for HUD (screen-space)
-    window.setView(window.getDefaultView());
+    window.setView(Game::getInstance().getUiView());
     m_hud->render(window);
 
     // Hide the costly map replacement and camera relocation behind a short
