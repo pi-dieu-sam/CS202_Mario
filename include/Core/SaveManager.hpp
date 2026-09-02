@@ -26,7 +26,25 @@ struct SaveSlotInfo {
     std::string error;
 };
 
-/// SaveManager — owns the five on-disk single-player snapshot slots.
+/**
+ * @class SaveManager
+ * @brief Manages the persistence of game state through binary snapshots.
+ *
+ * This subsystem handles the creation, validation, and retrieval of save files
+ * using a robust binary serialization format. It ensures that only fully intact
+ * and valid single-player snapshots can be written to or read from the disk.
+ * 
+ * Key architectural features:
+ * - **Atomic Saves:** Writes are performed via temporary files (`.tmp`) and then
+ *   atomically renamed, preventing corrupted states if the game crashes mid-save.
+ * - **Integrity Validation:** Every loaded snapshot is rigorously validated against
+ *   version mismatch, out-of-bounds parameters, and corrupted data streams.
+ * - **Testability:** Provides an isolated `setSaveDirectoryForTesting` interface
+ *   to avoid polluting user `AppData` during unit test execution.
+ *
+ * @note This manager does not mutate the active `Game` instance; it merely
+ * decodes file contents into `SaveData::GameSnapshot` objects for external use.
+ */
 class SaveManager {
 public:
     static constexpr int SLOT_COUNT = SaveData::SAVE_SLOT_COUNT;
