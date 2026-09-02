@@ -103,10 +103,10 @@ CollisionDetector::CollisionResult CollisionDetector::checkCollision(
     result.collided = true;
 
     // Calculate overlap on each side
-    float overlapLeft   = (boundsA.left + boundsA.width)  - boundsB.left;
-    float overlapRight  = (boundsB.left + boundsB.width)  - boundsA.left;
-    float overlapTop    = (boundsA.top  + boundsA.height) - boundsB.top;
-    float overlapBottom = (boundsB.top  + boundsB.height) - boundsA.top;
+    const float overlapLeft   = (boundsA.left + boundsA.width)  - boundsB.left;
+    const float overlapRight  = (boundsB.left + boundsB.width)  - boundsA.left;
+    const float overlapTop    = (boundsA.top  + boundsA.height) - boundsB.top;
+    const float overlapBottom = (boundsB.top  + boundsB.height) - boundsA.top;
 
     // Of the two overlaps on each axis, only the one consistent with A's
     // actual direction of travel is physically possible this frame -- e.g.
@@ -117,11 +117,11 @@ CollisionDetector::CollisionResult CollisionDetector::checkCollision(
     // stationary object being pushed into from outside.)
     // Use relative velocity (A minus B) so that moving platforms like the
     // escalater are taken into account when determining collision side.
-    sf::Vector2f relVel = velocityA - velocityB;
-    float verticalOverlap   = (relVel.y > 0.0f)  ? overlapTop
+    const sf::Vector2f relVel = velocityA - velocityB;
+    const float verticalOverlap   = (relVel.y > 0.0f)  ? overlapTop
                              : (relVel.y < 0.0f) ? overlapBottom
                              : std::min(overlapTop, overlapBottom);
-    float horizontalOverlap = (relVel.x > 0.0f)  ? overlapLeft
+    const float horizontalOverlap = (relVel.x > 0.0f)  ? overlapLeft
                              : (relVel.x < 0.0f) ? overlapRight
                              : std::min(overlapLeft, overlapRight);
 

@@ -15,6 +15,7 @@ class Koopa : public Enemy {
     friend class SnapshotAccess;
 public:
     Koopa();
+    virtual ~Koopa() = default;
 
     void onStomped() override;
     void kill() override;

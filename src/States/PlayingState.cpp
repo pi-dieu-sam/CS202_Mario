@@ -9,6 +9,7 @@
 #include "Level/Level.hpp"
 #include "Entities/Player.hpp"
 #include "Entities/Fireball.hpp"
+#include "Entities/Flagpole.hpp"
 #include "States/StateManager.hpp"
 #include "Physics/PhysicsConstants.hpp"
 #include "Observers/EventManager.hpp"

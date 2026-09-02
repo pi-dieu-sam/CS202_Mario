@@ -27,7 +27,9 @@ void EventManager::publish(const GameEvent& event) {
     auto it = m_subscribers.find(event.type);
     if (it != m_subscribers.end()) {
         for (auto& entry : it->second) {
-            entry.callback(event);
+            if (entry.callback) {
+                entry.callback(event);
+            }
         }
     }
 }
