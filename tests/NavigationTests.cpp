@@ -192,9 +192,8 @@ static void testMenuOptionsMapToPushOrResetOrQuit() {
           "Co-op pushes Level Select directly, skipping Character Select");
     CHECK(onMenuOption(2, false).op == Op::ResetTo && onMenuOption(2, false).target == Screen::Playing,
           "PvP resets straight into gameplay");
-    CHECK(onMenuOption(3, true).op == Op::ResetTo && onMenuOption(3, true).target == Screen::Playing,
-          "Load Game resets into gameplay once the save has loaded");
-    CHECK(onMenuOption(3, false).op == Op::None, "Load Game is a no-op when there's no save to load");
+    CHECK(onMenuOption(3, false).op == Op::Push && onMenuOption(3, false).target == Screen::SaveSlots,
+          "Load Game opens the five-slot picker before any save is loaded");
     CHECK(onMenuOption(4, false).op == Op::QuitApp, "Exit is the only menu option that requests quitting the app");
 }
 
@@ -262,8 +261,17 @@ static void testPauseOptionsMapToBackOrMainMenu() {
     using namespace ScreenFlow;
 
     CHECK(onPauseOption(0).op == Op::Back, "Resume goes back to the paused gameplay");
-    CHECK(onPauseOption(1).op == Op::ResetTo && onPauseOption(1).target == Screen::MainMenu,
+    CHECK(onPauseOption(2).op == Op::ResetTo && onPauseOption(2).target == Screen::MainMenu,
           "Quit to Menu resets to Main Menu");
+}
+
+static void testSaveSlotScreenHasAStableBackTarget() {
+    using namespace ScreenFlow;
+    CHECK(onBack(Screen::SaveSlots).op == Op::Back,
+          "Escape from the load-slot picker returns to Main Menu");
+    const std::vector<Screen> expected = {Screen::MainMenu, Screen::SaveSlots};
+    CHECK(canonicalStack(Screen::SaveSlots, GameMode::SinglePlayer) == expected,
+          "the load-slot picker is pushed over Main Menu rather than replacing it");
 }
 
 static void testMainMenuHasNoBackTarget() {
@@ -286,6 +294,7 @@ int main() {
     testPlayingIsAlwaysAFreshRoot();
     testGameOverPrimaryTargetsMatchResult();
     testPauseOptionsMapToBackOrMainMenu();
+    testSaveSlotScreenHasAStableBackTarget();
     testMainMenuHasNoBackTarget();
 
     if (g_failures == 0) {
