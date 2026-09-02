@@ -1147,6 +1147,29 @@ static void testVineClimbingControls() {
         "leaving the vine tile re-enables climbing on the next contact");
 }
 
+static void testGifFramesFallsBackToOneFrameForMissingFile() {
+  // getGifFrames() falls back to SFML's single-frame sf::Texture::loadFromFile
+  // whenever the STB multi-frame decode doesn't produce any frames -- a
+  // nonexistent path exercises that fallback without needing a crafted
+  // malformed GIF fixture. It must degrade to a 1-frame (if empty) result,
+  // never a crash or an empty vector.
+  const std::string missingPath = "assets/gifs/does-not-exist.gif";
+  CHECK(!std::filesystem::exists(missingPath),
+        "setup: the path used for this test does not exist on disk");
+
+  const auto &frames = AssetManager::getInstance().getGifFrames(missingPath);
+  CHECK(frames.size() == 1,
+        "a missing GIF file still returns exactly one (empty) fallback frame");
+  CHECK(AssetManager::getInstance().getGifFrameCount(missingPath) == 1,
+        "getGifFrameCount agrees with getGifFrames for the same fallback path");
+
+  // A second call must hit the cache and return the same result, not
+  // re-attempt the failed load.
+  const auto &framesAgain = AssetManager::getInstance().getGifFrames(missingPath);
+  CHECK(&framesAgain == &frames,
+        "a repeated lookup for the same missing path returns the cached result");
+}
+
 static void testPiranhaFramesAndEmergenceStayStable() {
   const std::string &path = SpriteRegistry::piranhaPlantPath(0);
   CHECK(std::filesystem::exists(path),
@@ -1532,6 +1555,7 @@ int main() {
   testAllLuigiSpriteStatesLoad();
   testAllMarioSpriteStatesLoad();
   testVineClimbingControls();
+  testGifFramesFallsBackToOneFrameForMissingFile();
   testPiranhaFramesAndEmergenceStayStable();
   testPiranhaPlantAttackTypes();
   testFlagpoleSlideRectClampsNegativeFrame();

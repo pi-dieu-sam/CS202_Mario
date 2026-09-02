@@ -101,8 +101,11 @@ const std::vector<sf::Texture>& AssetManager::getGifFrames(const std::string& fi
           }
         }
         gifDecoded = true;
-        STBGif::freeGifData(gifData);
       }
+      // Free unconditionally: a structurally-parseable but degenerate GIF
+      // (gifData non-null yet frameCount/w/h <= 0) used to skip this and
+      // leak the decode buffer, since the free lived inside the branch above.
+      if (gifData) STBGif::freeGifData(gifData);
       if (delays) STBGif::freeGifData(delays);
     }
   }
