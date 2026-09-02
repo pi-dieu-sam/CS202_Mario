@@ -37,14 +37,14 @@ public:
     std::vector<Command*> handleInput();
 
     /// Check whether any jump key is currently held.
-    bool isJumpHeld() const;
+    [[nodiscard]] bool isJumpHeld() const;
 
     /// Check whether sprint is held. Read separately so movement always sees
     /// the sprint state before directional commands execute.
-    bool isSprintHeld() const;
+    [[nodiscard]] bool isSprintHeld() const;
 
     /// Check whether either horizontal movement key is currently held.
-    bool isHorizontalHeld() const;
+    [[nodiscard]] bool isHorizontalHeld() const;
 
     /// Handle a single SFML event. Tracks KeyPressed/KeyReleased/LostFocus
     /// to maintain the held-key set, and returns a one-shot command for

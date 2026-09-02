@@ -18,7 +18,7 @@ public:
     void applyTo(sf::RenderWindow& window) const;
 
     /// Get the current view (for coordinate conversions).
-    const sf::View& getView() const;
+    [[nodiscard]] const sf::View& getView() const noexcept;
 
     /// Reset to default view.
     void reset();

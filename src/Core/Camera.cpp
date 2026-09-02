@@ -57,7 +57,7 @@ void Camera::applyTo(sf::RenderWindow& window) const {
     window.setView(worldView);
 }
 
-const sf::View& Camera::getView() const {
+const sf::View& Camera::getView() const noexcept {
     return m_view;
 }
 
