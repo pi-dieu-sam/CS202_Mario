@@ -9,8 +9,10 @@
 #include "Physics/CollisionDetector.hpp"
 #include "Physics/PhysicsConstants.hpp"
 #include "Core/AssetManager.hpp"
+#include "Core/Camera.hpp"
 #include "Graphics/SpriteRegistry.hpp"
 #include "Level/Level.hpp"
+#include "Level/LevelLoader.hpp"
 #include "Level/TileGrid.hpp"
 #include "Observers/EventManager.hpp"
 #include "Entities/Goomba.hpp"
@@ -21,6 +23,8 @@
 #include "Entities/Block.hpp"
 #include "Factory/EntityFactory.hpp"
 #include "Entities/Escalater.hpp"
+#include "Entities/FireBar.hpp"
+#include "Entities/LavaFireball.hpp"
 #include "Entities/PiranhaPlant.hpp"
 #include "Entities/Luigi.hpp"
 #include "Entities/Mario.hpp"
@@ -929,6 +933,263 @@ static void testPowerUpCollectionPublishesFlatBonusScore() {
   star.activate(player);
   CHECK(publishCount == 4 && lastScore == 1000,
         "collecting a Star publishes a 1000-point PowerUpCollected event");
+}
+
+// ── CollisionDetector edge cases ──────────────────────────────────────────
+
+static void testRawRectOverloadReportsCollisionAndSide() {
+  // checkCollision(GameObject, GameObject) is a thin wrapper that forwards
+  // bounds/velocity to this overload -- exercised directly here without
+  // needing to construct any entity.
+  const sf::FloatRect boundsA(0.0f, 0.0f, 32.0f, 32.0f);
+  const sf::FloatRect boundsB(20.0f, 0.0f, 32.0f, 32.0f);
+  const auto hit = CollisionDetector::checkCollision(
+      boundsA, sf::Vector2f(10.0f, 0.0f), boundsB, sf::Vector2f(0.0f, 0.0f));
+  CHECK(hit.collided, "overlapping rects report a collision");
+  CHECK(hit.side == CollisionDetector::Side::Right,
+        "A moving right into B's left edge resolves as a Right-side hit");
+
+  const sf::FloatRect farApart(500.0f, 500.0f, 32.0f, 32.0f);
+  const auto noHit = CollisionDetector::checkCollision(
+      boundsA, sf::Vector2f(0.0f, 0.0f), farApart, sf::Vector2f(0.0f, 0.0f));
+  CHECK(!noHit.collided, "non-overlapping rects report no collision");
+}
+
+static void testCheckCollisionFallsBackToSmallerOverlapWhenBothStationary() {
+  // With no relative velocity on either axis (e.g. something spawned already
+  // overlapping), the resolver falls back to whichever raw overlap is
+  // smaller instead of using travel direction to disambiguate.
+  const sf::FloatRect boundsA(0.0f, 0.0f, 32.0f, 32.0f);
+  // Deep horizontal overlap (28px), shallow vertical overlap (4px).
+  const sf::FloatRect boundsB(4.0f, 28.0f, 32.0f, 32.0f);
+  const auto result = CollisionDetector::checkCollision(
+      boundsA, sf::Vector2f(0.0f, 0.0f), boundsB, sf::Vector2f(0.0f, 0.0f));
+
+  CHECK(result.collided, "setup: the two rects overlap");
+  CHECK(result.side == CollisionDetector::Side::Bottom,
+        "with no relative velocity, the shallower overlap wins over the "
+        "deeper one regardless of axis");
+}
+
+static void testSweptCollisionIgnoresAlreadyOverlappingObjects() {
+  // A swept test describes a NEW impact; a pair that was already overlapping
+  // last frame is left to the regular discrete resolver instead, so it must
+  // not also be reported as a fresh swept hit.
+  Tile a;
+  a.setPosition(0.0f, 0.0f);
+  a.setVelocity(10.0f, 0.0f);
+  Tile b;
+  b.setPosition(0.0f, 0.0f);
+  b.setVelocity(0.0f, 0.0f);
+
+  CHECK(!CollisionDetector::checkSweptCollision(a, b, 0.1f).collided,
+        "a pair that was already overlapping one frame ago is not reported "
+        "as a fresh swept impact");
+}
+
+static void testSweptCollisionRequiresPositiveDt() {
+  Tile a;
+  a.setPosition(0.0f, 0.0f);
+  a.setVelocity(1000.0f, 0.0f);
+  Tile b;
+  b.setPosition(50.0f, 0.0f);
+
+  CHECK(!CollisionDetector::checkSweptCollision(a, b, 0.0f).collided,
+        "a zero dt cannot describe any motion, so no swept impact is reported");
+  CHECK(!CollisionDetector::checkSweptCollision(a, b, -0.1f).collided,
+        "a negative dt is rejected outright");
+}
+
+static void testMoveToImpactOnlyMovesOnASweptCollision() {
+  Tile marker;
+
+  marker.setPosition(100.0f, 100.0f);
+  CollisionDetector::CollisionResult sweptHit;
+  sweptHit.collided = true;
+  sweptHit.swept = true;
+  sweptHit.impactPosition = {55.0f, 77.0f};
+  CollisionDetector::moveToImpact(marker, sweptHit);
+  CHECK(marker.getPosition().x == 55.0f && marker.getPosition().y == 77.0f,
+        "a swept collision result moves the object to its recorded impact "
+        "position");
+
+  marker.setPosition(100.0f, 100.0f);
+  CollisionDetector::CollisionResult discreteHit;
+  discreteHit.collided = true;
+  discreteHit.swept = false;
+  CollisionDetector::moveToImpact(marker, discreteHit);
+  CHECK(marker.getPosition().x == 100.0f && marker.getPosition().y == 100.0f,
+        "a non-swept collision result leaves the object's position untouched");
+
+  marker.setPosition(100.0f, 100.0f);
+  CollisionDetector::CollisionResult noHit;
+  CollisionDetector::moveToImpact(marker, noHit);
+  CHECK(marker.getPosition().x == 100.0f && marker.getPosition().y == 100.0f,
+        "a non-collision result leaves the object's position untouched");
+}
+
+// ── Camera ─────────────────────────────────────────────────────────────
+
+static void testCameraDefaultsToWindowCenterAndSize() {
+  Camera camera;
+  CHECK(camera.getView().getSize().x == static_cast<float>(WINDOW_WIDTH) &&
+            camera.getView().getSize().y == static_cast<float>(WINDOW_HEIGHT),
+        "a freshly-constructed camera's view matches the window size");
+  CHECK(camera.getView().getCenter().x == WINDOW_WIDTH / 2.0f &&
+            camera.getView().getCenter().y == WINDOW_HEIGHT / 2.0f,
+        "a freshly-constructed camera centers on the middle of the window");
+}
+
+static void testCameraClampsHorizontallyToLevelBounds() {
+  Camera camera;
+  camera.setLevelBounds(2000.0f, 608.0f);
+  const float halfW = WINDOW_WIDTH / 2.0f;
+
+  camera.update(sf::Vector2f(0.0f, 300.0f));
+  CHECK(camera.getView().getCenter().x == halfW,
+        "the camera does not scroll past the level's left edge");
+
+  camera.update(sf::Vector2f(1900.0f, 300.0f));
+  CHECK(camera.getView().getCenter().x == 2000.0f - halfW,
+        "the camera does not scroll past the level's right edge");
+
+  camera.update(sf::Vector2f(1000.0f, 300.0f));
+  CHECK(camera.getView().getCenter().x == 1000.0f,
+        "the camera follows the target freely between the level's edges");
+}
+
+static void testCameraVerticalAxisIsFixedForATallLevel() {
+  Camera camera;
+  camera.setLevelBounds(2000.0f, 2000.0f); // taller than the window
+  camera.update(sf::Vector2f(1000.0f, 50.0f));
+  CHECK(camera.getView().getCenter().y == WINDOW_HEIGHT / 2.0f,
+        "the camera stays vertically fixed classic-Mario-style regardless "
+        "of the target's height, as long as the level is at least "
+        "window-tall");
+}
+
+static void testCameraTwoTargetOverloadAveragesXPosition() {
+  Camera camera;
+  camera.setLevelBounds(2000.0f, 608.0f);
+  camera.update(sf::Vector2f(400.0f, 800.0f), sf::Vector2f(600.0f, 800.0f));
+  CHECK(camera.getView().getCenter().x == 500.0f,
+        "the two-target overload centers on the midpoint between both "
+        "players");
+}
+
+static void testCameraResetRestoresDefaultView() {
+  Camera camera;
+  camera.setLevelBounds(2000.0f, 608.0f);
+  camera.update(sf::Vector2f(1000.0f, 300.0f));
+  CHECK(camera.getView().getCenter().x != WINDOW_WIDTH / 2.0f,
+        "setup: the camera has moved away from its default center");
+
+  camera.reset();
+  CHECK(camera.getView().getCenter().x == WINDOW_WIDTH / 2.0f &&
+            camera.getView().getCenter().y == WINDOW_HEIGHT / 2.0f,
+        "reset() restores the default centered view");
+}
+
+// ── LevelLoader ────────────────────────────────────────────────────────
+
+namespace {
+std::filesystem::path levelLoaderTestPath(const char *name) {
+  return std::filesystem::temp_directory_path() / name;
+}
+} // namespace
+
+static void testLevelLoaderDispatchesEveryCharacterCategoryToTheRightCollection() {
+  const std::filesystem::path path =
+      levelLoaderTestPath("super_mario_levelloader_dispatch.txt");
+  {
+    std::ofstream file(path);
+    file << "GKTBPo?MOiEe\n";
+  }
+
+  LevelLoader::LevelData data =
+      LevelLoader::loadLevel(path.string(), LevelTheme::Overworld,
+                             /*autoPlaceFlagpole=*/false);
+  std::filesystem::remove(path);
+
+  CHECK(data.loaded, "the synthetic dispatch map loads successfully");
+  CHECK(data.enemies.size() == 5,
+        "G, K, T, B, P each create exactly one enemy");
+  CHECK(data.items.size() == 1, "o creates exactly one coin item");
+  CHECK(data.blocks.size() == 2, "? and M each create exactly one block");
+  CHECK(data.fireBars.size() == 1, "O creates exactly one fire bar");
+  CHECK(data.lavaFireballs.size() == 1,
+        "i creates exactly one vertical lava-fireball hazard");
+  CHECK(data.escalaters.size() == 2, "E and e each create exactly one escalater");
+
+  std::vector<int> scores;
+  for (const auto &enemy : data.enemies) scores.push_back(enemy->getScoreValue());
+  std::sort(scores.begin(), scores.end());
+  const std::vector<int> expectedScores = {100, 100, 200, 400, 1000};
+  CHECK(scores == expectedScores,
+        "the five enemy characters dispatch to Goomba/Piranha (100), "
+        "Koopa (200), Troopa (400), and Bowser (1000) -- not five copies "
+        "of the same enemy type");
+}
+
+static void testLevelLoaderCastleSDisambiguatesBrickFromDecoration() {
+  // 'S' is ambiguous between an ordinary brick block and the bottom-row
+  // castle-piece cell. isCastleS() follows the column upward (recursively
+  // through a stack of S's) to tell them apart.
+  const std::filesystem::path path =
+      levelLoaderTestPath("super_mario_levelloader_castle_s.txt");
+  {
+    std::ofstream file(path);
+    file << "2-\n"; // row 0: castle top-piece above column 0 only
+    file << "SS\n"; // row 1: col 0 sits under a castle piece; col 1 doesn't
+    file << "S-\n"; // row 2: col 0 sits under another castle 'S' (recursion)
+  }
+
+  LevelLoader::LevelData data =
+      LevelLoader::loadLevel(path.string(), LevelTheme::Castle,
+                             /*autoPlaceFlagpole=*/false);
+  std::filesystem::remove(path);
+
+  CHECK(data.loaded, "the synthetic castle-S map loads successfully");
+  CHECK(data.tiles.size() == 3,
+        "column 0's '2', row-1 'S', and recursively row-2 'S' all resolve "
+        "as castle-piece decoration tiles");
+  CHECK(data.blocks.size() == 1,
+        "column 1's 'S' has no castle piece above it, so it is the only "
+        "brick block created");
+  if (!data.blocks.empty()) {
+    CHECK(data.blocks[0]->getBlockType() == BlockType::Brick,
+          "the disambiguated non-castle 'S' is a breakable brick block");
+  }
+}
+
+static void testLevelLoaderAutoPlacesSpawnAndFlagpoleWhenMissing() {
+  // No '@' or 'f' in this map -- LevelLoader must place both itself: spawn
+  // near the left edge, flagpole a few tiles before the right edge, each on
+  // solid ground with open sky above.
+  const std::filesystem::path path =
+      levelLoaderTestPath("super_mario_levelloader_autoplace.txt");
+  {
+    std::ofstream file(path);
+    file << "--------------\n"; // row 0: open sky
+    file << "--------------\n"; // row 1: open sky
+    file << "XXXXXXXXXXXXXX\n"; // row 2 (ground row): solid, 14 columns wide
+  }
+
+  LevelLoader::LevelData data =
+      LevelLoader::loadLevel(path.string(), LevelTheme::Overworld,
+                             /*autoPlaceFlagpole=*/true);
+  std::filesystem::remove(path);
+
+  CHECK(data.loaded, "the synthetic auto-placement map loads successfully");
+  CHECK(data.playerSpawn.x == 2.0f * TILE_SIZE,
+        "spawn is auto-placed at the first open-sky-over-solid-ground "
+        "column, scanning from the left");
+  CHECK(data.flagpole != nullptr, "a flagpole is auto-placed when the map has no 'f'");
+  if (data.flagpole) {
+    CHECK(data.flagpole->getPosition().x == 8.0f * TILE_SIZE,
+          "the flagpole lands 5 tiles before the map's right edge (14 - 1 - "
+          "5 = column 8) when that spot has open sky above it");
+  }
 }
 
 static void testLevel1PlacesReachableCoinBlocks() {
@@ -1935,6 +2196,19 @@ int main() {
   testCollectingFireFlowerGrantsFireState();
   testCoinCollectionPublishesConfiguredScore();
   testPowerUpCollectionPublishesFlatBonusScore();
+  testRawRectOverloadReportsCollisionAndSide();
+  testCheckCollisionFallsBackToSmallerOverlapWhenBothStationary();
+  testSweptCollisionIgnoresAlreadyOverlappingObjects();
+  testSweptCollisionRequiresPositiveDt();
+  testMoveToImpactOnlyMovesOnASweptCollision();
+  testCameraDefaultsToWindowCenterAndSize();
+  testCameraClampsHorizontallyToLevelBounds();
+  testCameraVerticalAxisIsFixedForATallLevel();
+  testCameraTwoTargetOverloadAveragesXPosition();
+  testCameraResetRestoresDefaultView();
+  testLevelLoaderDispatchesEveryCharacterCategoryToTheRightCollection();
+  testLevelLoaderCastleSDisambiguatesBrickFromDecoration();
+  testLevelLoaderAutoPlacesSpawnAndFlagpoleWhenMissing();
   testLevel1PlacesReachableCoinBlocks();
   testLevel2PlacesAReachableCoinBlock();
   testShippedLevelsAdvertiseConfiguredEnemiesAndPowerUps();
