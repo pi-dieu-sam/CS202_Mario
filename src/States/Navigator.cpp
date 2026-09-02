@@ -1,7 +1,9 @@
 #include "States/Navigator.hpp"
 #include "States/StateManager.hpp"
 #include "States/MenuState.hpp"
+#include "States/SettingsState.hpp"
 #include "States/CharacterSelectState.hpp"
+#include "States/ModeBriefingState.hpp"
 #include "States/LevelSelectState.hpp"
 #include "States/PlayingState.hpp"
 #include "States/SaveSlotState.hpp"
@@ -15,14 +17,18 @@ namespace {
 /// (it isn't reached through this factory), and GameOver states carry
 /// constructor arguments (result, winner name) only the state that creates
 /// them knows, so they're never a Navigator target either.
-std::unique_ptr<GameState> createScreen(ScreenFlow::Screen screen) {
+std::unique_ptr<GameState> createScreen(ScreenFlow::Screen screen, GameMode mode) {
     switch (screen) {
         case ScreenFlow::Screen::MainMenu:
             return std::make_unique<MenuState>();
+        case ScreenFlow::Screen::Settings:
+            return std::make_unique<SettingsState>();
         case ScreenFlow::Screen::SaveSlots:
             return std::make_unique<SaveSlotState>(SaveSlotMode::Load);
         case ScreenFlow::Screen::CharacterSelect:
             return std::make_unique<CharacterSelectState>();
+        case ScreenFlow::Screen::ModeBriefing:
+            return std::make_unique<ModeBriefingState>(mode);
         case ScreenFlow::Screen::LevelSelect:
             return std::make_unique<LevelSelectState>();
         case ScreenFlow::Screen::Playing:
@@ -42,7 +48,7 @@ void Navigator::apply(const ScreenFlow::Transition& transition, StateManager& sm
             break;
 
         case ScreenFlow::Op::Push:
-            if (auto state = createScreen(transition.target)) {
+            if (auto state = createScreen(transition.target, mode)) {
                 sm.pushState(std::move(state));
             }
             break;
@@ -52,7 +58,7 @@ void Navigator::apply(const ScreenFlow::Transition& transition, StateManager& sm
             break;
 
         case ScreenFlow::Op::Replace:
-            if (auto state = createScreen(transition.target)) {
+            if (auto state = createScreen(transition.target, mode)) {
                 sm.changeState(std::move(state));
             }
             break;
@@ -60,7 +66,7 @@ void Navigator::apply(const ScreenFlow::Transition& transition, StateManager& sm
         case ScreenFlow::Op::ResetTo:
             sm.clearStates();
             for (ScreenFlow::Screen screen : ScreenFlow::canonicalStack(transition.target, mode)) {
-                if (auto state = createScreen(screen)) {
+                if (auto state = createScreen(screen, mode)) {
                     sm.pushState(std::move(state));
                 }
             }
