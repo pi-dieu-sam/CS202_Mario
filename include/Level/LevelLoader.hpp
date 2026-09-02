@@ -37,7 +37,10 @@ class LavaFireball;
 /// - '@' = explicit player spawn      '9' = player 2 spawn (PvP/Co-op)
 /// - 'f' = explicit flagpole
 /// - 'K' = Koopa   'T' = flying Troopa   'B' = Bowser   'P' = Piranha Plant
+/// - 'S' = brick block; it breaks after three hits from below. Within a
+///   castle, S remains the bottom-row castle-piece cell.
 /// - 'M' = question block w/ Mushroom   'F' = w/ Fire Flower   's' = w/ Star
+///   'W' = w/ FlowersBuff (size/speed/jump buff)
 /// - 'E' = vertical escalater; 'e' = horizontal escalater (five tiles each way)
 /// - 'O' = fire-bar anchor with eight rotating, lethal fireballs
 /// - 'i' = top lava tile with a repeating fireball launcher (waits 3 sec/arc)

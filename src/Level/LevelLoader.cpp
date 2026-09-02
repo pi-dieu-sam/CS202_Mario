@@ -23,12 +23,31 @@ bool isSolidChar(char c) {
         case 'X':
         case '<': case '>': case '[': case ']':
         case 'b':
-        case 'M': case 'F': case 's':
+        case 'M': case 'F': case 's': case 'W':
         case '(': case '{': case '\\': case ')': case '}': case '/':
         case 'Q': case '2': case '3': case '4':
         case '6': case 'S': case '7': case '5':
         case 'E':
             return true;
+        default:
+            return false;
+    }
+}
+
+// The level format uses S for ordinary brick blocks, but the castle sprite
+// sheet also uses it for a bottom-row cell. A castle S is always below a
+// castle cell; follow an S column upward to distinguish it from a brick.
+bool isCastleS(const std::vector<std::string>& lines, int row, int col) {
+    if (row <= 0 || col < 0 || col >= static_cast<int>(lines[row - 1].size())) {
+        return false;
+    }
+
+    switch (lines[row - 1][col]) {
+        case '2': case '3': case '4':
+        case '5': case '6': case '7':
+            return true;
+        case 'S':
+            return isCastleS(lines, row - 1, col);
         default:
             return false;
     }
@@ -119,8 +138,13 @@ LevelLoader::LevelData LevelLoader::loadLevel(const std::string& filename,
                 case 'Q': case '2': case '3': case '4':
                 case '6': case 'S': case '7': case '5':
                 {
-                    auto piece = EntityFactory::createCastlePiece(c, x, y, theme);
-                    if (piece) data.tiles.push_back(std::move(piece));
+                    if (c == 'S' && !isCastleS(lines, row, col)) {
+                        auto block = EntityFactory::createBlock(c, x, y, theme);
+                        if (block) data.blocks.push_back(std::move(block));
+                    } else {
+                        auto piece = EntityFactory::createCastlePiece(c, x, y, theme);
+                        if (piece) data.tiles.push_back(std::move(piece));
+                    }
                     break;
                 }
 
@@ -136,7 +160,7 @@ LevelLoader::LevelData LevelLoader::loadLevel(const std::string& filename,
                 }
 
                 // ── Blocks ──
-                case '?': case 'M': case 'F': case 's':
+                case '?': case 'M': case 'F': case 's': case 'W':
                 {
                     auto block = EntityFactory::createBlock(c, x, y, theme);
                     if (block) data.blocks.push_back(std::move(block));
@@ -207,13 +231,6 @@ LevelLoader::LevelData LevelLoader::loadLevel(const std::string& filename,
                 case 'o': // Coin
                 {
                     auto item = EntityFactory::createItem(ItemType::Coin, {x, y}, theme);
-                    if (item) data.items.push_back(std::move(item));
-                    break;
-                }
-
-                case 'W': // FlowersBuff (size/speed/jump buff)
-                {
-                    auto item = EntityFactory::createItem(ItemType::FlowersBuff, {x, y}, theme);
                     if (item) data.items.push_back(std::move(item));
                     break;
                 }

@@ -19,6 +19,7 @@
 #include "Entities/Bowser.hpp"
 #include "Entities/BowserFireball.hpp"
 #include "Entities/Block.hpp"
+#include "Factory/EntityFactory.hpp"
 #include "Entities/Escalater.hpp"
 #include "Entities/PiranhaPlant.hpp"
 #include "Entities/Luigi.hpp"
@@ -448,25 +449,26 @@ static void testLevel2LavaTilesKillPlayer() {
   checkLavaRow(18, "`L` lava tile kills a player on contact");
 }
 
-static void testLevel1VineEntersClimbState() {
-  // level1.txt places a vertical V vine at map column 7, rows 6-11. Its
-  // first cell lands at world row 11 after the five-row display offset.
+static void testLevel2VineEntersClimbState() {
+  // level2.txt places a vertical V vine at map column 85, rows 3-9. Its
+  // first cell lands at world row 6 after the three-row display offset; the
+  // X tile directly above it verifies that upward climbing stops cleanly.
   Level level;
-  CHECK(level.loadFromFile("assets/levels/level1.txt", "Mario",
-                           LevelTheme::Overworld),
-        "level 1 loads for vine climbing test");
+  CHECK(level.loadFromFile("assets/levels/level2.txt", "Mario",
+                           LevelTheme::Castle),
+        "level 2 loads for vine climbing test");
   Player *player = level.getPlayer();
-  CHECK(player != nullptr, "level 1 creates a player for vine climbing test");
+  CHECK(player != nullptr, "level 2 creates a player for vine climbing test");
   if (!player) return;
 
   // Player position is a two-tile anchor; its small-form body begins 32px
-  // below it. Position that body inside the first V tile at (7, 11).
-  player->setPosition(7.0f * TILE_SIZE - 26.0f,
-                      11.0f * TILE_SIZE - TILE_SIZE);
+  // below it. Position that body inside the first V tile at (85, 6).
+  player->setPosition(85.0f * TILE_SIZE - 26.0f,
+                      6.0f * TILE_SIZE - TILE_SIZE);
   level.update(0.0f);
   CHECK(player->isClimbing(),
         "touching a V map tile enters the climb state without terrain resolve");
-  CHECK(std::abs(player->getPosition().x - 7.0f * TILE_SIZE) < 0.001f,
+  CHECK(std::abs(player->getPosition().x - 85.0f * TILE_SIZE) < 0.001f,
         "entering a V tile centres the player on the vine");
 
   const float startY = player->getPosition().y;
@@ -536,6 +538,21 @@ static void testEnlargedPlayersCanHitBlocksWithCompactBody() {
         "FlowersBuff Luigi has an enlarged terrain/render body");
   checkHeadHit(buffLuigi,
                "FlowersBuff Luigi's compact body reports a hit from below");
+}
+
+static void testBrickBreaksOnThirdHit() {
+  auto brick = EntityFactory::createBlock('S', 100.0f, 128.0f,
+                                          LevelTheme::Overworld);
+  CHECK(brick && brick->getBlockType() == BlockType::Brick,
+        "S loads as a brick block");
+  if (!brick) return;
+
+  brick->hit(false);
+  CHECK(brick->isActive(), "brick remains after its first hit");
+  brick->hit(false);
+  CHECK(brick->isActive(), "brick remains after its second hit");
+  brick->hit(false);
+  CHECK(!brick->isActive(), "brick breaks on its third hit");
 }
 
 // Confirms resolveCollision() itself is unchanged: the player's wall-stop
@@ -1132,9 +1149,10 @@ int main() {
   testStarPowerOnlyDefeatsEnemiesItActuallyKills();
   testHorizontalEscalaterMovement();
   testLevel2LavaTilesKillPlayer();
-  testLevel1VineEntersClimbState();
+  testLevel2VineEntersClimbState();
   testGoombaStompDisablesCollisionImmediately();
   testEnlargedPlayersCanHitBlocksWithCompactBody();
+  testBrickBreaksOnThirdHit();
   testResolveCollisionAloneStillZeroesVelocity();
   testTileGridExcludesDistantTiles();
   testUpwardEdgeHitResolvesAsWall();

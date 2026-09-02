@@ -24,7 +24,7 @@ Mỗi ký tự đại diện cho **một ô vuông 32×32 pixel** trong map.
 | `[` `]` | Thân ống (body-left / body-right) |
 | `(` `{` `\` | Ống Ward (ward pipe) — **mảnh hàng trên** (xếp chồng lên mảnh dưới) |
 | `)` `}` `/` | Ống Ward (ward pipe) — **mảnh hàng dưới** |
-| `S` | Gạch vỡ (Brick, phá được khi Mario to) |
+| `S` | Gạch vỡ sau 3 lần nhảy đụng từ phía dưới |
 | `?` | Block có chứa xu (Coin) |
 | `M` | Block có chứa Nấm (Mushroom) |
 | `F` | Block có chứa Hoa lửa (Fire Flower) |
@@ -32,6 +32,7 @@ Mỗi ký tự đại diện cho **một ô vuông 32×32 pixel** trong map.
 | `O` | Fire Bar: block 32px và 8 cầu lửa liên tục quay xuyên map (lửa chạm vào sẽ chết) |
 | `i` | Lớp mặt dung nham có cầu lửa: bắn lên, rơi xuống, ẩn 3 giây rồi lặp lại |
 | `s` | Block có chứa Sao (Star) |
+| `W` | Block có chứa FlowersBuff (buff kích thước/tốc độ/nhảy) |
 | `Q` | Block đã dùng hết (cứng, không còn item) |
 | `o` | Xu (Coin) |
 | `G` | Goomba |
