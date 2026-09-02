@@ -250,6 +250,16 @@ void testSnapshotRoundTripAndSlotLimit() {
         "a sixth slot is rejected");
 }
 
+void testLoadingAnEmptySlotFailsGracefully() {
+  std::string error;
+  const auto loaded = SaveManager::loadSlot(2, &error);
+
+  CHECK(!loaded.has_value(),
+        "loading a slot that was never saved returns no snapshot");
+  CHECK(error == "This slot is empty",
+        "an empty slot reports its dedicated error message, not a generic one");
+}
+
 void testCorruptAndMultiplayerSavesAreRejectedSafely() {
   const std::filesystem::path corruptPath = SaveManager::slotPath(3);
   {
@@ -283,6 +293,7 @@ int main() {
   ScopedSaveDirectory testDirectory;
 
   testInitialSlotsAreEmpty();
+  testLoadingAnEmptySlotFailsGracefully();
   testSnapshotRoundTripAndSlotLimit();
   testCorruptAndMultiplayerSavesAreRejectedSafely();
 
