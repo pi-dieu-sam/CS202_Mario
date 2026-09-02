@@ -143,6 +143,8 @@ std::unique_ptr<Block> EntityFactory::createBlock(char blockChar, float x, float
     switch (blockChar) {
         case '?': type = BlockType::Question; break;
         // Extensions: not part of VGLC's own alphabet, safe to hand-author.
+        case 'S': type = BlockType::Brick;                                break;
+        case 'W': type = BlockType::Question; contained = ObjectType::FlowersBuff; break;
         case 'M': type = BlockType::Question; contained = ObjectType::Mushroom;    break;
         case 'F': type = BlockType::Question; contained = ObjectType::FireFlower;  break;
         case 's': type = BlockType::Question; contained = ObjectType::Star;        break;

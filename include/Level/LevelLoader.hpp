@@ -29,19 +29,22 @@ class LavaFireball;
 /// - Ward pipe pieces: '(' '{' '\' (top row) and ')' '}' '/' (bottom row) —
 ///   each char is one 16x16 cell of WardPipe_piece.png scaled to one 32x32
 ///   tile. Assemble a pipe by stacking top-row pieces above bottom-row ones.
-/// - Castle pieces: 'Q','2','3','4' (top row) and '6','S','7','5' (bottom
+/// - Castle pieces: 'Q','2','3','4' (top row) and '6','7','5' (bottom
 ///   row) — each char is one 16x16 cell of Castle_piece.png scaled to one
-///   32x32 tile. Assemble a castle with "Q234" above "6S75".
+///   32x32 tile. 'S' is a breakable brick, so it is not a castle piece.
 ///
 /// Extensions (not part of VGLC's own alphabet, safe to hand-add to a file):
 /// - '@' = explicit player spawn      '9' = player 2 spawn (PvP/Co-op)
 /// - 'f' = explicit flagpole
 /// - 'K' = Koopa   'T' = flying Troopa   'B' = Bowser   'P' = Piranha Plant
-/// - 'M' = question block w/ Mushroom   'F' = w/ Fire Flower   's' = w/ Star
+/// - 'W' = question block w/ FlowersBuff (temporary size/speed/jump boost)
+/// - 'S' = breakable brick; an enlarged player must hit it three times
+/// - 'M' = legacy question block w/ Mushroom   'F' = w/ Fire Flower
+///   's' = w/ Star
 /// - 'E' = vertical escalater; 'e' = horizontal escalater (five tiles each way)
 /// - 'O' = fire-bar anchor with eight rotating, lethal fireballs
 /// - 'i' = top lava tile with a repeating fireball launcher (waits 3 sec/arc)
-///   (in main level2.txt only, each pipe top <> is also a launcher)
+///   (in main level2.txt and level3.txt, each pipe top <> is also a launcher)
 /// - 'V' = vine top; a non-solid 32x32 tile rendered from VineTop.png
 ///
 /// VGLC has no notion of a spawn point or a flagpole. If a file has no '@'
@@ -51,7 +54,6 @@ class LavaFireball;
 class LevelLoader {
 public:
     struct LevelData {
-        bool                                  loaded = false;
         std::vector<std::unique_ptr<Tile>>   tiles;
         std::vector<std::unique_ptr<Block>>  blocks;
         std::vector<std::unique_ptr<Enemy>>  enemies;

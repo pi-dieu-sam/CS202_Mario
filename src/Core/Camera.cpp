@@ -1,5 +1,4 @@
 #include "Core/Camera.hpp"
-#include "Core/Game.hpp"
 #include "Physics/PhysicsConstants.hpp"
 
 Camera::Camera() {
@@ -52,9 +51,7 @@ void Camera::update(const sf::Vector2f& pos1, const sf::Vector2f& pos2) {
 }
 
 void Camera::applyTo(sf::RenderWindow& window) const {
-    sf::View worldView = m_view;
-    worldView.setViewport(Game::getInstance().getUiView().getViewport());
-    window.setView(worldView);
+    window.setView(m_view);
 }
 
 const sf::View& Camera::getView() const {

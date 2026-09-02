@@ -1,10 +1,8 @@
 #pragma once
-// Goomba.hpp — basic walking enemy that dies on stomp
 #include "Enemy.hpp"
 
 /// Goomba — basic walking enemy. Dies on stomp.
 class Goomba : public Enemy {
-    friend class SnapshotAccess;
 public:
     Goomba();
 

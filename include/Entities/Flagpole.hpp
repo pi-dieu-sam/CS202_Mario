@@ -4,7 +4,6 @@
 
 /// Flagpole — end-of-level trigger. Score depends on grab height.
 class Flagpole : public GameObject {
-    friend class SnapshotAccess;
 public:
     Flagpole();
     Flagpole(float x, float y);

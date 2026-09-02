@@ -16,7 +16,6 @@ public:
 
 private:
     void updateSelectionVisuals();
-    void updatePreviewAnimations(float dt);
 
     sf::Text           m_title;
     sf::Text           m_levelTitles[3]; // "LEVEL 1", "LEVEL 2", "LEVEL 3"
@@ -24,12 +23,6 @@ private:
     sf::Text           m_levelDescs[3];  // Description text
     sf::RectangleShape m_levelBoxes[3];
     std::vector<sf::Sprite> m_previewTiles[3]; // small themed tile-strip preview
-    sf::Sprite         m_previewHeroes[3];
-    sf::Sprite         m_previewEnemies[3];
-    sf::Sprite         m_previewCoins[3];
     sf::RectangleShape m_background;
-    sf::Text           m_modeBadge;
-    sf::Text           m_helpText;
     int                m_selected = 0;
-    float              m_animationTime = 0.0f;
 };

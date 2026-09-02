@@ -5,7 +5,6 @@
 /// Bowser is a stationary, two-by-two-tile boss. It idles for two seconds,
 /// then plays one three-second, six-frame breathing animation before looping.
 class Bowser final : public Enemy {
-  friend class SnapshotAccess;
 public:
   enum class State { Idle, Breathing };
 

@@ -2,8 +2,6 @@
 #include "States/Navigator.hpp"
 #include "Core/Game.hpp"
 #include "Core/AssetManager.hpp"
-#include "Entities/Player.hpp"
-#include "Graphics/SpriteRegistry.hpp"
 #include "Physics/PhysicsConstants.hpp"
 #include <cmath>
 #include <string>
@@ -17,7 +15,6 @@ void GameOverState::onEnter() {
     bool pvpResult = (m_result == GameResult::P1Won || m_result == GameResult::P2Won);
     bool won = (m_result == GameResult::Won || pvpResult);
     m_animTime = 0.0f;
-    m_title.setScale(1.0f, 1.0f);
 
     // Background: deep gold for PvP win, blue for normal win, dark for loss
     if (pvpResult) {
@@ -27,13 +24,6 @@ void GameOverState::onEnter() {
         m_background.setSize(sf::Vector2f(WINDOW_WIDTH, WINDOW_HEIGHT));
         m_background.setFillColor(won ? sf::Color(20, 45, 75) : sf::Color(20, 20, 20));
     }
-
-    m_resultPanel.setSize({500.0f, 410.0f});
-    m_resultPanel.setPosition(150.0f, 96.0f);
-    m_resultPanel.setFillColor(sf::Color(13, 20, 55, 230));
-    m_resultPanel.setOutlineThickness(4.0f);
-    m_resultPanel.setOutlineColor(pvpResult ? sf::Color(255, 190, 77)
-                                            : (won ? sf::Color(116, 201, 255) : sf::Color(216, 75, 75)));
 
     // Main title
     m_title.setFont(font);
@@ -51,7 +41,7 @@ void GameOverState::onEnter() {
     }
     auto tb = m_title.getLocalBounds();
     m_title.setOrigin(tb.width / 2.0f, tb.height / 2.0f);
-    m_title.setPosition(WINDOW_WIDTH / 2.0f, 145.0f);
+    m_title.setPosition(WINDOW_WIDTH / 2.0f, pvpResult ? 160.0f : 150.0f);
 
     // Subtitle (PvP only)
     m_subtitleText.setFont(font);
@@ -64,23 +54,8 @@ void GameOverState::onEnter() {
         m_subtitleText.setOutlineThickness(2.0f);
         auto sb2 = m_subtitleText.getLocalBounds();
         m_subtitleText.setOrigin(sb2.width / 2.0f, sb2.height / 2.0f);
-        m_subtitleText.setPosition(WINDOW_WIDTH / 2.0f, 205.0f);
+        m_subtitleText.setPosition(WINDOW_WIDTH / 2.0f, 240.0f);
     }
-
-    m_detailText.setFont(font);
-    m_detailText.setCharacterSize(15);
-    m_detailText.setFillColor(sf::Color(210, 224, 255));
-    if (pvpResult) {
-        m_detailText.setString("THE ARENA HAS A NEW CHAMPION");
-    } else if (won) {
-        m_detailText.setString("THE KINGDOM IS SAFE — FOR NOW");
-    } else {
-        m_detailText.setString("TAKE A BREATH, THEN TRY AGAIN");
-    }
-    auto detailBounds = m_detailText.getLocalBounds();
-    m_detailText.setOrigin(detailBounds.left + detailBounds.width / 2.0f,
-                           detailBounds.top + detailBounds.height / 2.0f);
-    m_detailText.setPosition(WINDOW_WIDTH / 2.0f, pvpResult ? 238.0f : 208.0f);
 
     // Score text
     m_scoreText.setFont(font);
@@ -89,7 +64,7 @@ void GameOverState::onEnter() {
     m_scoreText.setFillColor(sf::Color::White);
     auto sb = m_scoreText.getLocalBounds();
     m_scoreText.setOrigin(sb.width / 2.0f, sb.height / 2.0f);
-    m_scoreText.setPosition(WINDOW_WIDTH / 2.0f, 368.0f);
+    m_scoreText.setPosition(WINDOW_WIDTH / 2.0f, pvpResult ? 290.0f : 250.0f);
 
     std::string labels[] = {
         (m_result == GameResult::Won) ? "NEW GAME" : (pvpResult ? "PLAY AGAIN" : "RETRY"),
@@ -102,7 +77,7 @@ void GameOverState::onEnter() {
         m_options[i].setOutlineThickness(pvpResult ? 2.0f : 0.0f);
         auto ob = m_options[i].getLocalBounds();
         m_options[i].setOrigin(ob.width / 2.0f, ob.height / 2.0f);
-        m_options[i].setPosition(WINDOW_WIDTH / 2.0f, 423.0f + i * 55.0f);
+        m_options[i].setPosition(WINDOW_WIDTH / 2.0f, (pvpResult ? 380.0f : 350.0f) + i * 65.0f);
         m_options[i].setFillColor(i == 0 ? sf::Color::Yellow : sf::Color::White);
     }
 
@@ -139,7 +114,7 @@ void GameOverState::handleEvent(const sf::Event& event) {
     sf::RenderWindow& window = Game::getInstance().getWindow();
 
     if (event.type == sf::Event::MouseMoved) {
-        sf::Vector2f mousePos = Game::getInstance().mapPixelToUiCoords({event.mouseMove.x, event.mouseMove.y});
+        sf::Vector2f mousePos = window.mapPixelToCoords({event.mouseMove.x, event.mouseMove.y});
         for (int i = 0; i < 2; i++) {
             if (m_options[i].getGlobalBounds().contains(mousePos)) {
                 if (m_selected != i) {
@@ -154,7 +129,7 @@ void GameOverState::handleEvent(const sf::Event& event) {
     }
 
     if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left) {
-        sf::Vector2f mousePos = Game::getInstance().mapPixelToUiCoords({event.mouseButton.x, event.mouseButton.y});
+        sf::Vector2f mousePos = window.mapPixelToCoords({event.mouseButton.x, event.mouseButton.y});
         for (int i = 0; i < 2; i++) {
             if (m_options[i].getGlobalBounds().contains(mousePos)) {
                 m_selected = i;
@@ -193,18 +168,9 @@ void GameOverState::handleEvent(const sf::Event& event) {
 
 void GameOverState::update(float dt) {
     bool pvpResult = (m_result == GameResult::P1Won || m_result == GameResult::P2Won);
-    bool won = (m_result == GameResult::Won || pvpResult);
-    m_animTime += dt;
-    std::string heroName = pvpResult ? m_winnerName : Game::getInstance().getProgress().getSelectedCharacter();
-    const CharacterId hero = heroName == "LUIGI" || heroName == "Luigi"
-        ? CharacterId::Luigi : CharacterId::Mario;
-    SpriteRegistry::applyPlayerFrame(
-        m_heroSprite, hero, won ? PowerUpState::Big : PowerUpState::Small,
-        won ? SpriteRegistry::PlayerAnim::Jump : SpriteRegistry::PlayerAnim::Idle,
-        static_cast<int>(m_animTime * 9.0f),
-        sf::FloatRect(WINDOW_WIDTH * 0.5f, 344.0f, 0.0f, 96.0f));
     if (pvpResult) {
         // Pulse the title scale for celebration effect
+        m_animTime += dt;
         float pulse = 1.0f + 0.06f * std::sin(m_animTime * 4.0f);
         m_title.setScale(pulse, pulse);
         // Oscillate subtitle color
@@ -217,10 +183,8 @@ void GameOverState::update(float dt) {
 }
 
 void GameOverState::render(sf::RenderWindow& window) {
-    window.setView(Game::getInstance().getUiView());
+    window.setView(window.getDefaultView());
     window.draw(m_background);
-    window.draw(m_resultPanel);
-    window.draw(m_heroSprite);
     window.draw(m_title);
     bool pvpResult = (m_result == GameResult::P1Won || m_result == GameResult::P2Won);
     if (pvpResult) {
@@ -228,7 +192,6 @@ void GameOverState::render(sf::RenderWindow& window) {
     } else {
         window.draw(m_scoreText);
     }
-    window.draw(m_detailText);
     for (int i = 0; i < 2; i++) {
         window.draw(m_options[i]);
     }

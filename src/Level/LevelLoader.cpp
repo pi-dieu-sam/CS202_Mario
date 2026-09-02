@@ -57,8 +57,6 @@ LevelLoader::LevelData LevelLoader::loadLevel(const std::string& filename,
 
     if (lines.empty()) return data;
 
-    data.loaded = true;
-
     int rows = static_cast<int>(lines.size());
     int cols = 0;
     for (auto& l : lines) {
@@ -76,10 +74,11 @@ LevelLoader::LevelData LevelLoader::loadLevel(const std::string& filename,
     data.height = std::max(rows + rowOffset, targetRows) * TILE_SIZE;
 
     bool foundSpawn = false;
-    // Pipe launchers are deliberately a Level 2-only set piece. Other
-    // levels keep their ordinary pipe behaviour.
-    const bool level2PipeLaunchers =
-        filename == "assets/levels/level2.txt";
+    // Standard pipe mouths are repeating fireball launchers in the two
+    // castle levels. Other levels keep their ordinary pipe behaviour.
+    const bool pipeLaunchers =
+        filename == "assets/levels/level2.txt" ||
+        filename == "assets/levels/level3.txt";
 
     for (int row = 0; row < rows; row++) {
         for (int col = 0; col < static_cast<int>(lines[row].size()); col++) {
@@ -101,9 +100,9 @@ LevelLoader::LevelData LevelLoader::loadLevel(const std::string& filename,
 
                     // A pipe is two tiles wide. Spawn only from its left
                     // mouth piece (<) so each <> pair gets one fireball at
-                    // the middle of the opening. This applies only to the
-                    // main Level 2 map.
-                    if (level2PipeLaunchers && c == '<' &&
+                    // the middle of the opening. This applies to the main
+                    // Level 2 and Level 3 maps.
+                    if (pipeLaunchers && c == '<' &&
                         col + 1 < static_cast<int>(lines[row].size()) &&
                         lines[row][col + 1] == '>') {
                         data.lavaFireballs.push_back(
@@ -113,11 +112,11 @@ LevelLoader::LevelData LevelLoader::loadLevel(const std::string& filename,
                     break;
                 }
 
-                // Castle pieces ('Q','2','3','4','6','S','7','5') — each char
+                // Castle pieces ('Q','2','3','4','6','7','5') — each char
                 // is one 32x32 tile cut from Castle_piece.png. Assemble a
-                // castle with "Q234" above "6S75".
+                // castle with "Q234" above "6_75". ('S' is a breakable brick.)
                 case 'Q': case '2': case '3': case '4':
-                case '6': case 'S': case '7': case '5':
+                case '6': case '7': case '5':
                 {
                     auto piece = EntityFactory::createCastlePiece(c, x, y, theme);
                     if (piece) data.tiles.push_back(std::move(piece));
@@ -136,7 +135,7 @@ LevelLoader::LevelData LevelLoader::loadLevel(const std::string& filename,
                 }
 
                 // ── Blocks ──
-                case '?': case 'M': case 'F': case 's':
+                case '?': case 'S': case 'W': case 'M': case 'F': case 's':
                 {
                     auto block = EntityFactory::createBlock(c, x, y, theme);
                     if (block) data.blocks.push_back(std::move(block));
@@ -207,13 +206,6 @@ LevelLoader::LevelData LevelLoader::loadLevel(const std::string& filename,
                 case 'o': // Coin
                 {
                     auto item = EntityFactory::createItem(ItemType::Coin, {x, y}, theme);
-                    if (item) data.items.push_back(std::move(item));
-                    break;
-                }
-
-                case 'W': // FlowersBuff (size/speed/jump buff)
-                {
-                    auto item = EntityFactory::createItem(ItemType::FlowersBuff, {x, y}, theme);
                     if (item) data.items.push_back(std::move(item));
                     break;
                 }

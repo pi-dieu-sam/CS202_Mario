@@ -30,10 +30,7 @@ namespace ScreenFlow {
 
 enum class Screen {
     MainMenu,
-    Settings,
-    SaveSlots,
     CharacterSelect,
-    ModeBriefing,
     LevelSelect,
     Playing,
     Pause,
@@ -68,31 +65,31 @@ struct Transition {
 
 /// Main menu option selected (mouse click or Enter/Space), matching the
 /// index order of MenuState::m_options: 0 = 1 Player, 1 = 2P Co-op,
-/// 2 = 2P PvP, 3 = Load Game, 4 = Settings, 5 = Exit. Co-op and PvP first
-/// enter a mode-specific ready screen. Load Game always opens the
-/// five-slot picker; validation and restoration happen only after a slot is
-/// explicitly selected there. The second argument is retained temporarily so
-/// existing callers can migrate without changing unrelated menu behavior.
-inline Transition onMenuOption(int option, bool /*legacySaveLoaded*/) {
+/// 2 = 2P PvP, 3 = Load Game, 4 = Exit. `saveLoaded` is the result of
+/// having already called SaveManager::loadGame() for option 3; it's
+/// irrelevant for every other option.
+inline Transition onMenuOption(int option, bool saveLoaded) {
     switch (option) {
         case 0: return {Op::Push, Screen::CharacterSelect};
-        case 1: return {Op::Push, Screen::ModeBriefing};
-        case 2: return {Op::Push, Screen::ModeBriefing};
-        case 3: return {Op::Push, Screen::SaveSlots};
-        case 4: return {Op::Push, Screen::Settings};
-        case 5: return {Op::QuitApp, Screen::MainMenu};
+        case 1: return {Op::Push, Screen::CharacterSelect};
+        case 2: return {Op::Push, Screen::CharacterSelect};
+        case 3: return saveLoaded ? Transition{Op::ResetTo, Screen::Playing}
+                                   : Transition{Op::None, Screen::MainMenu};
+        case 4: return {Op::QuitApp, Screen::MainMenu};
         default: return {Op::None, Screen::MainMenu};
     }
 }
 
-/// The player confirmed their choice on a selection screen. Character and
-/// level screens advance normally; the multiplayer briefing branches by mode.
+/// The player confirmed their choice on a selection screen (character or
+/// level). `mode` is unused today — both selection screens always advance
+/// to the same next screen regardless of game mode — but is accepted for
+/// symmetry with onBack() and in case a mode-specific confirm target is
+/// ever needed.
 inline Transition onConfirm(Screen current, GameMode mode) {
     switch (current) {
-        case Screen::CharacterSelect: return {Op::Push, Screen::LevelSelect};
-        case Screen::ModeBriefing:
-            return mode == GameMode::Coop ? Transition{Op::Push, Screen::LevelSelect}
-                                          : Transition{Op::ResetTo, Screen::Playing};
+        case Screen::CharacterSelect:
+            return mode == GameMode::PvP ? Transition{Op::ResetTo, Screen::Playing}
+                                         : Transition{Op::Push, Screen::LevelSelect};
         case Screen::LevelSelect:     return {Op::ResetTo, Screen::Playing};
         default:                      return {Op::None, current};
     }
@@ -101,15 +98,13 @@ inline Transition onConfirm(Screen current, GameMode mode) {
 /// Escape pressed on a selection screen. Always just "go back" — which
 /// screen that resolves to depends on what's actually beneath it on the
 /// stack (Navigator/StateManager handle that), not on game mode. This is
-/// what keeps every selection flow correct without hardcoding the screen
-/// beneath it.
+/// what makes back-navigation correct for every normal game flow
+/// (Menu -> CharacterSelect -> LevelSelect) without hardcoding the
+/// screen beneath the current one.
 inline Transition onBack(Screen current) {
     switch (current) {
         case Screen::CharacterSelect:
-        case Screen::ModeBriefing:
-        case Screen::Settings:
         case Screen::LevelSelect:
-        case Screen::SaveSlots:
         case Screen::Pause:
             return {Op::Back, current};
         default:
@@ -131,13 +126,11 @@ inline Transition onGameOverPrimary(GameResult result) {
     }
 }
 
-/// PauseState action selected: 0 = Resume, 2 = Quit to Menu. The middle
-/// Save Game action needs the paused in-memory snapshot, so PauseState pushes
-/// SaveSlotState directly rather than routing it through this pure policy.
+/// PauseState option selected: 0 = Resume, 1 = Quit to Menu.
 inline Transition onPauseOption(int option) {
     switch (option) {
         case 0: return {Op::Back, Screen::Pause};
-        case 2: return {Op::ResetTo, Screen::MainMenu};
+        case 1: return {Op::ResetTo, Screen::MainMenu};
         default: return {Op::None, Screen::Pause};
     }
 }
@@ -151,18 +144,9 @@ inline std::vector<Screen> canonicalStack(Screen screen, GameMode mode) {
     switch (screen) {
         case Screen::MainMenu:
             return {Screen::MainMenu};
-        case Screen::Settings:
-            return {Screen::MainMenu, Screen::Settings};
-        case Screen::SaveSlots:
-            return {Screen::MainMenu, Screen::SaveSlots};
         case Screen::CharacterSelect:
             return {Screen::MainMenu, Screen::CharacterSelect};
-        case Screen::ModeBriefing:
-            return {Screen::MainMenu, Screen::ModeBriefing};
         case Screen::LevelSelect:
-            if (mode == GameMode::Coop) {
-                return {Screen::MainMenu, Screen::ModeBriefing, Screen::LevelSelect};
-            }
             return {Screen::MainMenu, Screen::CharacterSelect, Screen::LevelSelect};
         case Screen::Playing:
             // Gameplay is always a fresh root: no selection screen is ever

@@ -96,11 +96,6 @@ void SoundManager::toggleMute() {
     applyVolumes();
 }
 
-void SoundManager::setMuted(bool muted) {
-    m_muted = muted;
-    applyVolumes();
-}
-
 bool SoundManager::isMuted() const {
     return m_muted;
 }
@@ -119,7 +114,6 @@ float SoundManager::getMasterVolume() const {
 
 void SoundManager::setSoundVolume(float volume) {
     m_soundVolume = std::clamp(volume, 0.0f, 100.0f);
-    applyVolumes();
 }
 
 void SoundManager::setMusicVolume(float volume) {
@@ -127,32 +121,9 @@ void SoundManager::setMusicVolume(float volume) {
     applyVolumes();
 }
 
-float SoundManager::getSoundVolume() const {
-    return m_soundVolume;
-}
-
-float SoundManager::getMusicVolume() const {
-    return m_musicVolume;
-}
-
-void SoundManager::applySettings(const AudioSettings& settings) {
-    m_muted = settings.muted;
-    m_masterVolume = std::clamp(settings.masterVolume, 0.0f, 100.0f);
-    m_musicVolume = std::clamp(settings.musicVolume, 0.0f, 100.0f);
-    m_soundVolume = std::clamp(settings.sfxVolume, 0.0f, 100.0f);
-    if (!m_musicTracks.empty()) {
-        m_currentTrackIdx = std::min(settings.musicTrack, m_musicTracks.size() - 1);
-    }
-    applyVolumes();
-}
-
 void SoundManager::applyVolumes() {
     float effectiveMusicVol = m_muted ? 0.0f : (m_musicVolume * m_masterVolume) / 100.0f;
-    float effectiveSoundVol = m_muted ? 0.0f : (m_soundVolume * m_masterVolume) / 100.0f;
     m_music.setVolume(effectiveMusicVol);
-    for (sf::Sound& sound : m_soundPool) {
-        sound.setVolume(effectiveSoundVol);
-    }
 }
 
 const std::vector<std::pair<std::string, std::string>>& SoundManager::getMusicTracks() const {

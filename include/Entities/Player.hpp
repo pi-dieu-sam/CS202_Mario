@@ -1,12 +1,11 @@
 #pragma once
-// Player.hpp — player-controlled character with lives, power-ups, and scoring
 #include "Character.hpp"
 #include "../Graphics/SpriteRegistry.hpp"
 
 /// Power-up state for the player character.
 enum class PowerUpState {
   Small, // Default — dies on hit
-  Big,   // Mushroom — can break bricks, shrinks on hit
+  Big,   // Large state — can break bricks, shrinks on hit
   Fire   // FireFlower — can shoot fireballs
 };
 
@@ -20,7 +19,6 @@ enum class CharacterId {
 /// Player — base class for player-controlled characters (Mario, Luigi).
 /// Adds lives, score, power-up system, and invincibility after damage.
 class Player : public Character {
-  friend class SnapshotAccess;
 public:
   Player();
   virtual ~Player() = default;
@@ -98,7 +96,7 @@ public:
   void loseLife();
 
   // ── Player ID (1 = P1, 2 = P2) for event routing ──
-  int  getPlayerId() const noexcept { return m_playerId; }
+  int  getPlayerId() const { return m_playerId; }
   void setPlayerId(int id) { m_playerId = id; }
 
   // ── Invincibility (star or post-damage) ──

@@ -1,98 +1,108 @@
 #include "States/MenuState.hpp"
-
-#include "Core/AssetManager.hpp"
-#include "Core/Game.hpp"
-#include "Core/SoundManager.hpp"
-#include "Entities/Player.hpp"
-#include "Graphics/SpriteRegistry.hpp"
-#include "Physics/PhysicsConstants.hpp"
 #include "States/Navigator.hpp"
-#include "UI/MenuAttractTimeline.hpp"
-
-#include <array>
+#include "Core/Game.hpp"
+#include "Core/AssetManager.hpp"
+#include "Core/PlayerProgress.hpp"
+#include "Core/SaveManager.hpp"
+#include "Core/SoundManager.hpp"
+#include "Physics/PhysicsConstants.hpp"
+#include "Graphics/SpriteRegistry.hpp"
 #include <cmath>
 
 namespace {
+// Source sheet all the scenery crops below come from.
 const std::string TITLE_SHEET_PATH =
-    "assets/textures/NES - Super Mario Bros. - Miscellaneous - Title Screen, HUD and Miscellaneous.png";
+    "assets/textures/NES - Super Mario Bros. - Miscellaneous - Title Screen, "
+    "HUD and Miscellaneous.png";
 
+// Pixel-sampled crop rects within TITLE_SHEET_PATH. Each is inset 1-2px
+// from its raw color-detected bounding box to cut off the anti-aliased
+// fringe pixels the source sheet has at every sprite boundary — left in,
+// those blend to a visible cyan/green sliver once scaled up 2-3x.
 const sf::IntRect TITLE_CARD_RECT(40, 224, 176, 88);
 const sf::IntRect HILL_RECT(0, 364, 80, 37);
 const sf::IntRect BUSH_RECT(183, 383, 65, 18);
 const sf::IntRect GROUND_RECT(0, 401, 256, 30);
+
+// Sky color baked into the crops above — the menu background matches it
+// exactly so the sprites blend in with no visible seam.
 const sf::Color SKY_COLOR(148, 148, 255);
 
+// Layout constants (window is WINDOW_WIDTH x WINDOW_HEIGHT).
+constexpr float TITLE_CARD_TOP    = 60.0f;
+constexpr float TITLE_CARD_HEIGHT = 200.0f;
+constexpr float TITLE_CARD_BOTTOM = TITLE_CARD_TOP + TITLE_CARD_HEIGHT;
+
 constexpr float GROUND_HEIGHT = 80.0f;
-constexpr float PIPE_X = 280.0f;
-constexpr float PIPE_TOP_Y = 464.0f;
 
-void centerText(sf::Text& text, float x, float y) {
-    const sf::FloatRect bounds = text.getLocalBounds();
-    text.setOrigin(bounds.left + bounds.width * 0.5f, bounds.top + bounds.height * 0.5f);
-    text.setPosition(x, y);
-}
+constexpr float HILL_CENTER_X = 140.0f;
+constexpr float HILL_HEIGHT   = 100.0f;
 
-const std::array<std::string, 6> MENU_LABELS = {
-    "1 PLAYER GAME", "2 PLAYER CO-OP", "2 PLAYER PvP",
-    "LOAD GAME", "SETTINGS", "EXIT"};
+constexpr float BUSH_CENTER_X = 660.0f;
+constexpr float BUSH_HEIGHT   = 50.0f;
 
-const std::array<std::string, 6> MENU_HINTS = {
-    "CHOOSE MARIO OR LUIGI, THEN PICK A WORLD",
-    "TEAM UP — REVIEW BOTH PLAYERS' CONTROLS BEFORE SELECTING A WORLD",
-    "ENTER THE ARENA — STOMP OR FIREBALL YOUR RIVAL",
-    "CONTINUE A SAVED 1 PLAYER ADVENTURE",
-    "VIDEO, FRAME RATE, MUSIC, AND SOUND EFFECTS",
-    "CLOSE THE GAME"};
+constexpr float MARIO_CENTER_X = HILL_CENTER_X + 150.0f;
+constexpr float MARIO_HEIGHT   = 50.0f;
 } // namespace
 
-void MenuState::onEnter() {
-    SoundManager& sound = SoundManager::getInstance();
-    sound.selectTrack(sound.getCurrentTrackIndex());
+MenuState::MenuState() {}
 
+void MenuState::onEnter() {
+    SoundManager::getInstance().playMusic("assets/audio/hide_dorian_concept.wav", true);
     sf::Font& font = AssetManager::getInstance().getFont("assets/fonts/mario_font.ttf");
     sf::Texture& titleSheet = AssetManager::getInstance().getTexture(TITLE_SHEET_PATH);
 
-    m_background.setSize({static_cast<float>(WINDOW_WIDTH), static_cast<float>(WINDOW_HEIGHT)});
+    // Background — matches the sky color baked into the cropped sprites.
+    m_background.setSize(sf::Vector2f(WINDOW_WIDTH, WINDOW_HEIGHT));
     m_background.setFillColor(SKY_COLOR);
 
-    const float groundTop = WINDOW_HEIGHT - GROUND_HEIGHT;
-    m_groundSprite.setTexture(titleSheet);
-    m_groundSprite.setTextureRect(GROUND_RECT);
-    m_groundSprite.setOrigin(0.0f, 0.0f);
-    m_groundSprite.setScale(WINDOW_WIDTH / static_cast<float>(GROUND_RECT.width),
-                            GROUND_HEIGHT / static_cast<float>(GROUND_RECT.height));
-    m_groundSprite.setPosition(0.0f, groundTop);
-
-    SpriteRegistry::applyFrame(m_hillSprite, titleSheet, HILL_RECT,
-                               sf::FloatRect(130.0f, groundTop - 102.0f, 0.0f, 102.0f));
-    SpriteRegistry::applyFrame(m_bushSprite, titleSheet, BUSH_RECT,
-                               sf::FloatRect(690.0f, groundTop - 54.0f, 0.0f, 54.0f));
-
-    // Assemble a two-tile-tall warp pipe from the four quadrants used by
-    // gameplay tiles, giving the attract loop a real obstacle to clear.
-    sf::Texture& pipeTexture = AssetManager::getInstance().getTexture("assets/textures/Warp_Pipe_SMB.png");
-    const sf::Vector2u pipeSize = pipeTexture.getSize();
-    const int halfW = static_cast<int>(pipeSize.x) / 2;
-    const int halfH = static_cast<int>(pipeSize.y) / 2;
-    const std::array<sf::IntRect, 4> pipeRects = {
-        sf::IntRect(0, 0, halfW, halfH), sf::IntRect(halfW, 0, halfW, halfH),
-        sf::IntRect(0, halfH, halfW, halfH), sf::IntRect(halfW, halfH, halfW, halfH)};
-    const std::array<sf::Vector2f, 4> pipePositions = {
-        sf::Vector2f(PIPE_X, PIPE_TOP_Y), sf::Vector2f(PIPE_X + 32.0f, PIPE_TOP_Y),
-        sf::Vector2f(PIPE_X, PIPE_TOP_Y + 32.0f), sf::Vector2f(PIPE_X + 32.0f, PIPE_TOP_Y + 32.0f)};
-    for (int i = 0; i < 4; ++i) {
-        SpriteRegistry::applyFrame(m_pipePieces[i], pipeTexture, pipeRects[i],
-                                   sf::FloatRect(pipePositions[i].x, pipePositions[i].y, 32.0f, 32.0f));
+    // Ground strip: single sprite stretched to exactly span the window width.
+    {
+        float groundTop = WINDOW_HEIGHT - GROUND_HEIGHT;
+        m_groundSprite.setTexture(titleSheet);
+        m_groundSprite.setTextureRect(GROUND_RECT);
+        m_groundSprite.setOrigin(0.0f, 0.0f);
+        m_groundSprite.setScale(WINDOW_WIDTH / static_cast<float>(GROUND_RECT.width),
+                                 GROUND_HEIGHT / static_cast<float>(GROUND_RECT.height));
+        m_groundSprite.setPosition(0.0f, groundTop);
     }
 
-    SpriteRegistry::applyFrame(m_titleCardSprite, titleSheet, TITLE_CARD_RECT,
-                               sf::FloatRect(WINDOW_WIDTH * 0.5f, 56.0f, 0.0f, 174.0f));
-    m_titleBaseY = 230.0f;
+    // Hill, bottom-anchored on top of the ground strip.
+    {
+        float groundTop = WINDOW_HEIGHT - GROUND_HEIGHT;
+        sf::FloatRect box(HILL_CENTER_X, groundTop - HILL_HEIGHT, 0.0f, HILL_HEIGHT);
+        SpriteRegistry::applyFrame(m_hillSprite, titleSheet, HILL_RECT, box);
+    }
 
-    auto setupHudText = [&](sf::Text& text, const std::string& value, float x, float y,
-                            unsigned int size = 16) {
+    // Bushes, bottom-anchored on the same ground line, off to the right.
+    {
+        float groundTop = WINDOW_HEIGHT - GROUND_HEIGHT;
+        sf::FloatRect box(BUSH_CENTER_X, groundTop - BUSH_HEIGHT, 0.0f, BUSH_HEIGHT);
+        SpriteRegistry::applyFrame(m_bushSprite, titleSheet, BUSH_RECT, box);
+    }
+
+    // Small Mario, standing partway up the hill's slope (not balanced right
+    // on the peak tip — matches how he's placed on the reference screen).
+    {
+        float groundTop = WINDOW_HEIGHT - GROUND_HEIGHT;
+        float hillTop = groundTop - HILL_HEIGHT;
+        float marioFeetY = hillTop + HILL_HEIGHT * 0.35f + 65.0f;
+        sf::FloatRect box(MARIO_CENTER_X, marioFeetY - MARIO_HEIGHT, 0.0f, MARIO_HEIGHT);
+        SpriteRegistry::applyFrame(m_marioSprite, "assets/textures/SMB_Smallmario.png", box);
+    }
+
+    // Title card — centered horizontally; bounce animation moves it in update().
+    {
+        sf::FloatRect box(WINDOW_WIDTH / 2.0f, TITLE_CARD_TOP, 0.0f, TITLE_CARD_HEIGHT);
+        SpriteRegistry::applyFrame(m_titleCardSprite, titleSheet, TITLE_CARD_RECT, box);
+    }
+    m_titleBaseY = TITLE_CARD_BOTTOM;
+
+    // Decorative HUD row.
+    auto setupHudText = [&](sf::Text& text, const std::string& str, float x, float y,
+                             unsigned int size = 16) {
         text.setFont(font);
-        text.setString(value);
+        text.setString(str);
         text.setCharacterSize(size);
         text.setFillColor(sf::Color::White);
         text.setOutlineColor(sf::Color::Black);
@@ -106,193 +116,188 @@ void MenuState::onEnter() {
     setupHudText(m_hudWorldText, "1-1", 445.0f, 32.0f);
     setupHudText(m_hudTimeLabelText, "TIME", 610.0f, 10.0f);
     setupHudText(m_hudTimeText, "300", 615.0f, 32.0f);
-    SpriteRegistry::applyFrame(m_coinSprite, "assets/textures/SMBCoin.gif",
-                               sf::FloatRect(230.0f, 26.0f, 0.0f, 22.0f));
 
-    m_copyrightText.setFont(font);
-    m_copyrightText.setString("(C)1985 NINTENDO");
-    m_copyrightText.setCharacterSize(13);
-    m_copyrightText.setFillColor(sf::Color(255, 206, 197));
-    centerText(m_copyrightText, WINDOW_WIDTH * 0.5f, 252.0f);
-
-    m_menuPanel.setSize({320.0f, 239.0f});
-    m_menuPanel.setPosition(430.0f, 270.0f);
-    m_menuPanel.setFillColor(sf::Color(17, 29, 69, 226));
-    m_menuPanel.setOutlineThickness(3.0f);
-    m_menuPanel.setOutlineColor(sf::Color(96, 133, 212));
-
-    m_menuHeader.setFont(font);
-    m_menuHeader.setString("CHOOSE A MODE");
-    m_menuHeader.setCharacterSize(16);
-    m_menuHeader.setFillColor(sf::Color(255, 221, 102));
-    centerText(m_menuHeader, 590.0f, 284.0f);
-
-    for (int i = 0; i < OPTION_COUNT; ++i) {
-        const float y = 298.0f + i * 33.0f;
-        m_optionPanels[i].setSize({282.0f, 28.0f});
-        m_optionPanels[i].setPosition(449.0f, y);
-        m_optionPanels[i].setOutlineThickness(1.0f);
-
-        m_options[i].setFont(font);
-        m_options[i].setString(MENU_LABELS[static_cast<std::size_t>(i)]);
-        m_options[i].setCharacterSize(17);
-        centerText(m_options[i], 590.0f, y + 14.0f);
+    // Coin icon next to the coin count.
+    {
+        sf::FloatRect box(230.0f, 26.0f, 0.0f, 22.0f);
+        SpriteRegistry::applyFrame(m_coinSprite, "assets/textures/SMBCoin.gif", box);
     }
 
-    m_selectionHint.setFont(font);
-    m_selectionHint.setCharacterSize(11);
-    m_selectionHint.setFillColor(sf::Color(207, 221, 255));
-    centerText(m_selectionHint, 590.0f, 521.0f);
+    // Copyright line under the title card.
+    m_copyrightText.setFont(font);
+    // mario_font.ttf has no "©" glyph (renders as a tofu box) — use "(C)" instead.
+    m_copyrightText.setString("(C)1985 NINTENDO");
+    m_copyrightText.setCharacterSize(14);
+    m_copyrightText.setFillColor(sf::Color(255, 206, 197));
+    {
+        auto bounds = m_copyrightText.getLocalBounds();
+        m_copyrightText.setOrigin(bounds.width / 2.0f, bounds.height / 2.0f);
+        m_copyrightText.setPosition(WINDOW_WIDTH / 2.0f, 285.0f);
+    }
 
-    m_controlHint.setFont(font);
-    m_controlHint.setString("UP/DOWN: SELECT    ENTER: CONFIRM");
-    m_controlHint.setCharacterSize(11);
-    m_controlHint.setFillColor(sf::Color(232, 236, 255));
-    centerText(m_controlHint, 590.0f, 548.0f);
+    // "TOP- 000000" flavor text removed per request
 
-    m_cursor.setRadius(5.0f);
-    m_cursor.setOrigin(5.0f, 5.0f);
-    m_cursor.setFillColor(sf::Color(255, 221, 102));
+    // Menu options.
+    std::string labels[] = {"1 PLAYER GAME", "2 PLAYER CO-OP", "2 PLAYER PvP", "LOAD GAME", "EXIT"};
+    for (int i = 0; i < 5; i++) {
+        m_options[i].setFont(font);
+        m_options[i].setString(labels[i]);
+        m_options[i].setCharacterSize(24);
+        m_options[i].setOutlineColor(sf::Color::Black);
+        m_options[i].setOutlineThickness(2.0f);
+        auto bounds = m_options[i].getLocalBounds();
+        m_options[i].setOrigin(bounds.width / 2.0f, bounds.height / 2.0f);
+        m_options[i].setPosition(WINDOW_WIDTH / 2.0f, 300.0f + i * 38.0f);
+    }
+
+    m_cursor.setRadius(6.0f);
+    m_cursor.setOrigin(6.0f, 6.0f);
+    m_cursor.setFillColor(sf::Color(216, 40, 0));
 
     m_selectedOption = 0;
-    m_titleBounce = 0.0f;
-    m_attractTime = 0.0f;
-    updateAttractScene(0.0f);
     updateOptionVisuals();
 }
 
 void MenuState::onExit() {}
 
-void MenuState::activateSelectedOption() {
-    Game& game = Game::getInstance();
-    PlayerProgress& progress = game.getProgress();
-    switch (m_selectedOption) {
-    case 0:
-        progress.resetGameData();
-        progress.setGameMode(GameMode::SinglePlayer);
-        break;
-    case 1:
-        progress.resetGameData();
-        progress.setGameMode(GameMode::Coop);
-        break;
-    case 2:
-        progress.resetGameData();
-        progress.setGameMode(GameMode::PvP);
-        break;
-    default:
-        break;
-    }
-    Navigator::apply(ScreenFlow::onMenuOption(m_selectedOption, false),
-                     game.getStateManager(), progress.getGameMode());
-}
-
 void MenuState::handleEvent(const sf::Event& event) {
-    Game& game = Game::getInstance();
-    if (event.type == sf::Event::MouseMoved ||
-        (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left)) {
-        const sf::Vector2i pixel = event.type == sf::Event::MouseMoved
-            ? sf::Vector2i(event.mouseMove.x, event.mouseMove.y)
-            : sf::Vector2i(event.mouseButton.x, event.mouseButton.y);
-        const sf::Vector2f mouse = game.mapPixelToUiCoords(pixel);
-        for (int i = 0; i < OPTION_COUNT; ++i) {
-            if (m_optionPanels[i].getGlobalBounds().contains(mouse)) {
-                m_selectedOption = i;
-                updateOptionVisuals();
-                if (event.type == sf::Event::MouseButtonPressed) activateSelectedOption();
-                return;
+    sf::RenderWindow& window = Game::getInstance().getWindow();
+
+    if (event.type == sf::Event::MouseMoved) {
+        sf::Vector2f mousePos = window.mapPixelToCoords({event.mouseMove.x, event.mouseMove.y});
+        for (int i = 0; i < 3; i++) {
+            if (m_options[i].getGlobalBounds().contains(mousePos)) {
+                if (m_selectedOption != i) {
+                    m_selectedOption = i;
+                    updateOptionVisuals();
+                }
+                break;
             }
         }
         return;
     }
 
-    if (event.type != sf::Event::KeyPressed) return;
-    switch (event.key.code) {
-    case sf::Keyboard::Up:
-    case sf::Keyboard::W:
-        m_selectedOption = (m_selectedOption - 1 + OPTION_COUNT) % OPTION_COUNT;
-        updateOptionVisuals();
-        break;
-    case sf::Keyboard::Down:
-    case sf::Keyboard::S:
-        m_selectedOption = (m_selectedOption + 1) % OPTION_COUNT;
-        updateOptionVisuals();
-        break;
-    case sf::Keyboard::Return:
-    case sf::Keyboard::Space:
-        activateSelectedOption();
-        break;
-    default:
-        break;
+    if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left) {
+        sf::Vector2f mousePos = window.mapPixelToCoords({event.mouseButton.x, event.mouseButton.y});
+        for (int i = 0; i < 5; i++) {
+            if (m_options[i].getGlobalBounds().contains(mousePos)) {
+                m_selectedOption = i;
+                updateOptionVisuals();
+
+                switch (m_selectedOption) {
+                    case 0: // 1 Player Game
+                        Game::getInstance().getProgress().resetGameData();
+                        Game::getInstance().getProgress().setGameMode(GameMode::SinglePlayer);
+                        Navigator::apply(ScreenFlow::onMenuOption(0, false),
+                                         Game::getInstance().getStateManager(),
+                                         Game::getInstance().getProgress().getGameMode());
+                        break;
+                    case 1: // 2 Player Co-op
+                        Game::getInstance().getProgress().resetGameData();
+                        Game::getInstance().getProgress().setGameMode(GameMode::Coop);
+                        Navigator::apply(ScreenFlow::onMenuOption(1, false),
+                                         Game::getInstance().getStateManager(),
+                                         Game::getInstance().getProgress().getGameMode());
+                        break;
+                    case 2: // 2 Player PvP
+                        Game::getInstance().getProgress().resetGameData();
+                        Game::getInstance().getProgress().setGameMode(GameMode::PvP);
+                        Navigator::apply(ScreenFlow::onMenuOption(2, false),
+                                         Game::getInstance().getStateManager(),
+                                         Game::getInstance().getProgress().getGameMode());
+                        break;
+                    case 3: { // Load Game
+                        bool loaded = SaveManager::loadGame();
+                        Navigator::apply(ScreenFlow::onMenuOption(3, loaded),
+                                         Game::getInstance().getStateManager(),
+                                         Game::getInstance().getProgress().getGameMode());
+                        break;
+                    }
+                    case 4: // Exit
+                        Navigator::apply(ScreenFlow::onMenuOption(4, false),
+                                         Game::getInstance().getStateManager(),
+                                         Game::getInstance().getProgress().getGameMode());
+                        break;
+                }
+                return;
+            }
+        }
+    }
+
+    if (event.type == sf::Event::KeyPressed) {
+        switch (event.key.code) {
+            case sf::Keyboard::Up:
+            case sf::Keyboard::W:
+                m_selectedOption = (m_selectedOption - 1 + 5) % 5;
+                updateOptionVisuals();
+                break;
+
+            case sf::Keyboard::Down:
+            case sf::Keyboard::S:
+                m_selectedOption = (m_selectedOption + 1) % 5;
+                updateOptionVisuals();
+                break;
+
+            case sf::Keyboard::Return:
+            case sf::Keyboard::Space:
+                switch (m_selectedOption) {
+                    case 0: // 1 Player Game
+                        Game::getInstance().getProgress().resetGameData();
+                        Game::getInstance().getProgress().setGameMode(GameMode::SinglePlayer);
+                        Navigator::apply(ScreenFlow::onMenuOption(0, false),
+                                         Game::getInstance().getStateManager(),
+                                         Game::getInstance().getProgress().getGameMode());
+                        break;
+                    case 1: // 2 Player Co-op
+                        Game::getInstance().getProgress().resetGameData();
+                        Game::getInstance().getProgress().setGameMode(GameMode::Coop);
+                        Navigator::apply(ScreenFlow::onMenuOption(1, false),
+                                         Game::getInstance().getStateManager(),
+                                         Game::getInstance().getProgress().getGameMode());
+                        break;
+                    case 2: // 2 Player PvP
+                        Game::getInstance().getProgress().resetGameData();
+                        Game::getInstance().getProgress().setGameMode(GameMode::PvP);
+                        Navigator::apply(ScreenFlow::onMenuOption(2, false),
+                                         Game::getInstance().getStateManager(),
+                                         Game::getInstance().getProgress().getGameMode());
+                        break;
+                    case 3: { // Load Game
+                        bool loaded = SaveManager::loadGame();
+                        Navigator::apply(ScreenFlow::onMenuOption(3, loaded),
+                                         Game::getInstance().getStateManager(),
+                                         Game::getInstance().getProgress().getGameMode());
+                        break;
+                    }
+                    case 4: // Exit
+                        Navigator::apply(ScreenFlow::onMenuOption(4, false),
+                                         Game::getInstance().getStateManager(),
+                                         Game::getInstance().getProgress().getGameMode());
+                        break;
+                }
+                break;
+
+            default:
+                break;
+        }
     }
 }
 
 void MenuState::update(float dt) {
     m_titleBounce += dt * 2.0f;
-    m_titleCardSprite.setPosition(WINDOW_WIDTH * 0.5f,
-                                  m_titleBaseY + std::sin(m_titleBounce) * 5.0f);
-    updateAttractScene(dt);
-}
-
-void MenuState::updateAttractScene(float dt) {
-    m_attractTime = std::fmod(m_attractTime + dt, 10.0f);
-    const float groundTop = WINDOW_HEIGHT - GROUND_HEIGHT;
-    const sf::Color hidden(255, 255, 255, 0);
-    m_marioSprite.setColor(hidden);
-    m_luigiSprite.setColor(hidden);
-    m_goombaSprite.setColor(hidden);
-    m_fireballSprite.setColor(hidden);
-
-    const MenuAttractTimeline::Frame timeline = MenuAttractTimeline::evaluate(m_attractTime);
-    if (timeline.scene == MenuAttractTimeline::Scene::MarioChase) {
-        const float sceneTime = timeline.sceneTime;
-        const float marioX = -44.0f + sceneTime * 100.0f;
-        const bool jumping = timeline.marioJumping;
-        const float jumpPhase = jumping ? (sceneTime - 2.55f) / 0.9f : 0.0f;
-        const float jumpLift = jumping ? std::sin(jumpPhase * 3.14159265f) * 84.0f : 0.0f;
-        const SpriteRegistry::PlayerAnim anim = jumping
-            ? SpriteRegistry::PlayerAnim::Jump : SpriteRegistry::PlayerAnim::Walk;
-        SpriteRegistry::applyPlayerFrame(m_marioSprite, CharacterId::Mario, PowerUpState::Big,
-                                         anim, static_cast<int>(sceneTime * 10.0f),
-                                         sf::FloatRect(marioX, groundTop - jumpLift - 64.0f, 0.0f, 64.0f));
-        m_marioSprite.setColor(sf::Color::White);
-        SpriteRegistry::applyGoombaFrame(m_goombaSprite, static_cast<int>(sceneTime * 11.0f),
-                                         sf::FloatRect(marioX - 92.0f, groundTop - 38.0f, 0.0f, 38.0f));
-        m_goombaSprite.setColor(sf::Color::White);
-    } else {
-        const float sceneTime = timeline.sceneTime;
-        const float luigiX = -44.0f + sceneTime * 98.0f;
-        const bool firing = timeline.luigiFiring;
-        const SpriteRegistry::PlayerAnim anim = firing
-            ? SpriteRegistry::PlayerAnim::Fire : SpriteRegistry::PlayerAnim::Walk;
-        SpriteRegistry::applyPlayerFrame(m_luigiSprite, CharacterId::Luigi, PowerUpState::Fire,
-                                         anim, static_cast<int>(sceneTime * 10.0f),
-                                         sf::FloatRect(luigiX, groundTop - 64.0f, 0.0f, 64.0f));
-        m_luigiSprite.setColor(sf::Color::White);
-        SpriteRegistry::applyGoombaFrame(m_goombaSprite, static_cast<int>(sceneTime * 11.0f),
-                                         sf::FloatRect(350.0f, groundTop - 38.0f, 0.0f, 38.0f), true);
-        m_goombaSprite.setColor(sf::Color::White);
-        if (firing) {
-            const float fireX = luigiX + 28.0f + (sceneTime - 2.15f) * 250.0f;
-            const float fireY = groundTop - 44.0f - std::sin((sceneTime - 2.15f) * 12.0f) * 12.0f;
-            SpriteRegistry::applySheetFrame(m_fireballSprite, SpriteRegistry::fireballPath(),
-                                            static_cast<int>(sceneTime * 12.0f), 16, 0,
-                                            sf::FloatRect(fireX, fireY, 20.0f, 20.0f));
-            m_fireballSprite.setColor(sf::Color::White);
-        }
-    }
+    float bounceY = m_titleBaseY + std::sin(m_titleBounce) * 8.0f;
+    m_titleCardSprite.setPosition(WINDOW_WIDTH / 2.0f, bounceY);
 }
 
 void MenuState::render(sf::RenderWindow& window) {
-    window.setView(Game::getInstance().getUiView());
+    // Reset view to default for menu rendering
+    window.setView(window.getDefaultView());
+
     window.draw(m_background);
     window.draw(m_groundSprite);
     window.draw(m_hillSprite);
     window.draw(m_bushSprite);
-    for (const sf::Sprite& pipe : m_pipePieces) window.draw(pipe);
-    window.draw(m_goombaSprite);
     window.draw(m_marioSprite);
-    window.draw(m_luigiSprite);
-    window.draw(m_fireballSprite);
     window.draw(m_titleCardSprite);
 
     window.draw(m_hudCharacterText);
@@ -303,30 +308,24 @@ void MenuState::render(sf::RenderWindow& window) {
     window.draw(m_hudWorldText);
     window.draw(m_hudTimeLabelText);
     window.draw(m_hudTimeText);
+
     window.draw(m_copyrightText);
 
-    window.draw(m_menuPanel);
-    window.draw(m_menuHeader);
-    for (int i = 0; i < OPTION_COUNT; ++i) {
-        window.draw(m_optionPanels[i]);
+    for (int i = 0; i < 5; i++) {
         window.draw(m_options[i]);
     }
-    window.draw(m_selectionHint);
-    window.draw(m_controlHint);
     window.draw(m_cursor);
 }
 
 void MenuState::updateOptionVisuals() {
-    for (int i = 0; i < OPTION_COUNT; ++i) {
-        const bool selected = i == m_selectedOption;
-        m_optionPanels[i].setFillColor(selected ? sf::Color(73, 112, 194, 245)
-                                                : sf::Color(32, 49, 99, 220));
-        m_optionPanels[i].setOutlineColor(selected ? sf::Color(255, 221, 102)
-                                                    : sf::Color(103, 137, 210));
-        m_options[i].setFillColor(selected ? sf::Color::White : sf::Color(214, 225, 255));
+    for (int i = 0; i < 5; i++) {
+        if (i == m_selectedOption) {
+            m_options[i].setFillColor(sf::Color(255, 220, 100));
+        } else {
+            m_options[i].setFillColor(sf::Color::White);
+        }
     }
-    m_selectionHint.setString(MENU_HINTS[static_cast<std::size_t>(m_selectedOption)]);
-    centerText(m_selectionHint, 590.0f, 521.0f);
-    const sf::FloatRect selected = m_optionPanels[m_selectedOption].getGlobalBounds();
-    m_cursor.setPosition(selected.left - 10.0f, selected.top + selected.height * 0.5f);
+
+    auto bounds = m_options[m_selectedOption].getGlobalBounds();
+    m_cursor.setPosition(bounds.left - 18.0f, bounds.top + bounds.height / 2.0f);
 }

@@ -188,15 +188,14 @@ static void testMenuOptionsMapToPushOrResetOrQuit() {
 
     CHECK(onMenuOption(0, false).op == Op::Push && onMenuOption(0, false).target == Screen::CharacterSelect,
           "1 Player pushes Character Select");
-    CHECK(onMenuOption(1, false).op == Op::Push && onMenuOption(1, false).target == Screen::ModeBriefing,
-          "Co-op opens its ready screen before level selection");
-    CHECK(onMenuOption(2, false).op == Op::Push && onMenuOption(2, false).target == Screen::ModeBriefing,
-          "PvP opens its ready screen before the arena");
-    CHECK(onMenuOption(3, false).op == Op::Push && onMenuOption(3, false).target == Screen::SaveSlots,
-          "Load Game opens the five-slot picker before any save is loaded");
-    CHECK(onMenuOption(4, false).op == Op::Push && onMenuOption(4, false).target == Screen::Settings,
-          "Settings opens as a normal screen with a back target");
-    CHECK(onMenuOption(5, false).op == Op::QuitApp, "Exit is the only menu option that requests quitting the app");
+    CHECK(onMenuOption(1, false).op == Op::Push && onMenuOption(1, false).target == Screen::CharacterSelect,
+          "Co-op opens Character Select for Player 1");
+    CHECK(onMenuOption(2, false).op == Op::Push && onMenuOption(2, false).target == Screen::CharacterSelect,
+          "PvP opens Character Select for Player 1");
+    CHECK(onMenuOption(3, true).op == Op::ResetTo && onMenuOption(3, true).target == Screen::Playing,
+          "Load Game resets into gameplay once the save has loaded");
+    CHECK(onMenuOption(3, false).op == Op::None, "Load Game is a no-op when there's no save to load");
+    CHECK(onMenuOption(4, false).op == Op::QuitApp, "Exit is the only menu option that requests quitting the app");
 }
 
 static void testSinglePlayerForwardBackMatchesCanonicalStack() {
@@ -218,35 +217,31 @@ static void testSinglePlayerForwardBackMatchesCanonicalStack() {
           "SinglePlayer's canonical stack is Main Menu -> Character Select -> Level Select");
 }
 
-static void testCoopBriefingThenLevelSelection() {
+static void testCoopCharacterSelectionMatchesSinglePlayerFlow() {
     using namespace ScreenFlow;
     const GameMode mode = GameMode::Coop;
 
-    CHECK(onConfirm(Screen::ModeBriefing, mode).op == Op::Push &&
-              onConfirm(Screen::ModeBriefing, mode).target == Screen::LevelSelect,
-          "confirming the Co-op briefing pushes Level Select");
+    CHECK(onConfirm(Screen::CharacterSelect, mode).op == Op::Push &&
+              onConfirm(Screen::CharacterSelect, mode).target == Screen::LevelSelect,
+          "confirming a co-op character pushes Level Select");
 
     const std::vector<Screen> stack = canonicalStack(Screen::LevelSelect, mode);
-    const std::vector<Screen> expected = {Screen::MainMenu, Screen::ModeBriefing, Screen::LevelSelect};
-    CHECK(stack == expected, "Co-op's canonical stack includes the ready screen before Level Select");
+    const std::vector<Screen> expected = {Screen::MainMenu, Screen::CharacterSelect, Screen::LevelSelect};
+    CHECK(stack == expected, "Co-op includes Character Select before Level Select");
 
     // The invariant that makes Back correct without hardcoding "the screen
     // before this one": popping one screen off canonicalStack(current, mode)
     // must land on exactly canonicalStack(whatever's now on top, mode).
     const std::vector<Screen> afterBack(stack.begin(), stack.end() - 1);
-    CHECK(afterBack == canonicalStack(Screen::ModeBriefing, mode),
-          "back from Co-op Level Select returns to the multiplayer ready screen");
-
-    const std::vector<Screen> briefingStack = canonicalStack(Screen::ModeBriefing, mode);
-    CHECK(briefingStack == std::vector<Screen>({Screen::MainMenu, Screen::ModeBriefing}),
-          "back from the Co-op ready screen returns to Main Menu");
+    CHECK(afterBack == canonicalStack(Screen::CharacterSelect, mode),
+          "back from Level Select in Co-op returns to Character Select");
 }
 
-static void testPvpBriefingStartsArena() {
+static void testPvpCharacterSelectionStartsArena() {
     using namespace ScreenFlow;
-    const Transition transition = onConfirm(Screen::ModeBriefing, GameMode::PvP);
+    const Transition transition = onConfirm(Screen::CharacterSelect, GameMode::PvP);
     CHECK(transition.op == Op::ResetTo && transition.target == Screen::Playing,
-          "confirming the PvP briefing starts a fresh arena");
+          "confirming a PvP character starts the arena directly");
 }
 
 static void testPlayingIsAlwaysAFreshRoot() {
@@ -278,26 +273,8 @@ static void testPauseOptionsMapToBackOrMainMenu() {
     using namespace ScreenFlow;
 
     CHECK(onPauseOption(0).op == Op::Back, "Resume goes back to the paused gameplay");
-    CHECK(onPauseOption(2).op == Op::ResetTo && onPauseOption(2).target == Screen::MainMenu,
+    CHECK(onPauseOption(1).op == Op::ResetTo && onPauseOption(1).target == Screen::MainMenu,
           "Quit to Menu resets to Main Menu");
-}
-
-static void testSaveSlotScreenHasAStableBackTarget() {
-    using namespace ScreenFlow;
-    CHECK(onBack(Screen::SaveSlots).op == Op::Back,
-          "Escape from the load-slot picker returns to Main Menu");
-    const std::vector<Screen> expected = {Screen::MainMenu, Screen::SaveSlots};
-    CHECK(canonicalStack(Screen::SaveSlots, GameMode::SinglePlayer) == expected,
-          "the load-slot picker is pushed over Main Menu rather than replacing it");
-}
-
-static void testSettingsScreenHasAStableBackTarget() {
-    using namespace ScreenFlow;
-    CHECK(onBack(Screen::Settings).op == Op::Back,
-          "Escape from Settings returns to its caller");
-    const std::vector<Screen> expected = {Screen::MainMenu, Screen::Settings};
-    CHECK(canonicalStack(Screen::Settings, GameMode::SinglePlayer) == expected,
-          "Settings can be rebuilt over the main menu when needed");
 }
 
 static void testMainMenuHasNoBackTarget() {
@@ -316,13 +293,11 @@ int main() {
 
     testMenuOptionsMapToPushOrResetOrQuit();
     testSinglePlayerForwardBackMatchesCanonicalStack();
-    testCoopBriefingThenLevelSelection();
-    testPvpBriefingStartsArena();
+    testCoopCharacterSelectionMatchesSinglePlayerFlow();
+    testPvpCharacterSelectionStartsArena();
     testPlayingIsAlwaysAFreshRoot();
     testGameOverPrimaryTargetsMatchResult();
     testPauseOptionsMapToBackOrMainMenu();
-    testSaveSlotScreenHasAStableBackTarget();
-    testSettingsScreenHasAStableBackTarget();
     testMainMenuHasNoBackTarget();
 
     if (g_failures == 0) {

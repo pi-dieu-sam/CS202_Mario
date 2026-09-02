@@ -1,5 +1,4 @@
 #include "UI/Button.hpp"
-#include "Core/Game.hpp"
 
 Button::Button() {}
 
@@ -30,7 +29,7 @@ void Button::setCallback(std::function<void()> callback) {
 
 bool Button::handleEvent(const sf::Event& event, const sf::RenderWindow& window) {
     if (event.type == sf::Event::MouseButtonPressed) {
-        sf::Vector2f mousePos = Game::getInstance().mapPixelToUiCoords(
+        sf::Vector2f mousePos = window.mapPixelToCoords(
             sf::Mouse::getPosition(window));
         if (m_background.getGlobalBounds().contains(mousePos)) {
             if (m_callback) m_callback();
@@ -41,7 +40,7 @@ bool Button::handleEvent(const sf::Event& event, const sf::RenderWindow& window)
 }
 
 void Button::update(const sf::RenderWindow& window) {
-    sf::Vector2f mousePos = Game::getInstance().mapPixelToUiCoords(
+    sf::Vector2f mousePos = window.mapPixelToCoords(
         sf::Mouse::getPosition(window));
     m_hovered = m_background.getGlobalBounds().contains(mousePos);
 

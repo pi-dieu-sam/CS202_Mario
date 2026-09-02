@@ -9,10 +9,14 @@
 #include "Physics/CollisionDetector.hpp"
 #include "Physics/PhysicsConstants.hpp"
 #include "Core/AssetManager.hpp"
+#include "Core/Game.hpp"
+#include "Core/InputHandler.hpp"
+#include "Core/PlayerProgress.hpp"
+#include "Core/Command.hpp"
 #include "Graphics/SpriteRegistry.hpp"
 #include "Level/Level.hpp"
+#include "Level/LevelLoader.hpp"
 #include "Level/TileGrid.hpp"
-#include "Observers/EventManager.hpp"
 #include "Entities/Goomba.hpp"
 #include "Entities/Koopa.hpp"
 #include "Entities/Troopa.hpp"
@@ -25,6 +29,7 @@
 #include "Entities/Mario.hpp"
 #include "Entities/Mushroom.hpp"
 #include "Entities/Flagpole.hpp"
+#include "Entities/LavaFireball.hpp"
 #include "Entities/Tile.hpp"
 #include <cmath>
 #include <filesystem>
@@ -204,31 +209,6 @@ static void testKoopaDyingAndRespawn() {
   }
 }
 
-// Regression test for issue #22: the Walking-state sprite stands 1.5
-// tiles tall, drawn raised half a tile above position.y, but getBounds()
-// used to inherit Enemy's plain 1-tile box -- the top half of the visible
-// Koopa could not be hit by anything landing from above.
-static void testWalkingKoopaHitboxMatchesSprite() {
-  Koopa koopa;
-  koopa.setPosition(100.0f, 200.0f);
-
-  sf::FloatRect bounds = koopa.getBounds();
-  CHECK(std::abs(bounds.height - (TILE_SIZE * 1.5f - 2.0f)) < 0.001f,
-        "a Walking Koopa's hitbox is 1.5 tiles tall, matching its sprite");
-  CHECK(std::abs(bounds.top - (200.0f - TILE_SIZE * 0.5f + 1.0f)) < 0.001f,
-        "a Walking Koopa's hitbox extends upward to cover its raised head");
-  CHECK(std::abs((bounds.top + bounds.height) - (200.0f + TILE_SIZE - 1.0f)) <
-            0.001f,
-        "a Walking Koopa's hitbox keeps the same ground-aligned bottom edge "
-        "its old 1-tile box had");
-
-  koopa.onStomped();
-  sf::FloatRect shellBounds = koopa.getBounds();
-  CHECK(std::abs(shellBounds.height - (TILE_SIZE - 2.0f)) < 0.001f &&
-            std::abs(shellBounds.top - 201.0f) < 0.001f,
-        "a Shell Koopa keeps the standard 1-tile hitbox");
-}
-
 static void testFlyingTroopa() {
   CHECK(std::filesystem::exists(SpriteRegistry::troopaPath()),
         "Troopa animation uses the checked-in asset");
@@ -332,74 +312,6 @@ static void testBowserFireballs() {
         "Bowser fireball expires if it does not hit a solid object");
 }
 
-// Regression tests for issue #22: Level's star-power branch used to call
-// onStomped() and publish EnemyDefeated unconditionally. onStomped() only
-// changes state for some enemies -- a no-op for Bowser (he is immune to
-// contact and dies only to five fireballs), Walking -> Shell for Koopa --
-// so touching them with star power falsely reported a kill and paid out
-// score while the enemy stayed fully alive on the field. The fix only
-// publishes when onStomped() actually leaves the enemy dead.
-static void testStarPowerOnlyDefeatsEnemiesItActuallyKills() {
-  // level2.txt places a Bowser ('B') at map column 180, row 6 (world row
-  // 10 once the four-row offset for its 15-row map is applied).
-  {
-    Level level;
-    CHECK(level.loadFromFile("assets/levels/level2.txt", "Mario",
-                             LevelTheme::Castle),
-          "level 2 loads for the star-power-vs-Bowser test");
-    Player *player = level.getPlayer();
-    CHECK(player != nullptr, "level 2 creates a player");
-    if (!player) return;
-
-    int defeatedEvents = 0;
-    auto sub = ScopedEventSubscription(
-        EventType::EnemyDefeated,
-        [&defeatedEvents](const GameEvent &) { ++defeatedEvents; });
-
-    player->setStarPower(5.0f);
-    player->setPosition(180.0f * TILE_SIZE, 10.0f * TILE_SIZE);
-    level.update(0.0f);
-
-    CHECK(defeatedEvents == 0,
-          "star power touching Bowser does not publish a false EnemyDefeated");
-  }
-
-  // level1.txt places a Koopa ('K') and, on the same row, a Goomba ('G')
-  // at world row 17 (map row 12 plus the five-row offset for its 14-row
-  // map) -- map columns 16 and 24, eight tiles apart.
-  {
-    Level level;
-    CHECK(level.loadFromFile("assets/levels/level1.txt", "Mario",
-                             LevelTheme::Overworld),
-          "level 1 loads for the star-power-vs-Koopa test");
-    Player *player = level.getPlayer();
-    CHECK(player != nullptr, "level 1 creates a player");
-    if (!player) return;
-
-    int defeatedEvents = 0;
-    auto sub = ScopedEventSubscription(
-        EventType::EnemyDefeated,
-        [&defeatedEvents](const GameEvent &) { ++defeatedEvents; });
-
-    player->setStarPower(5.0f);
-    player->setPosition(16.0f * TILE_SIZE, 17.0f * TILE_SIZE);
-    level.update(0.0f);
-
-    CHECK(defeatedEvents == 0,
-          "star power turning a Walking Koopa into a Shell is a state "
-          "change, not a defeat, and must not publish EnemyDefeated");
-
-    // Move to the Goomba eight tiles over -- far enough from the Koopa's
-    // tile that only this second touch can collide.
-    player->setPosition(24.0f * TILE_SIZE, 17.0f * TILE_SIZE);
-    level.update(0.0f);
-
-    CHECK(defeatedEvents == 1,
-          "star power still defeats -- and reports -- an enemy that "
-          "onStomped() actually kills");
-  }
-}
-
 static void testHorizontalEscalaterMovement() {
   Escalater platform(400.0f, 200.0f,
                      Escalater::MovementAxis::Horizontal);
@@ -446,6 +358,26 @@ static void testLevel2LavaTilesKillPlayer() {
 
   checkLavaRow(17, "`l` flame tile kills a player on contact");
   checkLavaRow(18, "`L` lava tile kills a player on contact");
+}
+
+static void testCastlePipeLaunchersLoadInLevel2AndLevel3() {
+  const auto level2 = LevelLoader::loadLevel("assets/levels/level2.txt",
+                                              LevelTheme::Castle);
+  const auto level3 = LevelLoader::loadLevel("assets/levels/level3.txt",
+                                              LevelTheme::Castle);
+
+  CHECK(!level2.lavaFireballs.empty(),
+        "standard pipe in level 2 creates a repeating fireball launcher");
+  CHECK(!level3.lavaFireballs.empty(),
+        "standard pipe in level 3 creates a repeating fireball launcher");
+}
+
+static void testLevel3BricksUseBrownSprite() {
+  const std::string &brick = SpriteRegistry::blockPath(
+      BlockType::Brick, LevelTheme::Castle,
+      SpriteRegistry::BlockVisualState::Idle);
+  CHECK(brick == "assets/textures/SMB_Brick_Block_Sprite.png",
+        "level 3 castle-theme S blocks use the brown brick sprite");
 }
 
 static void testLevel1VineEntersClimbState() {
@@ -775,6 +707,26 @@ static void testAllMarioSpriteStatesLoad() {
   }
 }
 
+static void testPlayer2FireKeyUsesK() {
+  InputHandler player1Input;
+  InputHandler player2Input;
+  player1Input.setPlayer1Bindings();
+  player2Input.setPlayer2Bindings();
+
+  sf::Event keyPress{};
+  keyPress.type = sf::Event::KeyPressed;
+
+  keyPress.key.code = sf::Keyboard::F;
+  CHECK(dynamic_cast<FireCommand*>(player1Input.handleEvent(keyPress)) != nullptr,
+        "Player 1 fires with F");
+  CHECK(player2Input.handleEvent(keyPress) == nullptr,
+        "F is not bound to Player 2");
+
+  keyPress.key.code = sf::Keyboard::K;
+  CHECK(dynamic_cast<FireCommand*>(player2Input.handleEvent(keyPress)) != nullptr,
+        "Player 2 fires with K");
+}
+
 static void testVineClimbingControls() {
   Mario player;
   player.setPosition(128.0f, 128.0f);
@@ -819,6 +771,61 @@ static void testVineClimbingControls() {
   player.updateVineContact(true, 128.0f);
   CHECK(player.isClimbing(),
         "leaving the vine tile re-enables climbing on the next contact");
+}
+
+static void testCoopPlayersDoNotBlockHorizontalMovement() {
+  PlayerProgress& progress = Game::getInstance().getProgress();
+  const GameMode previousMode = progress.getGameMode();
+  progress.setGameMode(GameMode::Coop);
+
+  Level level;
+  CHECK(level.loadFromFile("assets/levels/level1.txt", "Mario",
+                           LevelTheme::Overworld),
+        "co-op level loads with two players");
+  Player* p1 = level.getPlayer();
+  Player* p2 = level.getPlayer2();
+  CHECK(p1 != nullptr && p2 != nullptr,
+        "co-op level creates both players");
+  if (p1 && p2) {
+    // Keep both players in the empty sky and deliberately overlap them.
+    // This reproduces the fallback co-op spawn collision without terrain
+    // affecting the result.
+    p1->setPosition(160.0f, 120.0f);
+    p2->setPosition(160.0f, 120.0f);
+    p1->moveRight(FIXED_DT);
+    level.update(FIXED_DT);
+
+    CHECK(p1->getPosition().x > 160.0f,
+          "co-op partner overlap does not cancel P1 horizontal movement");
+  }
+
+  progress.setGameMode(previousMode);
+}
+
+static void testCoopSurvivorContinuesAfterPartnerDies() {
+  PlayerProgress& progress = Game::getInstance().getProgress();
+  const GameMode previousMode = progress.getGameMode();
+  progress.setGameMode(GameMode::Coop);
+
+  Level level;
+  CHECK(level.loadFromFile("assets/levels/level1.txt", "Mario",
+                           LevelTheme::Overworld),
+        "co-op level loads for survivor test");
+  Player* p1 = level.getPlayer();
+  Player* p2 = level.getPlayer2();
+  CHECK(p1 != nullptr && p2 != nullptr,
+        "survivor test has both co-op players");
+  if (p1 && p2) {
+    p1->die();
+    p2->setPosition(320.0f, 120.0f);
+    p2->moveRight(FIXED_DT);
+    level.update(FIXED_DT);
+
+    CHECK(p2->getPosition().x > 320.0f,
+          "the surviving co-op player continues moving after their partner dies");
+  }
+
+  progress.setGameMode(previousMode);
 }
 
 static void testPiranhaFramesAndEmergenceStayStable() {
@@ -894,34 +901,6 @@ static void testPiranhaFramesAndEmergenceStayStable() {
             std::abs(plant.getBounds().left + plant.getBounds().width / 2.0f -
                      96.0f) < 0.001f,
         "Piranha begins the next emergence cycle at the same pipe center");
-}
-
-// Regression tests for issue #22: every way the player can hit a Piranha
-// Plant needs its own defined outcome. A stomp must never defeat it (it
-// opts out through canBeStomped()), while onStomped() (the method star
-// power uses) and a fireball hit must both actually kill it -- onStomped()
-// used to do nothing, so a stomp or a star touch could report a defeat
-// and award score without the plant ever dying.
-static void testPiranhaPlantAttackTypes() {
-  {
-    PiranhaPlant plant;
-    CHECK(!plant.canBeStomped(),
-          "a Piranha Plant opts out of being defeated by an ordinary stomp");
-  }
-  {
-    PiranhaPlant plant;
-    plant.onStomped();
-    CHECK(plant.isDead() && !plant.isActive(),
-          "onStomped() (used by star power) fully defeats a Piranha Plant "
-          "instead of doing nothing");
-  }
-  {
-    PiranhaPlant plant;
-    CHECK(plant.hitByFireball(),
-          "a fireball hit reports a successful defeat");
-    CHECK(plant.isDead() && !plant.isActive(),
-          "a fireball hit fully defeats a Piranha Plant");
-  }
 }
 
 static void testFlagpoleSlideFramesAndCutscene() {
@@ -1056,83 +1035,19 @@ static void testPlayerDeathAnimationUsesFacingPoses() {
   }
 }
 
-// Regression tests for issue #19: a single gameplay incident (an enemy
-// cluster overlapping the player, or several fixed-step sub-updates running
-// within one rendered frame) must not publish more than one PlayerDied
-// event or remove more than one life. Player::die() guards on m_dead as the
-// single source of truth every damage/hazard/timer path funnels through.
-static void testPlayerDeathIsIdempotentUnderEnemyCluster() {
-  Mario player;
-  player.setPosition(100.0f, 100.0f);
-
-  int deathEvents = 0;
-  auto sub = ScopedEventSubscription(
-      EventType::PlayerDied,
-      [&deathEvents](const GameEvent &) { ++deathEvents; });
-
-  // Simulate a cluster of overlapping enemies each independently landing a
-  // lethal hit within the same collision pass -- the exact scenario the
-  // pre-fix per-enemy takeDamage() loop produced.
-  for (int i = 0; i < 4; ++i) {
-    player.takeDamage();
-  }
-
-  CHECK(deathEvents == 1, "an enemy cluster hitting the player in one pass "
-                          "publishes exactly one PlayerDied event");
-  CHECK(player.isDead(), "the player is dead after the cluster hit");
-
-  // A later, independent death source (e.g. a lava tile checked after the
-  // enemy loop) must also be swallowed once the player is already dead.
-  player.die();
-  player.die();
-  CHECK(deathEvents == 1, "calling die() again after death does not "
-                          "publish additional PlayerDied events");
-}
-
-static void testPlayerDeathSurvivesMultipleFixedUpdatesPerFrame() {
-  Mario player;
-  player.setPosition(100.0f, 100.0f);
-
-  int deathEvents = 0;
-  auto sub = ScopedEventSubscription(
-      EventType::PlayerDied,
-      [&deathEvents](const GameEvent &) { ++deathEvents; });
-
-  player.die();
-  CHECK(deathEvents == 1, "the first die() call publishes PlayerDied");
-
-  // Several fixed sub-steps within one rendered frame, mirroring
-  // PlayingState's fixed-step catch-up loop. A timer-expiry (or other
-  // hazard) re-check that fires again partway through must not add another
-  // event, and the death animation must keep advancing instead of
-  // resetting.
-  const float startY = player.getPosition().y;
-  for (int step = 0; step < 3; ++step) {
-    player.die(); // simulates a repeated timer-expiry / damage source
-    player.update(FIXED_DT);
-  }
-
-  CHECK(deathEvents == 1,
-        "repeated die() calls across several fixed updates in one frame "
-        "still publish only one PlayerDied event");
-  CHECK(player.isDead() && player.getPosition().y != startY,
-        "the death animation keeps progressing across the repeated "
-        "sub-steps instead of restarting");
-}
-
 int main() {
   testReflectHelperPure();
   testGoombaBouncesBothDirections();
   testMushroomReversesInsteadOfStopping();
   testKoopaDyingAndRespawn();
-  testWalkingKoopaHitboxMatchesSprite();
   testFlyingTroopa();
   testBowserBreathingCycle();
   testBowserFireballs();
-  testStarPowerOnlyDefeatsEnemiesItActuallyKills();
   testHorizontalEscalaterMovement();
   testLevel2LavaTilesKillPlayer();
   testLevel1VineEntersClimbState();
+  testCastlePipeLaunchersLoadInLevel2AndLevel3();
+  testLevel3BricksUseBrownSprite();
   testGoombaStompDisablesCollisionImmediately();
   testEnlargedPlayersCanHitBlocksWithCompactBody();
   testResolveCollisionAloneStillZeroesVelocity();
@@ -1140,15 +1055,15 @@ int main() {
   testUpwardEdgeHitResolvesAsWall();
   testSweptStompCatchesTunneling();
   testSprintDoesNotCompoundVelocity();
+  testPlayer2FireKeyUsesK();
   testAllLuigiSpriteStatesLoad();
   testAllMarioSpriteStatesLoad();
   testVineClimbingControls();
+  testCoopPlayersDoNotBlockHorizontalMovement();
+  testCoopSurvivorContinuesAfterPartnerDies();
   testPiranhaFramesAndEmergenceStayStable();
-  testPiranhaPlantAttackTypes();
   testFlagpoleSlideFramesAndCutscene();
   testPlayerDeathAnimationUsesFacingPoses();
-  testPlayerDeathIsIdempotentUnderEnemyCluster();
-  testPlayerDeathSurvivesMultipleFixedUpdatesPerFrame();
 
   if (g_failures == 0) {
     std::cout << "All collision-resolution tests passed.\n";

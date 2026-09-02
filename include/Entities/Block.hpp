@@ -8,14 +8,14 @@ class Item;
 
 /// BlockType — identifies what kind of block this is.
 enum class BlockType {
-  Brick,   // Breakable when player is Big
+  Brick,   // Breaks after three hits from an enlarged player
   Question // Contains an item, becomes empty after hit
 };
 
 /// Block — interactive blocks that can be hit from below.
-/// QuestionBlocks spawn items; BrickBlocks break when the player is Big.
+/// QuestionBlocks spawn items; BrickBlocks break after three hits from an
+/// enlarged player.
 class Block : public GameObject {
-  friend class SnapshotAccess;
 public:
   Block();
   Block(BlockType blockType, float x, float y, LevelTheme theme,
@@ -38,6 +38,7 @@ private:
   BlockType m_blockType = BlockType::Question;
   ObjectType m_containedItem = ObjectType::Coin;
   bool m_used = false;
+  int m_brickHits = 0;
   LevelTheme m_theme = LevelTheme::Overworld;
   sf::Sprite m_sprite;
 

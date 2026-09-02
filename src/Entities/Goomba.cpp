@@ -5,8 +5,7 @@
 Goomba::Goomba() {
   m_speed = 60.0f;
   m_scoreValue = 100;
-  m_velocity.x = -m_speed; // Walk left by default
-  m_active = true;
+  m_velocity.x = -m_speed; // Start walking left
 
   setAnimFrameCount(16, 0.08f);
 }
@@ -26,7 +25,7 @@ void Goomba::onStomped() {
 void Goomba::update(float dt) {
   if (m_squished) {
     m_deathTimer -= dt;
-    if (m_deathTimer <= 0.0f || !m_active) {
+    if (m_deathTimer <= 0.0f) {
       m_active = false;
     }
     return;
@@ -50,6 +49,5 @@ void Goomba::draw(sf::RenderWindow &window) {
 }
 
 bool Goomba::isVulnerable() const {
-  // A squished or dead Goomba should not interact with the player.
   return !m_squished && !m_dead;
 }

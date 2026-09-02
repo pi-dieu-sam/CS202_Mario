@@ -19,7 +19,6 @@ void applySheetCell(sf::Sprite &sprite, sf::Texture &tex, int cell, int cols,
 }
 } // namespace
 
-/// Default-construct an empty tile at the origin.
 Tile::Tile() { m_type = ObjectType::Tile; }
 
 Tile::Tile(TileType tileType, float x, float y, LevelTheme theme,

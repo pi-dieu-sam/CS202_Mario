@@ -14,6 +14,13 @@ class Command;
 /// of commands to execute each frame.
 class InputHandler {
 public:
+    struct DirectionalInput {
+        bool left  = false;
+        bool right = false;
+        bool up    = false;
+        bool down  = false;
+    };
+
     InputHandler();
 
     /// Set bindings for Player 1 (WASD)
@@ -36,6 +43,11 @@ public:
     /// Return commands to execute this frame for all currently held keys.
     std::vector<Command*> handleInput();
 
+    /// Read the four movement directions from the keyboard's current state.
+    /// Continuous movement must not depend on queued KeyPressed/KeyReleased
+    /// events, which can leave one player's WASD state stale during play.
+    DirectionalInput readDirectionalInput() const;
+
     /// Check whether any jump key is currently held.
     bool isJumpHeld() const;
 
@@ -57,5 +69,9 @@ private:
     std::vector<sf::Keyboard::Key> m_jumpKeys;
     std::vector<sf::Keyboard::Key> m_sprintKeys;
     std::vector<sf::Keyboard::Key> m_horizontalKeys;
+    std::vector<sf::Keyboard::Key> m_leftKeys;
+    std::vector<sf::Keyboard::Key> m_rightKeys;
+    std::vector<sf::Keyboard::Key> m_upKeys;
+    std::vector<sf::Keyboard::Key> m_downKeys;
     std::set<sf::Keyboard::Key> m_heldKeys;
 };

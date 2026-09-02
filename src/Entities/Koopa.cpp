@@ -17,7 +17,7 @@ constexpr float WALL_BRAKE_DECELERATION =
 Koopa::Koopa() {
   m_speed = 60.0f;
   m_scoreValue = 200;
-  m_velocity.x = -m_speed; // Walk left by default
+  m_velocity.x = -m_speed;
 
   setAnimFrameCount(20, 0.08f);
 }
@@ -103,7 +103,9 @@ void Koopa::draw(sf::RenderWindow &window) {
     return;
 
   if (m_koopaState == KoopaState::Walking) {
-    SpriteRegistry::applyKoopaFrame(m_sprite, m_animFrame, getBounds(), m_facingRight);
+    sf::FloatRect box(m_position.x + 1, m_position.y - TILE_SIZE * 0.5f + 1,
+                       TILE_SIZE - 2, TILE_SIZE * 1.5f - 2);
+    SpriteRegistry::applyKoopaFrame(m_sprite, m_animFrame, box, m_facingRight);
     window.draw(m_sprite);
   } else {
     // Shell (sitting or sliding)
@@ -113,26 +115,15 @@ void Koopa::draw(sf::RenderWindow &window) {
   }
 }
 
-sf::FloatRect Koopa::getBounds() const {
-  if (m_koopaState == KoopaState::Walking) {
-    // The walking sprite stands 1.5 tiles tall; match its collision box to
-    // what is actually drawn instead of inheriting Enemy's 1-tile box.
-    return sf::FloatRect(m_position.x + 1, m_position.y - TILE_SIZE * 0.5f + 1,
-                          TILE_SIZE - 2, TILE_SIZE * 1.5f - 2);
-  }
-  return Enemy::getBounds();
-}
-
 bool Koopa::isVulnerable() const {
   return m_koopaState == KoopaState::Walking;
 }
 
-KoopaState Koopa::getKoopaState() const noexcept { return m_koopaState; }
+KoopaState Koopa::getKoopaState() const { return m_koopaState; }
 
-bool Koopa::isSliding() const noexcept { return m_sliding; }
+bool Koopa::isSliding() const { return m_sliding; }
 
 void Koopa::kick(float direction) {
-  // Only a stationary shell can be kicked; ignore if already sliding
   if (m_koopaState != KoopaState::Shell || m_sliding)
     return;
   m_sliding = true;
@@ -155,7 +146,6 @@ void Koopa::bounce(float incomingVelocity) {
 }
 
 void Koopa::stopSliding() {
-  // Only applies to a currently sliding shell
   if (m_koopaState != KoopaState::Shell || !m_sliding)
     return;
   m_sliding = false;

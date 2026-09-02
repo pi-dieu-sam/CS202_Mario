@@ -6,7 +6,6 @@
 /// Character — Abstract base class for all characters (player and enemies).
 /// Adds health, movement physics, animation state, and facing direction.
 class Character : public GameObject {
-    friend class SnapshotAccess;
 public:
     Character();
     virtual ~Character() = default;

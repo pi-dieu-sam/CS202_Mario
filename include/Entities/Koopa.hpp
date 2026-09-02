@@ -1,5 +1,4 @@
 #pragma once
-// Koopa.hpp — shelled enemy with walking, shell, and sliding states
 #include "Enemy.hpp"
 
 /// Koopa states.
@@ -12,7 +11,6 @@ enum class KoopaState {
 /// The shell can be kicked by the player and slides at high speed,
 /// killing Goombas and turning other Koopas into shells on contact.
 class Koopa : public Enemy {
-    friend class SnapshotAccess;
 public:
     Koopa();
 
@@ -20,11 +18,10 @@ public:
     void kill() override;
     void update(float dt) override;
     void draw(sf::RenderWindow& window) override;
-    sf::FloatRect getBounds() const override;
     bool isVulnerable() const override;
 
-    KoopaState getKoopaState() const noexcept;
-    bool isSliding() const noexcept;
+    KoopaState getKoopaState() const;
+    bool isSliding() const;
 
     /// Kick the shell in the given direction (-1 = left, +1 = right).
     void kick(float direction);

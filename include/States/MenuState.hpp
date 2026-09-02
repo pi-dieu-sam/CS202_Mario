@@ -1,15 +1,14 @@
 #pragma once
-
 #include "GameState.hpp"
-
 #include <SFML/Graphics.hpp>
 
-/// MenuState — the animated, enhanced-NES title screen. The background is a
-/// presentation-only attract loop; it never changes gameplay state until a
-/// menu option is explicitly confirmed.
+/// MenuState — the main title screen.
+/// Recreates the classic NES Super Mario Bros. title screen look (title
+/// card, hill, bushes, brick ground, standing Mario, decorative HUD row)
+/// while keeping the existing New Game / Load Game / Exit options.
 class MenuState : public GameState {
 public:
-    MenuState() = default;
+    MenuState();
 
     void onEnter() override;
     void onExit() override;
@@ -18,28 +17,21 @@ public:
     void render(sf::RenderWindow& window) override;
 
 private:
-    static constexpr int OPTION_COUNT = 6;
-
-    void activateSelectedOption();
     void updateOptionVisuals();
-    void updateAttractScene(float dt);
 
-    // Classic title-scene scenery.
+    // Background
     sf::RectangleShape m_background;
+
+    // Scenery sprites, all cropped from the same NES title-screen sheet
+    // (except m_marioSprite and m_coinSprite, which are their own files).
     sf::Sprite m_titleCardSprite;
     sf::Sprite m_hillSprite;
     sf::Sprite m_bushSprite;
     sf::Sprite m_groundSprite;
-    sf::Sprite m_pipePieces[4];
-
-    // Animated attract-mode actors.
     sf::Sprite m_marioSprite;
-    sf::Sprite m_luigiSprite;
-    sf::Sprite m_goombaSprite;
-    sf::Sprite m_fireballSprite;
-
-    // Decorative HUD row.
     sf::Sprite m_coinSprite;
+
+    // Decorative HUD row ("MARIO"/"000000", "WORLD"/"1-1", "TIME"/"300")
     sf::Text m_hudCharacterText;
     sf::Text m_hudScoreText;
     sf::Text m_hudCoinCountText;
@@ -47,19 +39,16 @@ private:
     sf::Text m_hudWorldText;
     sf::Text m_hudTimeLabelText;
     sf::Text m_hudTimeText;
+
+    // Copyright + top score flavor text
     sf::Text m_copyrightText;
 
-    // Foreground menu surface.
-    sf::RectangleShape m_menuPanel;
-    sf::RectangleShape m_optionPanels[OPTION_COUNT];
-    sf::Text m_menuHeader;
-    sf::Text m_options[OPTION_COUNT];
-    sf::Text m_selectionHint;
-    sf::Text m_controlHint;
+    // Menu options
+    sf::Text  m_options[5]; // 1 Player, Co-op, PvP, Load Game, Exit
+    int       m_selectedOption = 0;
     sf::CircleShape m_cursor;
-    int m_selectedOption = 0;
 
+    // Title card bounce animation
     float m_titleBounce = 0.0f;
-    float m_titleBaseY = 0.0f;
-    float m_attractTime = 0.0f;
+    float m_titleBaseY  = 0.0f;
 };

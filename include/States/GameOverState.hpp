@@ -25,11 +25,8 @@ private:
     GameResult          m_result;
     std::string         m_winnerName; ///< e.g. "MARIO" or "LUIGI" for PvP
     sf::RectangleShape  m_background;
-    sf::RectangleShape  m_resultPanel;
-    sf::Sprite          m_heroSprite;
     sf::Text            m_title;
     sf::Text            m_subtitleText; ///< "PLAYER 1 / PLAYER 2 IS THE WINNER!" for PvP
-    sf::Text            m_detailText;
     sf::Text            m_scoreText;
     sf::Text            m_options[2]; // Primary action, Main Menu
     int                 m_selected = 0;

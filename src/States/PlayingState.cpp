@@ -14,6 +14,7 @@
 #include "Observers/EventManager.hpp"
 #include "UI/HUD.hpp"
 #include <algorithm>
+#include <algorithm>
 #include <iostream>
 #include <sstream>
 
@@ -24,6 +25,32 @@ constexpr int LEVEL1_SECRET_RETURN_PIPE_COLUMN = 73; // B: emerge 14 tiles to th
 constexpr float PIPE_VERTICAL_TRAVEL_TIME = 0.45f;
 constexpr float PIPE_HORIZONTAL_TRAVEL_TIME = 0.80f;
 constexpr float PIPE_FADE_DURATION = 0.12f;
+
+void applyDirectionalInput(Player& player, const InputHandler& input,
+                           float dt) {
+    const InputHandler::DirectionalInput direction =
+        input.readDirectionalInput();
+
+    player.setVineHorizontalInput(direction.left || direction.right);
+
+    // Opposite directions cancel explicitly. This keeps execution order from
+    // deciding which key wins and makes WASD and arrow keys use one path.
+    if (direction.left != direction.right) {
+        if (direction.left) {
+            player.moveLeft(dt);
+        } else {
+            player.moveRight(dt);
+        }
+    }
+
+    if (direction.up != direction.down) {
+        if (direction.up) {
+            player.climbUp(dt);
+        } else {
+            player.climbDown(dt);
+        }
+    }
+}
 }
 
 PlayingState::PlayingState() : m_hud(std::make_unique<HUD>()) {
@@ -34,43 +61,40 @@ PlayingState::PlayingState() : m_hud(std::make_unique<HUD>()) {
         m_inputP1.setSinglePlayerBindings();
     }
 }
+PlayingState::~PlayingState() {}
 
-PlayingState::PlayingState(SaveData::GameSnapshot snapshot)
-    : m_hud(std::make_unique<HUD>()), m_pendingSnapshot(std::move(snapshot)) {
-    // Snapshot slots are single-player only, even if a previous session left
-    // PlayerProgress in a multiplayer mode before the user opened Load Game.
-    m_inputP1.setSinglePlayerBindings();
+Player* PlayingState::getSurvivingPlayer() const {
+    if (m_player && !m_player->isDead()) {
+        return m_player;
+    }
+    if (m_player2 && !m_player2->isDead()) {
+        return m_player2;
+    }
+    return nullptr;
 }
 
-PlayingState::~PlayingState() {}
+void PlayingState::updateCameraForLivingPlayers() {
+    if (m_player && !m_player->isDead() &&
+        m_player2 && !m_player2->isDead()) {
+        m_camera.update(m_player->getPosition(), m_player2->getPosition());
+    } else if (Player* survivor = getSurvivingPlayer()) {
+        m_camera.update(survivor->getPosition());
+    }
+}
 
 void PlayingState::onEnter() {
     PlayerProgress& progress = Game::getInstance().getProgress();
-    if (m_pendingSnapshot) {
-        if (!restoreSnapshot(*m_pendingSnapshot)) {
-            std::cerr << "[PlayingState] Failed to restore save snapshot\n";
-            Game::getInstance().getStateManager().changeState(
-                std::make_unique<MenuState>());
-            return;
-        }
-        m_pendingSnapshot.reset();
-    } else {
-        loadLevel(progress.getCurrentLevel());
-        m_levelTimer = LEVEL_TIME;
-        m_levelComplete = false;
-    }
+    loadLevel(progress.getCurrentLevel());
+    m_levelTimer = LEVEL_TIME;
+    m_levelComplete = false;
 
-    m_hud->init(progress.getGameMode());
+    m_hud->init();
     m_scorePopups.init();
     m_hud->setCharacterName(progress.getSelectedCharacter());
-    if (progress.isMultiplayer()) {
-        m_hud->setPlayer2Name(progress.getSelectedCharacter() == "Mario" ? "Luigi" : "Mario");
-    }
     m_hud->setLevel(progress.getCurrentLevel());
     m_hud->setLives(progress.getLives());
     m_hud->setScore(progress.getScore());
     m_hud->setCoins(progress.getCoins());
-    m_hud->setTime(m_levelTimer);
 
     // Start/continue selected background music track (does not restart if already playing)
     SoundManager& snd = SoundManager::getInstance();
@@ -99,15 +123,17 @@ void PlayingState::onEnter() {
     });
 
     m_playerDiedSub = ScopedEventSubscription(EventType::PlayerDied, [this](const GameEvent& e) {
-        SoundManager::getInstance().stopMusic();
         SoundManager::getInstance().playSound(SoundID::PlayerDeath);
-        // In PvP, only trigger the death transition once (first player to die wins the sequence)
-        if (Game::getInstance().getProgress().isPvP()) {
-            // Mark who died; finishPlayerDeath() reads isDead() directly
-            beginPlayerDeath();
-        } else {
-            beginPlayerDeath();
+        const PlayerProgress& progress = Game::getInstance().getProgress();
+
+        // A single co-op casualty waits for the next level. Keep both the
+        // music and the level simulation active for the surviving partner.
+        if (progress.isCoop() && getSurvivingPlayer()) {
+            return;
         }
+
+        SoundManager::getInstance().stopMusic();
+        beginPlayerDeath();
     });
 
     m_powerUpSub = ScopedEventSubscription(EventType::PowerUpCollected, [this](const GameEvent& e) {
@@ -179,7 +205,7 @@ void PlayingState::handleEvent(const sf::Event& event) {
             // pauseMusic() happens in onPause(), called by StateManager as
             // part of pushing PauseState on top of us.
             Game::getInstance().getStateManager().pushState(
-                std::make_unique<PauseState>(captureSnapshot()));
+                std::make_unique<PauseState>());
             return;
         }
 
@@ -233,11 +259,7 @@ void PlayingState::update(float dt) {
             // The player owns the arc and pause timing. Keep the level alive
             // until that animation reports completion.
             m_level->update(dt);
-            if (m_player2 && !m_player2->isDead()) {
-                m_camera.update(m_player->getPosition(), m_player2->getPosition());
-            } else if (!m_player->isDead()) {
-                m_camera.update(m_player->getPosition());
-            }
+            updateCameraForLivingPlayers();
             // In PvP: wait for the dying player's animation to complete
             bool p1AnimDone = m_player->isDead() && m_player->isDeathAnimationComplete();
             bool p2AnimDone = m_player2 && m_player2->isDead() && m_player2->isDeathAnimationComplete();
@@ -260,11 +282,7 @@ void PlayingState::update(float dt) {
     if (!m_player->isDead()) {
         m_player->setSprinting(m_inputP1.isSprintHeld());
         m_player->setJumpHeld(m_inputP1.isJumpHeld());
-        m_player->setVineHorizontalInput(m_inputP1.isHorizontalHeld());
-        auto commands1 = m_inputP1.handleInput();
-        for (auto* cmd : commands1) {
-            cmd->execute(*m_player, dt);
-        }
+        applyDirectionalInput(*m_player, m_inputP1, dt);
         if (m_player->wantsToShoot()) {
             m_player->clearShootFlag();
             int dir = m_player->isFacingRight() ? 1 : -1;
@@ -281,11 +299,7 @@ void PlayingState::update(float dt) {
     if (m_player2 && !m_player2->isDead()) {
         m_player2->setSprinting(m_inputP2.isSprintHeld());
         m_player2->setJumpHeld(m_inputP2.isJumpHeld());
-        m_player2->setVineHorizontalInput(m_inputP2.isHorizontalHeld());
-        auto commands2 = m_inputP2.handleInput();
-        for (auto* cmd : commands2) {
-            cmd->execute(*m_player2, dt);
-        }
+        applyDirectionalInput(*m_player2, m_inputP2, dt);
         if (m_player2->wantsToShoot()) {
             m_player2->clearShootFlag();
             int dir = m_player2->isFacingRight() ? 1 : -1;
@@ -302,11 +316,7 @@ void PlayingState::update(float dt) {
     m_level->update(dt);
 
     if (m_transitionStage == LevelTransitionStage::DeathAnimation) {
-        if (m_player2 && !m_player2->isDead()) {
-            m_camera.update(m_player->getPosition(), m_player2->getPosition());
-        } else if (!m_player->isDead()) {
-            m_camera.update(m_player->getPosition());
-        }
+        updateCameraForLivingPlayers();
         bool p1AnimDone = m_player->isDead() && m_player->isDeathAnimationComplete();
         bool p2AnimDone = m_player2 && m_player2->isDead() && m_player2->isDeathAnimationComplete();
         if (p1AnimDone || p2AnimDone) {
@@ -326,26 +336,20 @@ void PlayingState::update(float dt) {
         }
     }
 
-    // Update camera
-    if (m_player2 && !m_player2->isDead() && !m_player->isDead()) {
-        m_camera.update(m_player->getPosition(), m_player2->getPosition());
-    } else {
-        m_camera.update(m_player->getPosition());
-    }
+    // Follow both living players, or the sole co-op survivor.
+    updateCameraForLivingPlayers();
 
     // Timer
     m_levelTimer -= dt;
     m_hud->setTime(m_levelTimer);
-    if (!m_player->isDead() && m_levelTimer <= 0.0f) {
-        m_player->die();
+    if (m_levelTimer <= 0.0f) {
+        if (Player* survivor = getSurvivingPlayer()) {
+            survivor->die();
+        }
     }
 
     if (m_transitionStage == LevelTransitionStage::DeathAnimation) {
-        if (m_player2 && !m_player->isDead()) {
-            m_camera.update(m_player->getPosition(), m_player2->getPosition());
-        } else {
-            m_camera.update(m_player->getPosition());
-        }
+        updateCameraForLivingPlayers();
         return;
     }
 
@@ -375,7 +379,7 @@ void PlayingState::render(sf::RenderWindow& window) {
     }
 
     // Reset view for HUD (screen-space)
-    window.setView(Game::getInstance().getUiView());
+    window.setView(window.getDefaultView());
     m_hud->render(window);
 
     // Hide the costly map replacement and camera relocation behind a short
@@ -428,85 +432,6 @@ void PlayingState::loadLevel(int levelNumber) {
     m_camera.setLevelBounds(m_level->getWidth(), m_level->getHeight());
 }
 
-std::optional<SaveData::GameSnapshot> PlayingState::captureSnapshot() const {
-    const PlayerProgress& progress = Game::getInstance().getProgress();
-    if (progress.getGameMode() != GameMode::SinglePlayer || !m_level || !m_player ||
-        m_player2 || m_levelComplete ||
-        m_transitionStage != LevelTransitionStage::Inactive || m_player->isDead()) {
-        return std::nullopt;
-    }
-
-    SaveData::GameSnapshot snapshot;
-    snapshot.gameMode = static_cast<int>(GameMode::SinglePlayer);
-    snapshot.progress.level = progress.getCurrentLevel();
-    snapshot.progress.score = progress.getScore();
-    snapshot.progress.lives = progress.getLives();
-    snapshot.progress.coins = progress.getCoins();
-    snapshot.progress.character = progress.getSelectedCharacter();
-    snapshot.levelTimer = m_levelTimer;
-    snapshot.mainLevelNumber = m_mainLevelNumber;
-    snapshot.inSecretRoom = m_inSecretRoom;
-    snapshot.pipeReturnPosition = {m_pipeReturnPosition.x, m_pipeReturnPosition.y};
-    snapshot.pipeReturnPowerUp = static_cast<int>(m_pipeReturnPowerUp);
-    snapshot.level = m_level->captureSnapshot();
-    return snapshot;
-}
-
-bool PlayingState::restoreSnapshot(const SaveData::GameSnapshot& snapshot) {
-    if (snapshot.gameMode != static_cast<int>(GameMode::SinglePlayer) ||
-        snapshot.mainLevelNumber < 1 || snapshot.mainLevelNumber > TOTAL_LEVELS ||
-        snapshot.progress.level < 1 || snapshot.progress.level > TOTAL_LEVELS) {
-        return false;
-    }
-
-    PlayerProgress& progress = Game::getInstance().getProgress();
-    progress.setGameMode(GameMode::SinglePlayer);
-    progress.setCurrentLevel(snapshot.progress.level);
-    progress.setScore(snapshot.progress.score);
-    progress.setLives(snapshot.progress.lives);
-    progress.setCoins(snapshot.progress.coins);
-    progress.setSelectedCharacter(snapshot.progress.character);
-
-    m_scorePopups.clear();
-    m_mainLevelNumber = snapshot.mainLevelNumber;
-    m_inSecretRoom = snapshot.inSecretRoom;
-    m_pipeReturnPosition = {snapshot.pipeReturnPosition.x, snapshot.pipeReturnPosition.y};
-    m_pipeReturnPowerUp = static_cast<PowerUpState>(snapshot.pipeReturnPowerUp);
-    m_pipeReturnPowerUp2 = PowerUpState::Small;
-    m_pipeTransitionEnteringSecret = false;
-    m_transitionStage = LevelTransitionStage::Inactive;
-    m_transitionTimer = 0.0f;
-    m_transitionScoreTimer = 0.0f;
-    m_transitionStartScore = 0;
-    m_transitionFlagpoleBonus = 0;
-    m_transitionTimeBonus = 0;
-    m_transitionRemainingSeconds = 0;
-    m_transitionConvertedTimeScore = 0;
-    m_transitionConvertedFlagpoleScore = 0;
-    m_transitionDisplayScore = 0;
-    m_levelComplete = false;
-
-    const std::string filename = getLevelPath(m_mainLevelNumber, m_inSecretRoom);
-    const LevelTheme theme = getLevelTheme(m_mainLevelNumber, m_inSecretRoom);
-    m_level = std::make_unique<Level>();
-    if (!m_level->loadFromFile(filename, progress.getSelectedCharacter(), theme,
-                               !m_inSecretRoom) ||
-        !m_level->restoreSnapshot(snapshot.level)) {
-        m_level.reset();
-        m_player = nullptr;
-        m_player2 = nullptr;
-        return false;
-    }
-
-    m_player = m_level->getPlayer();
-    m_player2 = m_level->getPlayer2();
-    if (!m_player || m_player2) return false;
-    m_camera.setLevelBounds(m_level->getWidth(), m_level->getHeight());
-    m_camera.update(m_player->getPosition());
-    m_levelTimer = snapshot.levelTimer;
-    return true;
-}
-
 void PlayingState::checkLevelComplete() {
     if (m_level && m_level->isComplete() &&
         m_transitionStage == LevelTransitionStage::Inactive) {
@@ -527,9 +452,9 @@ void PlayingState::startLevelTransition() {
     m_transitionDisplayScore = 0;
     m_hud->setTime(static_cast<float>(m_transitionRemainingSeconds));
 
-    if (m_player) {
+    if (Player* finisher = getSurvivingPlayer()) {
         if (Flagpole* flagpole = m_level ? m_level->getFlagpole() : nullptr) {
-            m_player->beginFlagpoleSlide(flagpole->getSlideAnchorX(),
+            finisher->beginFlagpoleSlide(flagpole->getSlideAnchorX(),
                                          flagpole->getSlideEndY());
         } else {
             // isComplete() is normally driven by a flagpole, but malformed
@@ -708,18 +633,19 @@ void PlayingState::updatePipeTransition(float dt) {
 }
 
 void PlayingState::beginCastleEntry() {
-    if (!m_player) {
+    Player* finisher = getSurvivingPlayer();
+    if (!finisher) {
         return;
     }
 
-    m_player->beginFlagpoleCastleWalk();
+    finisher->beginFlagpoleCastleWalk();
     const auto door = m_level ? m_level->getCastleDoorEntryPosition()
                                : std::nullopt;
     // Custom maps without a `4`/`5` door keep the original short walk as a
     // safe fallback. Official level 1 resolves to the real castle doorway.
-    m_castleDoorTargetX = door ? door->x : m_player->getPosition().x + 90.0f;
+    m_castleDoorTargetX = door ? door->x : finisher->getPosition().x + 90.0f;
     if (door) {
-        m_player->setPosition(m_player->getPosition().x, door->y);
+        finisher->setPosition(finisher->getPosition().x, door->y);
     }
     m_transitionStage = LevelTransitionStage::CastleEntry;
     m_transitionTimer = 0.0f;
@@ -797,7 +723,7 @@ void PlayingState::swapPipeMap() {
 }
 
 void PlayingState::updateLevelTransition(float dt) {
-    if (!m_level || !m_player) {
+    if (!m_level) {
         return;
     }
 
@@ -819,14 +745,19 @@ void PlayingState::updateLevelTransition(float dt) {
         const Flagpole* flagpole = m_level->getFlagpole();
         // Mario waits at the pole base while the flag finishes dropping.
         // Player::SlideComplete already holds the character still for us.
-        if (m_player->isFlagpoleSlideComplete() &&
+        Player* finisher = getSurvivingPlayer();
+        if (finisher && finisher->isFlagpoleSlideComplete() &&
             (!flagpole || flagpole->isFlagDropComplete())) {
             beginCastleEntry();
         }
         break;
     }
     case LevelTransitionStage::CastleEntry: {
-        sf::Vector2f pos = m_player->getPosition();
+        Player* finisher = getSurvivingPlayer();
+        if (!finisher) {
+            return;
+        }
+        sf::Vector2f pos = finisher->getPosition();
         const float remainingX = m_castleDoorTargetX - pos.x;
         const float step = 120.0f * dt;
         if (remainingX <= step) {
@@ -834,11 +765,11 @@ void PlayingState::updateLevelTransition(float dt) {
         } else {
             pos.x += step;
         }
-        m_player->setPosition(pos);
-        m_player->setVelocity(0.0f, 0.0f);
+        finisher->setPosition(pos);
+        finisher->setVelocity(0.0f, 0.0f);
 
         if (pos.x >= m_castleDoorTargetX) {
-            m_player->setActive(false);
+            finisher->setActive(false);
             m_transitionStage = LevelTransitionStage::TimeBonusCount;
             m_transitionTimer = 0.0f;
         }

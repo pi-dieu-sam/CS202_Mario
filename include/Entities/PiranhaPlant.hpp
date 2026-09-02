@@ -8,7 +8,6 @@
 /// Clipping hides the portion below the pipe mouth.
 /// Cannot be stomped; only fireballs and star power can kill it.
 class PiranhaPlant : public Enemy {
-    friend class SnapshotAccess;
 public:
     enum class State { HIDDEN, EMERGING, WAITING, RETRACTING };
 

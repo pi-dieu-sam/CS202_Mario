@@ -2,6 +2,7 @@
 #include "Core/SoundManager.hpp"
 #include "Entities/Coin.hpp"
 #include "Entities/FireFlower.hpp"
+#include "Entities/FlowersBuff.hpp"
 #include "Entities/Mushroom.hpp"
 #include "Entities/Star.hpp"
 #include "Graphics/SpriteRegistry.hpp"
@@ -62,13 +63,12 @@ std::unique_ptr<Item> Block::hit(bool playerIsBig) {
   if (m_used)
     return nullptr;
 
-  // Start bump animation
+  // Start bump animation.
   m_bumping = true;
   m_bumpTimer = 0.0f;
 
-  EventManager::getInstance().publish({EventType::BlockHit});
-
   if (m_blockType == BlockType::Question) {
+    EventManager::getInstance().publish({EventType::BlockHit});
     m_used = true;
 
     // Create the contained item above the block
@@ -99,16 +99,26 @@ std::unique_ptr<Item> Block::hit(bool playerIsBig) {
       star->setTheme(m_theme);
       return star;
     }
+    case ObjectType::FlowersBuff: {
+      auto flowersBuff = std::make_unique<FlowersBuff>();
+      flowersBuff->setPosition(spawnPos);
+      flowersBuff->setTheme(m_theme);
+      return flowersBuff;
+    }
     default:
       break;
     }
   } else if (m_blockType == BlockType::Brick) {
     if (playerIsBig) {
-      // Break the brick
+      // A brick takes three empowered head hits. The break sound gives
+      // feedback for the first two hits as well as the final break.
+      ++m_brickHits;
       SoundManager::getInstance().playSound(SoundID::BlockBreak);
-      m_active = false;
+      if (m_brickHits >= 3) {
+        m_active = false;
+      }
     } else {
-      // Small player just bumps it
+      // A normal player can bump it but cannot damage it.
       SoundManager::getInstance().playSound(SoundID::BlockBump);
     }
   }

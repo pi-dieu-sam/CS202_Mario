@@ -5,7 +5,6 @@
 /// Fireball — projectile shot by the player in Fire state.
 /// Bounces along the ground and destroys enemies on contact.
 class Fireball : public GameObject {
-    friend class SnapshotAccess;
 public:
     Fireball(float x, float y, int direction);
 

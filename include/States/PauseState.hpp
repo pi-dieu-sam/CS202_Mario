@@ -1,17 +1,12 @@
 #pragma once
-
-#include "Core/GameSnapshot.hpp"
 #include "GameState.hpp"
-
 #include <SFML/Graphics.hpp>
-#include <array>
-#include <optional>
 
-/// PauseState — transparent gameplay overlay with Resume, single-player Save,
-/// shared Settings, and Quit to Menu actions.
+/// PauseState — overlay drawn on top of PlayingState.
+/// Shows "Resume", "Quit to Menu", and an interactive Audio Control Panel (Mute, Vol +/-, Track Selector).
 class PauseState : public GameState {
 public:
-    explicit PauseState(std::optional<SaveData::GameSnapshot> snapshot = std::nullopt);
+    PauseState();
 
     void onEnter() override;
     void onExit() override;
@@ -19,24 +14,31 @@ public:
     void update(float dt) override;
     void render(sf::RenderWindow& window) override;
 
+    /// Drawn as an overlay over the frozen PlayingState beneath it.
     bool isTransparent() const override { return true; }
 
 private:
-    enum class Action { Resume, Save, Settings, QuitToMenu };
+    void updateAudioUI();
 
-    void activateSelectedAction();
-    void updateVisuals();
+    sf::RectangleShape m_overlay;  // semi-transparent dark overlay
+    sf::Text           m_title;
+    sf::Text           m_options[2]; // Resume, Quit
+    int                m_selected = 0;
 
-    sf::RectangleShape m_overlay;
-    sf::RectangleShape m_panel;
-    std::array<sf::RectangleShape, 4> m_optionBoxes;
-    std::array<sf::Text, 4> m_options;
-    sf::Text m_title;
-    sf::Text m_subtitle;
-    sf::Text m_help;
-    std::array<Action, 4> m_actions{};
-    int m_optionCount = 0;
-    int m_selected = 0;
-    std::optional<SaveData::GameSnapshot> m_snapshot;
-    float m_pulseTime = 0.0f;
+    // ── Audio Control Panel UI ──────────────────────────────────────────────
+    sf::RectangleShape m_audioPanel;
+    sf::Text           m_panelTitle;
+
+    sf::RectangleShape m_muteBtn;
+    sf::Text           m_muteText;
+
+    sf::RectangleShape m_volMinusBtn;
+    sf::Text           m_volMinusText;
+    sf::RectangleShape m_volPlusBtn;
+    sf::Text           m_volPlusText;
+    sf::Text           m_volText;
+
+    sf::RectangleShape m_trackBtn;
+    sf::Text           m_trackText;
+    sf::Text           m_helpText;
 };

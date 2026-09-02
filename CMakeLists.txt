@@ -82,42 +82,6 @@ if(BUILD_TESTS)
     set_tests_properties(NavigationTests PROPERTIES
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     )
-
-    add_executable(SaveManagerTests tests/SaveManagerTests.cpp ${TEST_SOURCES})
-    target_include_directories(SaveManagerTests PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/include
-    )
-    target_link_libraries(SaveManagerTests PRIVATE
-        sfml-graphics
-        sfml-window
-        sfml-system
-        sfml-audio
-    )
-    add_test(NAME SaveManagerTests COMMAND SaveManagerTests)
-    set_tests_properties(SaveManagerTests PROPERTIES
-        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    )
-
-    add_executable(GameSettingsTests tests/GameSettingsTests.cpp ${TEST_SOURCES})
-    target_include_directories(GameSettingsTests PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/include
-    )
-    target_link_libraries(GameSettingsTests PRIVATE
-        sfml-graphics
-        sfml-window
-        sfml-system
-        sfml-audio
-    )
-    add_test(NAME GameSettingsTests COMMAND GameSettingsTests)
-    set_tests_properties(GameSettingsTests PROPERTIES
-        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    )
-
-    add_executable(MenuAnimationTests tests/MenuAnimationTests.cpp)
-    target_include_directories(MenuAnimationTests PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/include
-    )
-    add_test(NAME MenuAnimationTests COMMAND MenuAnimationTests)
 endif()
 
 # --- Copy assets to build directory ---

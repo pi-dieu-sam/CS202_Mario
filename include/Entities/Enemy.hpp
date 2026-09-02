@@ -1,5 +1,4 @@
 #pragma once
-// Enemy.hpp — abstract base for all hostile NPCs
 #include "../AI/AIStrategy.hpp"
 #include "../Level/LevelTheme.hpp"
 #include "Character.hpp"
@@ -8,7 +7,6 @@
 /// Enemy — Abstract base class for all enemy characters.
 /// Uses the Strategy pattern for AI behavior.
 class Enemy : public Character {
-  friend class SnapshotAccess;
 public:
   Enemy();
   virtual ~Enemy() = default;
@@ -21,8 +19,8 @@ public:
   virtual void onStomped();
 
   /// Instantly defeat this enemy regardless of type (used by fireballs).
-  /// Unlike onStomped(), which subclasses may override to only change state
-  /// (Koopa -> shell) or do nothing (Bowser), kill() always removes the enemy.
+  /// Unlike onStomped(), which subclasses may override (Koopa -> shell,
+  /// PiranhaPlant -> no effect), kill() always removes the enemy.
   virtual void kill();
 
   /// Apply a fireball hit and return whether it defeated the enemy. Most
