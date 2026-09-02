@@ -42,7 +42,9 @@ private:
     std::array<sf::RectangleShape, SaveManager::SLOT_COUNT> m_slotPanels;
     std::array<sf::Text, SaveManager::SLOT_COUNT> m_slotTexts;
     sf::RectangleShape m_background;
+    sf::RectangleShape m_headerBar;
     sf::Text m_title;
+    sf::Text m_subtitle;
     sf::Text m_help;
     sf::Text m_status;
     int m_selected = 0;

@@ -40,7 +40,10 @@ void SaveSlotState::onEnter() {
 
     m_background.setSize(
         sf::Vector2f(static_cast<float>(WINDOW_WIDTH), static_cast<float>(WINDOW_HEIGHT)));
-    m_background.setFillColor(sf::Color(18, 22, 52));
+    m_background.setFillColor(sf::Color(20, 31, 76));
+
+    m_headerBar.setSize({static_cast<float>(WINDOW_WIDTH), 80.0f});
+    m_headerBar.setFillColor(sf::Color(10, 18, 52, 220));
 
     m_title.setFont(font);
     m_title.setCharacterSize(30);
@@ -50,6 +53,17 @@ void SaveSlotState::onEnter() {
     m_title.setOrigin(titleBounds.left + titleBounds.width * 0.5f,
                       titleBounds.top + titleBounds.height * 0.5f);
     m_title.setPosition(WINDOW_WIDTH * 0.5f, 44.0f);
+
+    m_subtitle.setFont(font);
+    m_subtitle.setCharacterSize(12);
+    m_subtitle.setString(m_mode == SaveSlotMode::Save
+        ? "STORE YOUR 1 PLAYER ADVENTURE SAFELY"
+        : "CHOOSE AN ADVENTURE TO CONTINUE");
+    m_subtitle.setFillColor(sf::Color(193, 210, 255));
+    const auto subtitleBounds = m_subtitle.getLocalBounds();
+    m_subtitle.setOrigin(subtitleBounds.left + subtitleBounds.width * 0.5f,
+                         subtitleBounds.top + subtitleBounds.height * 0.5f);
+    m_subtitle.setPosition(WINDOW_WIDTH * 0.5f, 73.0f);
 
     for (int i = 0; i < SaveManager::SLOT_COUNT; ++i) {
         const float y = SLOT_TOP + SLOT_GAP * static_cast<float>(i);
@@ -92,7 +106,9 @@ std::string SaveSlotState::slotLabel(const SaveSlotInfo& info) const {
     const std::string prefix = "SLOT " + std::to_string(info.slot);
     switch (info.status) {
     case SaveSlotStatus::Empty:
-        return prefix + "\nEMPTY SLOT";
+        return prefix + (m_mode == SaveSlotMode::Save
+            ? "\nEMPTY SLOT - READY TO SAVE"
+            : "\nEMPTY - NO ADVENTURE SAVED");
     case SaveSlotStatus::Corrupt:
         return prefix + "\nCORRUPT SAVE: " + limitText(info.error, 47);
     case SaveSlotStatus::Occupied: {
@@ -130,16 +146,17 @@ void SaveSlotState::updateVisuals() {
         const bool selected = i == m_selected;
 
         if (info.status == SaveSlotStatus::Corrupt) {
-            panel.setFillColor(sf::Color(90, 32, 42));
+            panel.setFillColor(sf::Color(100, 37, 52));
             text.setFillColor(sf::Color(255, 190, 190));
         } else if (info.status == SaveSlotStatus::Empty) {
-            panel.setFillColor(sf::Color(46, 52, 82));
+            panel.setFillColor(sf::Color(43, 59, 108));
             text.setFillColor(sf::Color(175, 185, 220));
         } else {
-            panel.setFillColor(sf::Color(32, 76, 70));
+            panel.setFillColor(sf::Color(31, 102, 85));
             text.setFillColor(sf::Color::White);
         }
-        panel.setOutlineColor(selected ? sf::Color::Yellow : sf::Color(130, 145, 215));
+        panel.setOutlineColor(selected ? sf::Color(255, 221, 102) : sf::Color(130, 158, 226));
+        panel.setOutlineThickness(selected ? 4.0f : 2.0f);
         text.setString(slotLabel(info));
     }
 }
@@ -225,7 +242,7 @@ void SaveSlotState::handleEvent(const sf::Event& event) {
     sf::RenderWindow& window = Game::getInstance().getWindow();
 
     if (event.type == sf::Event::MouseMoved && !m_confirmOverwrite && !m_saveCompleted) {
-        const sf::Vector2f mouse = window.mapPixelToCoords({event.mouseMove.x, event.mouseMove.y});
+        const sf::Vector2f mouse = Game::getInstance().mapPixelToUiCoords({event.mouseMove.x, event.mouseMove.y});
         for (int i = 0; i < SaveManager::SLOT_COUNT; ++i) {
             if (m_slotPanels[static_cast<std::size_t>(i)].getGlobalBounds().contains(mouse)) {
                 m_selected = i;
@@ -237,7 +254,7 @@ void SaveSlotState::handleEvent(const sf::Event& event) {
 
     if (event.type == sf::Event::MouseButtonPressed &&
         event.mouseButton.button == sf::Mouse::Left && !m_confirmOverwrite && !m_saveCompleted) {
-        const sf::Vector2f mouse = window.mapPixelToCoords({event.mouseButton.x, event.mouseButton.y});
+        const sf::Vector2f mouse = Game::getInstance().mapPixelToUiCoords({event.mouseButton.x, event.mouseButton.y});
         for (int i = 0; i < SaveManager::SLOT_COUNT; ++i) {
             if (m_slotPanels[static_cast<std::size_t>(i)].getGlobalBounds().contains(mouse)) {
                 m_selected = i;
@@ -289,9 +306,11 @@ void SaveSlotState::handleEvent(const sf::Event& event) {
 void SaveSlotState::update(float) {}
 
 void SaveSlotState::render(sf::RenderWindow& window) {
-    window.setView(window.getDefaultView());
+    window.setView(Game::getInstance().getUiView());
     window.draw(m_background);
+    window.draw(m_headerBar);
     window.draw(m_title);
+    window.draw(m_subtitle);
     for (int i = 0; i < SaveManager::SLOT_COUNT; ++i) {
         window.draw(m_slotPanels[static_cast<std::size_t>(i)]);
         window.draw(m_slotTexts[static_cast<std::size_t>(i)]);
