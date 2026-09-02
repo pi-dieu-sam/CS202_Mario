@@ -1701,6 +1701,8 @@ void Level::handleCollisions(float dt) {
           float newVx = CollisionDetector::reflectHorizontalVelocity(
               preVel.x, result.side, 0.0f);
           item->setVelocity(newVx, item->getVelocity().y);
+        } else if (result.side == CollisionDetector::Side::Bottom) {
+          item->onLanded();
         }
       }
     }
