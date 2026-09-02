@@ -1707,6 +1707,31 @@ void Level::handleCollisions(float dt) {
       }
     }
   }
+
+  // Items vs Blocks (for moving items like mushroom/star -- m_blocks isn't
+  // grid-indexed, so this walks the flat vector like the player-vs-block
+  // pass above does).
+  for (auto &item : m_items) {
+    if (!item->isActive() || !item->isMoving())
+      continue;
+    for (auto &block : m_blocks) {
+      if (!block->isActive())
+        continue;
+      auto result = CollisionDetector::checkCollision(*item, *block);
+      if (result.collided) {
+        sf::Vector2f preVel = item->getVelocity();
+        CollisionDetector::resolveCollision(*item, *block, result);
+        if (result.side == CollisionDetector::Side::Left ||
+            result.side == CollisionDetector::Side::Right) {
+          float newVx = CollisionDetector::reflectHorizontalVelocity(
+              preVel.x, result.side, 0.0f);
+          item->setVelocity(newVx, item->getVelocity().y);
+        } else if (result.side == CollisionDetector::Side::Bottom) {
+          item->onLanded();
+        }
+      }
+    }
+  }
 }
 
 void Level::removeInactiveEntities() {
