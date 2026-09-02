@@ -117,6 +117,20 @@ static void testRetryPreservesProgressForEveryLevel() {
   }
 }
 
+static void testAddCoinIncreasesCoinsAndScore() {
+  PlayerProgress progress;
+  constexpr int coinsToCollect = 37; // stays under the 100-coin extra-life threshold
+
+  for (int i = 0; i < coinsToCollect; ++i) {
+    progress.addCoin();
+  }
+
+  CHECK(progress.getCoins() == coinsToCollect,
+        "each addCoin() call increases the coin count by exactly one");
+  CHECK(progress.getScore() == coinsToCollect * COIN_SCORE,
+        "each collected coin awards the configured coin score");
+}
+
 static void testNewGameRemainsFullReset() {
   PlayerProgress progress;
   progress.setCurrentLevel(TOTAL_LEVELS);
@@ -141,6 +155,7 @@ int main() {
   testOrdinaryCompletionAdvancesLevel();
   testFinalCompletionReportsVictory();
   testRetryPreservesProgressForEveryLevel();
+  testAddCoinIncreasesCoinsAndScore();
   testNewGameRemainsFullReset();
 
   if (g_failures == 0) {
