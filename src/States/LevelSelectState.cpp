@@ -1,11 +1,14 @@
 #include "States/LevelSelectState.hpp"
 #include "Core/AssetManager.hpp"
 #include "Core/Game.hpp"
+#include "Entities/Player.hpp"
 #include "Entities/Tile.hpp"
 #include "Graphics/SpriteRegistry.hpp"
 #include "Level/LevelTheme.hpp"
 #include "Physics/PhysicsConstants.hpp"
 #include "States/Navigator.hpp"
+
+#include <cmath>
 
 LevelSelectState::LevelSelectState() {}
 
@@ -23,6 +26,21 @@ void LevelSelectState::onEnter() {
   auto tb = m_title.getLocalBounds();
   m_title.setOrigin(tb.width / 2.0f, tb.height / 2.0f);
   m_title.setPosition(WINDOW_WIDTH / 2.0f, 50.0f);
+
+  m_modeBadge.setFont(font);
+  m_modeBadge.setCharacterSize(13);
+  m_modeBadge.setFillColor(sf::Color(205, 221, 255));
+  const PlayerProgress& progress = Game::getInstance().getProgress();
+  if (progress.isCoop()) {
+    const std::string p1 = progress.getSelectedCharacter();
+    const std::string p2 = p1 == "Mario" ? "Luigi" : "Mario";
+    m_modeBadge.setString("CO-OP - P1 " + p1 + " / P2 " + p2);
+  } else {
+    m_modeBadge.setString("1 PLAYER - " + progress.getSelectedCharacter());
+  }
+  auto mb = m_modeBadge.getLocalBounds();
+  m_modeBadge.setOrigin(mb.left + mb.width / 2.0f, mb.top + mb.height / 2.0f);
+  m_modeBadge.setPosition(WINDOW_WIDTH / 2.0f, 88.0f);
 
   float boxW = 210.0f, boxH = 360.0f;
   float gap = 30.0f;
@@ -72,9 +90,9 @@ void LevelSelectState::onEnter() {
     // Desc
     m_levelDescs[i].setFont(font);
     m_levelDescs[i].setString(descs[i]);
-    m_levelDescs[i].setCharacterSize(13);
+    m_levelDescs[i].setCharacterSize(12);
     m_levelDescs[i].setFillColor(sf::Color(220, 220, 220));
-    m_levelDescs[i].setPosition(posX + 15.0f, posY + 120.0f);
+    m_levelDescs[i].setPosition(posX + 15.0f, posY + 182.0f);
 
     // Small themed tile-strip preview along the bottom of the box, plus
     // a pipe accent — built from the same Tileset sprites used in-level.
@@ -111,7 +129,17 @@ void LevelSelectState::onEnter() {
   }
 
   m_selected = 0;
+  m_animationTime = 0.0f;
   updateSelectionVisuals();
+  updatePreviewAnimations(0.0f);
+
+  m_helpText.setFont(font);
+  m_helpText.setCharacterSize(12);
+  m_helpText.setString("LEFT/RIGHT: SELECT LEVEL   ENTER: PLAY   ESC: BACK");
+  m_helpText.setFillColor(sf::Color(190, 207, 255));
+  auto hb = m_helpText.getLocalBounds();
+  m_helpText.setOrigin(hb.left + hb.width / 2.0f, hb.top + hb.height / 2.0f);
+  m_helpText.setPosition(WINDOW_WIDTH / 2.0f, 548.0f);
 }
 
 void LevelSelectState::onExit() {}
@@ -122,7 +150,7 @@ void LevelSelectState::handleEvent(const sf::Event &event) {
   // Mouse Move
   if (event.type == sf::Event::MouseMoved) {
     sf::Vector2f mousePos =
-        window.mapPixelToCoords({event.mouseMove.x, event.mouseMove.y});
+        Game::getInstance().mapPixelToUiCoords({event.mouseMove.x, event.mouseMove.y});
     for (int i = 0; i < 3; i++) {
       if (m_levelBoxes[i].getGlobalBounds().contains(mousePos)) {
         if (m_selected != i) {
@@ -139,7 +167,7 @@ void LevelSelectState::handleEvent(const sf::Event &event) {
   if (event.type == sf::Event::MouseButtonPressed &&
       event.mouseButton.button == sf::Mouse::Left) {
     sf::Vector2f mousePos =
-        window.mapPixelToCoords({event.mouseButton.x, event.mouseButton.y});
+        Game::getInstance().mapPixelToUiCoords({event.mouseButton.x, event.mouseButton.y});
     for (int i = 0; i < 3; i++) {
       if (m_levelBoxes[i].getGlobalBounds().contains(mousePos)) {
         m_selected = i;
@@ -191,28 +219,65 @@ void LevelSelectState::handleEvent(const sf::Event &event) {
   }
 }
 
-void LevelSelectState::update(float dt) {}
+void LevelSelectState::update(float dt) {
+  updatePreviewAnimations(dt);
+}
 
 void LevelSelectState::render(sf::RenderWindow &window) {
-  window.setView(window.getDefaultView());
+  window.setView(Game::getInstance().getUiView());
   window.draw(m_background);
   window.draw(m_title);
+  window.draw(m_modeBadge);
   for (int i = 0; i < 3; i++) {
     window.draw(m_levelBoxes[i]);
+    window.draw(m_previewCoins[i]);
+    window.draw(m_previewEnemies[i]);
+    window.draw(m_previewHeroes[i]);
     for (auto &tile : m_previewTiles[i])
       window.draw(tile);
     window.draw(m_levelTitles[i]);
     window.draw(m_levelThemes[i]);
     window.draw(m_levelDescs[i]);
   }
+  window.draw(m_helpText);
 }
 
 void LevelSelectState::updateSelectionVisuals() {
   for (int i = 0; i < 3; i++) {
     if (i == m_selected) {
       m_levelBoxes[i].setOutlineColor(sf::Color::Yellow);
+      m_levelBoxes[i].setOutlineThickness(5.0f);
     } else {
       m_levelBoxes[i].setOutlineColor(sf::Color::Transparent);
+      m_levelBoxes[i].setOutlineThickness(3.0f);
     }
+  }
+}
+
+void LevelSelectState::updatePreviewAnimations(float dt) {
+  m_animationTime += dt;
+  const PlayerProgress& progress = Game::getInstance().getProgress();
+  const CharacterId hero = progress.getSelectedCharacter() == "Luigi"
+      ? CharacterId::Luigi : CharacterId::Mario;
+
+  for (int i = 0; i < 3; ++i) {
+    const float posX = 85.0f + i * 240.0f;
+    const float phase = std::fmod(m_animationTime + i * 0.42f, 2.8f);
+    const bool jumping = phase > 1.7f && phase < 2.35f;
+    const float jumpProgress = jumping ? (phase - 1.7f) / 0.65f : 0.0f;
+    const float lift = jumping ? std::sin(jumpProgress * 3.14159265f) * 34.0f : 0.0f;
+    SpriteRegistry::applyPlayerFrame(
+        m_previewHeroes[i], hero, PowerUpState::Big,
+        jumping ? SpriteRegistry::PlayerAnim::Jump : SpriteRegistry::PlayerAnim::Walk,
+        static_cast<int>(m_animationTime * 10.0f),
+        sf::FloatRect(posX + 70.0f, 278.0f - lift - 64.0f, 0.0f, 64.0f));
+
+    SpriteRegistry::applyGoombaFrame(
+        m_previewEnemies[i], static_cast<int>(m_animationTime * 11.0f + i * 3),
+        sf::FloatRect(posX + 145.0f, 278.0f - 32.0f, 0.0f, 32.0f), true);
+
+    const float coinBob = std::sin(m_animationTime * 4.0f + i) * 6.0f;
+    SpriteRegistry::applyFrame(m_previewCoins[i], "assets/textures/SMBCoin.gif",
+                               sf::FloatRect(posX + 105.0f, 212.0f + coinBob, 0.0f, 22.0f));
   }
 }
