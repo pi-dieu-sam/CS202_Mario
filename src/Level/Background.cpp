@@ -52,8 +52,28 @@ bool Background::loadStrip(SceneryElement &elem,
   return elem.texture.loadFromImage(strip);
 }
 
-void Background::load(LevelTheme theme, float levelWidth, bool useLavaBackground) {
+void Background::load(LevelTheme theme, float /*levelWidth*/, bool useLavaBackground,
+                      bool useArenaBackground) {
   m_elements.clear();
+
+  if (useArenaBackground) {
+    m_topColor = sf::Color(40, 155, 230);
+    m_bottomColor = sf::Color(130, 210, 255);
+
+    SceneryElement arenaBackground;
+    if (arenaBackground.texture.loadFromFile(
+            "assets/textures/arena_background.png")) {
+      arenaBackground.worldY = 0.0f;
+      arenaBackground.fixedToCamera = true;
+      arenaBackground.scale = {
+          static_cast<float>(WINDOW_WIDTH) /
+              arenaBackground.texture.getSize().x,
+          static_cast<float>(WINDOW_HEIGHT) /
+              arenaBackground.texture.getSize().y};
+      m_elements.push_back(std::move(arenaBackground));
+    }
+    return;
+  }
 
   if (useLavaBackground) {
     m_topColor    = sf::Color(42, 10, 8);
@@ -133,6 +153,17 @@ void Background::render(sf::RenderWindow &window, float cameraCenterX) {
   for (const SceneryElement &elem : m_elements) {
     if (elem.texture.getSize().x == 0) continue;
 
+    sf::Sprite sprite(elem.texture);
+    sprite.setScale(elem.scale);
+    if (elem.fixedToCamera) {
+      sprite.setPosition(left, elem.worldY);
+      window.draw(sprite);
+      continue;
+    }
+
+    // Soften/dim background scenery so foreground character, blocks, and enemies stand out clearly.
+    sprite.setColor(sf::Color(150, 150, 165, 200));
+
     const float texW = static_cast<float>(elem.texture.getSize().x) * elem.scale.x;
 
     // Apply parallax: strip scrolls slower than the camera by `parallax` factor.
@@ -141,11 +172,6 @@ void Background::render(sf::RenderWindow &window, float cameraCenterX) {
     // Tile the strip to cover the full window width seamlessly.
     float startX = left + std::fmod(left - scrollX, texW);
     if (startX > left) startX -= texW;
-
-    sf::Sprite sprite(elem.texture);
-    sprite.setScale(elem.scale);
-    // Soften/dim background scenery so foreground character, blocks, and enemies stand out clearly
-    sprite.setColor(sf::Color(150, 150, 165, 200));
 
     float x = startX;
     while (x < left + static_cast<float>(WINDOW_WIDTH)) {

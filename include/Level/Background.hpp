@@ -11,6 +11,7 @@ struct SceneryElement {
   float parallax = 1.0f;///< 0=fixed, 1=scroll 1:1 with camera, 0.5=half speed
   sf::Vector2f scale = {1.0f, 1.0f}; ///< Display scale for this scenery strip
   float repeatWidth = 0.f; ///< horizontal tile repeat width (texture natural width if 0)
+  bool fixedToCamera = false; ///< Draw once, fitted to the current camera view.
 };
 
 /// Background — themed sky backdrop for a Level, drawn before everything
@@ -18,9 +19,10 @@ struct SceneryElement {
 /// strips (clouds, hills, bushes) extracted from the NES background sheets.
 class Background {
 public:
-  /// `useLavaBackground` selects the dedicated artwork for the main level 2
-  /// map without changing the background of underground secret rooms.
-  void load(LevelTheme theme, float levelWidth, bool useLavaBackground = false);
+  /// Select optional dedicated artwork for the lava map or PvP arena without
+  /// changing the backgrounds used by the regular and secret maps.
+  void load(LevelTheme theme, float levelWidth, bool useLavaBackground = false,
+            bool useArenaBackground = false);
   void render(sf::RenderWindow &window, float cameraCenterX);
 
 private:

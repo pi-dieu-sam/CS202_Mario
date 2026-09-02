@@ -633,7 +633,8 @@ bool Level::loadFromFile(const std::string &filename,
   if (!m_player)
     return false;
 
-  m_background.load(theme, m_width, filename == "assets/levels/level2.txt");
+  m_background.load(theme, m_width, filename == "assets/levels/level2.txt",
+                    filename == "assets/levels/pvp_arena.txt");
 
   return true;
 }
