@@ -157,6 +157,24 @@ static void testHundredCoinsAwardsExactlyOneExtraLife() {
         "the 200th coin awards a second extra life");
 }
 
+static void testLoseLifeRemovesExactlyOneLifeAndFloorsAtZero() {
+  PlayerProgress progress;
+  progress.setLives(3);
+
+  progress.loseLife();
+  CHECK(progress.getLives() == 2, "a single death removes exactly one life");
+
+  progress.loseLife();
+  CHECK(progress.getLives() == 1, "each subsequent death also removes one life");
+
+  progress.loseLife();
+  CHECK(progress.getLives() == 0, "the final life drops the count to zero");
+
+  progress.loseLife();
+  CHECK(progress.getLives() == 0,
+        "losing a life at zero lives does not go negative");
+}
+
 static void testNewGameRemainsFullReset() {
   PlayerProgress progress;
   progress.setCurrentLevel(TOTAL_LEVELS);
@@ -183,6 +201,7 @@ int main() {
   testRetryPreservesProgressForEveryLevel();
   testAddCoinIncreasesCoinsAndScore();
   testHundredCoinsAwardsExactlyOneExtraLife();
+  testLoseLifeRemovesExactlyOneLifeAndFloorsAtZero();
   testNewGameRemainsFullReset();
 
   if (g_failures == 0) {
