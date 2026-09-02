@@ -5,6 +5,17 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
+# Applies the project's compiler-warning policy to a project-owned target.
+# Not applied to fetched third-party targets (e.g. SFML) since those are
+# out of this project's control.
+function(enable_project_warnings target)
+    if(MSVC)
+        target_compile_options(${target} PRIVATE /W4)
+    else()
+        target_compile_options(${target} PRIVATE -Wall -Wextra)
+    endif()
+endfunction()
+
 # --- Fetch SFML 2.6 ---
 include(FetchContent)
 FetchContent_Declare(
@@ -20,6 +31,7 @@ file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS "src/*.cpp")
 
 # --- Executable ---
 add_executable(${PROJECT_NAME} ${SOURCES})
+enable_project_warnings(${PROJECT_NAME})
 
 target_include_directories(${PROJECT_NAME} PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
@@ -38,6 +50,7 @@ if(BUILD_TESTS)
     set(TEST_SOURCES ${SOURCES})
     list(REMOVE_ITEM TEST_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp")
     add_executable(CollisionTests tests/CollisionResolutionTests.cpp ${TEST_SOURCES})
+    enable_project_warnings(CollisionTests)
     target_include_directories(CollisionTests PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/include
     )
@@ -54,6 +67,7 @@ if(BUILD_TESTS)
     )
 
     add_executable(ProgressionTests tests/ProgressionTests.cpp ${TEST_SOURCES})
+    enable_project_warnings(ProgressionTests)
     target_include_directories(ProgressionTests PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/include
     )
@@ -69,6 +83,7 @@ if(BUILD_TESTS)
     )
 
     add_executable(NavigationTests tests/NavigationTests.cpp ${TEST_SOURCES})
+    enable_project_warnings(NavigationTests)
     target_include_directories(NavigationTests PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/include
     )
@@ -84,6 +99,7 @@ if(BUILD_TESTS)
     )
 
     add_executable(SaveManagerTests tests/SaveManagerTests.cpp ${TEST_SOURCES})
+    enable_project_warnings(SaveManagerTests)
     target_include_directories(SaveManagerTests PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/include
     )
@@ -99,6 +115,7 @@ if(BUILD_TESTS)
     )
 
     add_executable(GameSettingsTests tests/GameSettingsTests.cpp ${TEST_SOURCES})
+    enable_project_warnings(GameSettingsTests)
     target_include_directories(GameSettingsTests PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/include
     )
@@ -114,6 +131,7 @@ if(BUILD_TESTS)
     )
 
     add_executable(MenuAnimationTests tests/MenuAnimationTests.cpp)
+    enable_project_warnings(MenuAnimationTests)
     target_include_directories(MenuAnimationTests PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/include
     )
