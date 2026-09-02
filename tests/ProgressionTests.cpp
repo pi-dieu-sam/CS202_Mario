@@ -131,6 +131,32 @@ static void testAddCoinIncreasesCoinsAndScore() {
         "each collected coin awards the configured coin score");
 }
 
+static void testHundredCoinsAwardsExactlyOneExtraLife() {
+  PlayerProgress progress;
+  progress.setLives(STARTING_LIVES);
+  const int baseline = progress.getLives();
+
+  for (int i = 0; i < 99; ++i) {
+    progress.addCoin();
+  }
+  CHECK(progress.getLives() == baseline,
+        "the 99th coin does not yet award an extra life");
+
+  progress.addCoin(); // 100th coin
+  CHECK(progress.getLives() == baseline + 1,
+        "exactly the 100th coin awards one extra life");
+
+  for (int i = 0; i < 99; ++i) {
+    progress.addCoin();
+  }
+  CHECK(progress.getLives() == baseline + 1,
+        "the 199th coin still has not awarded a second extra life");
+
+  progress.addCoin(); // 200th coin
+  CHECK(progress.getLives() == baseline + 2,
+        "the 200th coin awards a second extra life");
+}
+
 static void testNewGameRemainsFullReset() {
   PlayerProgress progress;
   progress.setCurrentLevel(TOTAL_LEVELS);
@@ -156,6 +182,7 @@ int main() {
   testFinalCompletionReportsVictory();
   testRetryPreservesProgressForEveryLevel();
   testAddCoinIncreasesCoinsAndScore();
+  testHundredCoinsAwardsExactlyOneExtraLife();
   testNewGameRemainsFullReset();
 
   if (g_failures == 0) {
