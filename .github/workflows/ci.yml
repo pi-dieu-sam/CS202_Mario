@@ -65,3 +65,38 @@ jobs:
           else
             ctest --test-dir build --output-on-failure --build-config Release
           fi
+
+  static-analysis:
+    name: Static Analysis (clang-tidy)
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Linux Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            clang-tidy-18 \
+            libxrandr-dev \
+            libxcursor-dev \
+            libxi-dev \
+            libudev-dev \
+            libflac-dev \
+            libvorbis-dev \
+            libgl1-mesa-dev \
+            libegl1-mesa-dev \
+            libfreetype-dev \
+            libopenal-dev
+
+      - name: Configure
+        run: >
+          cmake -B build
+          -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+
+      - name: Run clang-tidy
+        continue-on-error: true
+        run: |
+          find src -name '*.cpp' -print0 | xargs -0 clang-tidy-18 -p build
