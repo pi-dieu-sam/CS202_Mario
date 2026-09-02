@@ -738,6 +738,11 @@ void PlayingState::swapPipeMap() {
     m_level = std::make_unique<Level>();
     if (!m_level->loadFromFile(filename, charName, theme, !secretRoom)) {
         std::cerr << "[PlayingState] Failed to load pipe level: " << filename << std::endl;
+        // The old Level (and the Players it owned) was already replaced
+        // above, so m_player/m_player2 would otherwise be left dangling
+        // rather than null, defeating the null checks elsewhere.
+        m_player = nullptr;
+        m_player2 = nullptr;
         m_transitionStage = LevelTransitionStage::Inactive;
         return;
     }
