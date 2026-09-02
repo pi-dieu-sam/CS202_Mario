@@ -449,7 +449,10 @@ void Player::takeDamage(int amount) {
     return;
 
   if (m_powerUp == PowerUpState::Fire) {
-    shrink(); // Fire → Small
+    // Fire -> Big (not straight to Small): same one-step downgrade with a
+    // brief invincibility window that shrink() grants for Big -> Small.
+    m_powerUp = PowerUpState::Big;
+    setInvincibleTimer(INVINCIBILITY_DUR);
   } else if (m_powerUp == PowerUpState::Big) {
     shrink(); // Big → Small
   } else {
