@@ -188,13 +188,15 @@ static void testMenuOptionsMapToPushOrResetOrQuit() {
 
     CHECK(onMenuOption(0, false).op == Op::Push && onMenuOption(0, false).target == Screen::CharacterSelect,
           "1 Player pushes Character Select");
-    CHECK(onMenuOption(1, false).op == Op::Push && onMenuOption(1, false).target == Screen::LevelSelect,
-          "Co-op pushes Level Select directly, skipping Character Select");
-    CHECK(onMenuOption(2, false).op == Op::ResetTo && onMenuOption(2, false).target == Screen::Playing,
-          "PvP resets straight into gameplay");
+    CHECK(onMenuOption(1, false).op == Op::Push && onMenuOption(1, false).target == Screen::ModeBriefing,
+          "Co-op opens its ready screen before level selection");
+    CHECK(onMenuOption(2, false).op == Op::Push && onMenuOption(2, false).target == Screen::ModeBriefing,
+          "PvP opens its ready screen before the arena");
     CHECK(onMenuOption(3, false).op == Op::Push && onMenuOption(3, false).target == Screen::SaveSlots,
           "Load Game opens the five-slot picker before any save is loaded");
-    CHECK(onMenuOption(4, false).op == Op::QuitApp, "Exit is the only menu option that requests quitting the app");
+    CHECK(onMenuOption(4, false).op == Op::Push && onMenuOption(4, false).target == Screen::Settings,
+          "Settings opens as a normal screen with a back target");
+    CHECK(onMenuOption(5, false).op == Op::QuitApp, "Exit is the only menu option that requests quitting the app");
 }
 
 static void testSinglePlayerForwardBackMatchesCanonicalStack() {
@@ -216,20 +218,35 @@ static void testSinglePlayerForwardBackMatchesCanonicalStack() {
           "SinglePlayer's canonical stack is Main Menu -> Character Select -> Level Select");
 }
 
-static void testCoopBackSkipsCharacterSelect() {
+static void testCoopBriefingThenLevelSelection() {
     using namespace ScreenFlow;
     const GameMode mode = GameMode::Coop;
 
+    CHECK(onConfirm(Screen::ModeBriefing, mode).op == Op::Push &&
+              onConfirm(Screen::ModeBriefing, mode).target == Screen::LevelSelect,
+          "confirming the Co-op briefing pushes Level Select");
+
     const std::vector<Screen> stack = canonicalStack(Screen::LevelSelect, mode);
-    const std::vector<Screen> expected = {Screen::MainMenu, Screen::LevelSelect};
-    CHECK(stack == expected, "Co-op's canonical stack skips Character Select entirely");
+    const std::vector<Screen> expected = {Screen::MainMenu, Screen::ModeBriefing, Screen::LevelSelect};
+    CHECK(stack == expected, "Co-op's canonical stack includes the ready screen before Level Select");
 
     // The invariant that makes Back correct without hardcoding "the screen
     // before this one": popping one screen off canonicalStack(current, mode)
     // must land on exactly canonicalStack(whatever's now on top, mode).
     const std::vector<Screen> afterBack(stack.begin(), stack.end() - 1);
-    CHECK(afterBack == canonicalStack(Screen::MainMenu, mode),
-          "back from Level Select in Co-op lands on Main Menu, not Character Select");
+    CHECK(afterBack == canonicalStack(Screen::ModeBriefing, mode),
+          "back from Co-op Level Select returns to the multiplayer ready screen");
+
+    const std::vector<Screen> briefingStack = canonicalStack(Screen::ModeBriefing, mode);
+    CHECK(briefingStack == std::vector<Screen>({Screen::MainMenu, Screen::ModeBriefing}),
+          "back from the Co-op ready screen returns to Main Menu");
+}
+
+static void testPvpBriefingStartsArena() {
+    using namespace ScreenFlow;
+    const Transition transition = onConfirm(Screen::ModeBriefing, GameMode::PvP);
+    CHECK(transition.op == Op::ResetTo && transition.target == Screen::Playing,
+          "confirming the PvP briefing starts a fresh arena");
 }
 
 static void testPlayingIsAlwaysAFreshRoot() {
@@ -274,6 +291,15 @@ static void testSaveSlotScreenHasAStableBackTarget() {
           "the load-slot picker is pushed over Main Menu rather than replacing it");
 }
 
+static void testSettingsScreenHasAStableBackTarget() {
+    using namespace ScreenFlow;
+    CHECK(onBack(Screen::Settings).op == Op::Back,
+          "Escape from Settings returns to its caller");
+    const std::vector<Screen> expected = {Screen::MainMenu, Screen::Settings};
+    CHECK(canonicalStack(Screen::Settings, GameMode::SinglePlayer) == expected,
+          "Settings can be rebuilt over the main menu when needed");
+}
+
 static void testMainMenuHasNoBackTarget() {
     CHECK(ScreenFlow::onBack(ScreenFlow::Screen::MainMenu).op == ScreenFlow::Op::None,
           "Main Menu isn't reachable via Back — Escape there does nothing (only Exit/window-close quit)");
@@ -290,11 +316,13 @@ int main() {
 
     testMenuOptionsMapToPushOrResetOrQuit();
     testSinglePlayerForwardBackMatchesCanonicalStack();
-    testCoopBackSkipsCharacterSelect();
+    testCoopBriefingThenLevelSelection();
+    testPvpBriefingStartsArena();
     testPlayingIsAlwaysAFreshRoot();
     testGameOverPrimaryTargetsMatchResult();
     testPauseOptionsMapToBackOrMainMenu();
     testSaveSlotScreenHasAStableBackTarget();
+    testSettingsScreenHasAStableBackTarget();
     testMainMenuHasNoBackTarget();
 
     if (g_failures == 0) {
