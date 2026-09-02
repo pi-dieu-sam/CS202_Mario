@@ -463,6 +463,27 @@ static void testStarPowerOnlyDefeatsEnemiesItActuallyKills() {
   }
 }
 
+// Level publishes EnemyDefeated with enemy.getScoreValue() as the score
+// payload (see publishEnemyDefeated() in Level.cpp). This locks in the
+// per-enemy score tier so a future change to one enemy's difficulty
+// weighting doesn't silently change its payout.
+static void testEnemyScoreValuesMatchDifficultyTier() {
+  Goomba goomba;
+  CHECK(goomba.getScoreValue() == 100, "Goomba is worth 100 points");
+
+  Koopa koopa;
+  CHECK(koopa.getScoreValue() == 200, "Koopa is worth 200 points");
+
+  Troopa troopa;
+  CHECK(troopa.getScoreValue() == 400, "Flying Troopa is worth 400 points");
+
+  PiranhaPlant piranha;
+  CHECK(piranha.getScoreValue() == 100, "Piranha Plant is worth 100 points");
+
+  Bowser bowser;
+  CHECK(bowser.getScoreValue() == 1000, "Bowser is worth 1000 points");
+}
+
 static void testHorizontalEscalaterMovement() {
   Escalater platform(400.0f, 200.0f,
                      Escalater::MovementAxis::Horizontal);
@@ -1380,6 +1401,7 @@ int main() {
   testBowserBreathingCycle();
   testBowserFireballs();
   testStarPowerOnlyDefeatsEnemiesItActuallyKills();
+  testEnemyScoreValuesMatchDifficultyTier();
   testHorizontalEscalaterMovement();
   testLevel2LavaTilesKillPlayer();
   testLevel2VineEntersClimbState();
