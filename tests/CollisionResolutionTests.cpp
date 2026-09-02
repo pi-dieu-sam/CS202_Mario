@@ -696,6 +696,26 @@ static void testLevel1PlacesAReachableMushroomBlock() {
         "(regresses if the M placement is ever removed from level1.txt)");
 }
 
+static void testLevel1PlacesAReachableFireFlowerBlock() {
+  Level level;
+  CHECK(level.loadFromFile("assets/levels/level1.txt", "Mario",
+                           LevelTheme::Overworld),
+        "level 1 loads for the Fire Flower-placement guard test");
+
+  const auto blocks = level.captureSnapshot().blocks;
+  bool foundFireFlowerBlock = false;
+  for (const auto &block : blocks) {
+    if (block.containedItem == static_cast<int>(ObjectType::FireFlower)) {
+      foundFireFlowerBlock = true;
+      break;
+    }
+  }
+  CHECK(foundFireFlowerBlock,
+        "level 1's shipped map also contains a block that spawns a Fire "
+        "Flower, close to the Mushroom, for quick manual power-up testing "
+        "(regresses if that placement is ever removed from level1.txt)");
+}
+
 static void testLevel2PlacesAReachableFireFlowerBlock() {
   Level level;
   CHECK(level.loadFromFile("assets/levels/level2.txt", "Mario",
@@ -1371,6 +1391,7 @@ int main() {
   testCollectingMushroomGrowsPlayer();
   testCollectingFireFlowerGrantsFireState();
   testLevel1PlacesAReachableMushroomBlock();
+  testLevel1PlacesAReachableFireFlowerBlock();
   testLevel2PlacesAReachableFireFlowerBlock();
   testShippedLevelsAdvertiseEveryEnemyAndPowerUp();
   testResolveCollisionAloneStillZeroesVelocity();
