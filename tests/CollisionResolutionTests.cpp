@@ -1203,6 +1203,32 @@ static void testPiranhaPlantAttackTypes() {
   }
 }
 
+static void testFlagpoleSlideRectClampsNegativeFrame() {
+  // playerFlagpoleSlideRect() used to index a 2-element array with a raw
+  // signed frame % count, so a negative frame produced an out-of-bounds
+  // read. A hand-edited save file can inject one via a corrupted
+  // animationFrame, so this must degrade to frame 0 instead of reading OOB.
+  const std::vector<CharacterId> characters = {CharacterId::Mario,
+                                                CharacterId::Luigi};
+  const std::vector<PowerUpState> powers = {
+      PowerUpState::Small, PowerUpState::Big, PowerUpState::Fire};
+  for (CharacterId character : characters) {
+    for (PowerUpState power : powers) {
+      const sf::IntRect zero =
+          SpriteRegistry::playerFlagpoleSlideRect(character, power, 0);
+      const sf::IntRect negativeOne =
+          SpriteRegistry::playerFlagpoleSlideRect(character, power, -1);
+      const sf::IntRect negativeLarge =
+          SpriteRegistry::playerFlagpoleSlideRect(character, power, -99);
+      CHECK(negativeOne == zero,
+            "a negative frame clamps to frame 0 instead of reading out of "
+            "bounds");
+      CHECK(negativeLarge == zero,
+            "a large negative frame also clamps to frame 0");
+    }
+  }
+}
+
 static void testFlagpoleSlideFramesAndCutscene() {
   const std::string& sheet = SpriteRegistry::playerFlagpoleSlideSheetPath();
   CHECK(std::filesystem::exists(sheet),
@@ -1460,6 +1486,7 @@ int main() {
   testVineClimbingControls();
   testPiranhaFramesAndEmergenceStayStable();
   testPiranhaPlantAttackTypes();
+  testFlagpoleSlideRectClampsNegativeFrame();
   testFlagpoleSlideFramesAndCutscene();
   testPlayerDeathAnimationUsesFacingPoses();
   testPlayerDeathIsIdempotentUnderEnemyCluster();

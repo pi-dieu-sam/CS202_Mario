@@ -547,7 +547,7 @@ sf::IntRect SpriteRegistry::playerFlagpoleSlideRect(CharacterId character,
   constexpr int tallFrameHeight = 32;
 
   const int normalizedFrame =
-      frame % playerFlagpoleSlideFrameCount(character, power);
+      std::max(0, frame) % playerFlagpoleSlideFrameCount(character, power);
   const int x = marioFrameX[normalizedFrame] +
                 (character == CharacterId::Luigi ? luigiOffsetX : 0);
   const bool small = power == PowerUpState::Small;
