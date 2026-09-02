@@ -1,34 +1,48 @@
 #pragma once
-#include <SFML/Graphics.hpp>
 
-/// HUD — Heads-Up Display showing score, coins, lives, level, and timer.
-/// Subscribes to EventManager to receive score/coin/life updates.
+#include "Core/PlayerProgress.hpp"
+
+#include <SFML/Graphics.hpp>
+#include <string>
+
+/// HUD — pixel status strip for gameplay. Single-player emphasizes the chosen
+/// hero, while co-op/PvP adds a mirrored P2 identity without inventing a new
+/// per-player score or life system.
 class HUD {
 public:
-    HUD();
+    HUD() = default;
 
-    /// Initialize fonts and text layout.
-    void init();
-
-    /// Update timer and any animated elements.
+    void init(GameMode mode = GameMode::SinglePlayer);
     void update(float dt);
-
-    /// Render the HUD (always drawn in screen space, not world space).
     void render(sf::RenderWindow& window);
 
-    /// Setters for HUD data.
     void setScore(int score);
     void setCoins(int coins);
     void setLives(int lives);
     void setLevel(int level);
     void setTime(float time);
     void setCharacterName(const std::string& name);
+    void setPlayer2Name(const std::string& name);
+    void setGameMode(GameMode mode);
 
 private:
-    sf::Text m_scoreText;
-    sf::Text m_coinText;
-    sf::Text m_livesText;
-    sf::Text m_levelText;
-    sf::Text m_timeText;
+    void refreshLayout();
+    static std::string uppercase(std::string value);
+
+    GameMode m_mode = GameMode::SinglePlayer;
+    std::string m_characterName = "MARIO";
+    std::string m_player2Name = "LUIGI";
+    sf::RectangleShape m_background;
     sf::Text m_characterText;
+    sf::Text m_player2Text;
+    sf::Text m_scoreLabel;
+    sf::Text m_scoreText;
+    sf::Text m_coinLabel;
+    sf::Text m_coinText;
+    sf::Text m_levelLabel;
+    sf::Text m_levelText;
+    sf::Text m_livesLabel;
+    sf::Text m_livesText;
+    sf::Text m_timeLabel;
+    sf::Text m_timeText;
 };

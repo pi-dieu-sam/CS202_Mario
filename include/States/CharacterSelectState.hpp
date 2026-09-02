@@ -1,12 +1,15 @@
 #pragma once
+
 #include "GameState.hpp"
+
 #include <SFML/Graphics.hpp>
 
-/// CharacterSelectState — lets the player choose between Mario and Luigi,
-/// and provides an interactive Audio Control Panel (Mute, Volume, Track Selector).
+/// CharacterSelectState — an animated Mario/Luigi showcase for single-player
+/// games. Each card loops through idle, run, jump, and fireball poses before
+/// the player explicitly confirms a hero.
 class CharacterSelectState : public GameState {
 public:
-    CharacterSelectState();
+    CharacterSelectState() = default;
 
     void onEnter() override;
     void onExit() override;
@@ -15,30 +18,22 @@ public:
     void render(sf::RenderWindow& window) override;
 
 private:
-    void updateAudioUI();
+    void confirmSelection();
+    void updateVisuals();
+    void updateShowcase(float dt);
 
-    sf::Text m_title;
-    sf::Text m_charNames[2]; // "Mario", "Luigi"
-    sf::Text m_charStats[2]; // Stat descriptions
-    sf::RectangleShape m_charBoxes[2];
-    sf::Sprite m_charSprites[2];
     sf::RectangleShape m_background;
-    int  m_selected = 0;
-
-    // ── Audio Control Panel UI ──────────────────────────────────────────────
-    sf::RectangleShape m_audioPanel;
-    sf::Text           m_panelTitle;
-
-    sf::RectangleShape m_muteBtn;
-    sf::Text           m_muteText;
-
-    sf::RectangleShape m_volMinusBtn;
-    sf::Text           m_volMinusText;
-    sf::RectangleShape m_volPlusBtn;
-    sf::Text           m_volPlusText;
-    sf::Text           m_volText;
-
-    sf::RectangleShape m_trackBtn;
-    sf::Text           m_trackText;
-    sf::Text           m_helpText;
+    sf::RectangleShape m_characterCards[2];
+    sf::RectangleShape m_stageFloors[2];
+    sf::RectangleShape m_confirmButton;
+    sf::Sprite m_charSprites[2];
+    sf::Sprite m_fireballSprites[2];
+    sf::Text m_title;
+    sf::Text m_subtitle;
+    sf::Text m_charNames[2];
+    sf::Text m_charStats[2];
+    sf::Text m_actionText;
+    sf::Text m_helpText;
+    int m_selected = 0;
+    float m_showcaseTime = 0.0f;
 };

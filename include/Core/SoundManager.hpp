@@ -1,4 +1,5 @@
 #pragma once
+#include "Core/GameSettings.hpp"
 #include <SFML/Audio.hpp>
 #include <unordered_map>
 #include <string>
@@ -49,6 +50,7 @@ public:
 
     /// Mute controls
     void toggleMute();
+    void setMuted(bool muted);
     bool isMuted() const;
 
     /// Volume control (0–100).
@@ -57,6 +59,13 @@ public:
 
     void setSoundVolume(float volume);
     void setMusicVolume(float volume);
+    float getSoundVolume() const;
+    float getMusicVolume() const;
+
+    /// Apply persisted audio preferences in one operation. Playback itself is
+    /// left to the active screen, so loading preferences never forces music
+    /// to start before the title screen is ready.
+    void applySettings(const AudioSettings& settings);
 
     /// Track selection
     const std::vector<std::pair<std::string, std::string>>& getMusicTracks() const;

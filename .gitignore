@@ -69,4 +69,5 @@ vcpkg_installed/
 Testing/
 .cache/
 
-savegame.sav    
+savegame.sav
+settings.cfg
