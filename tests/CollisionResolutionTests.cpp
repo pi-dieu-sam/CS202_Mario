@@ -1198,6 +1198,28 @@ static void testPlayerDeathSurvivesMultipleFixedUpdatesPerFrame() {
         "sub-steps instead of restarting");
 }
 
+static void testFireDamageFollowsBigThenSmallProgression() {
+  Mario player;
+  player.applyPowerUp(PowerUpState::Fire);
+
+  player.takeDamage();
+  CHECK(player.getPowerUpState() == PowerUpState::Big,
+        "Fire Mario downgrades to Big on the first hit, not straight to Small");
+  CHECK(!player.isDead(), "Fire Mario survives its first hit");
+
+  player.update(INVINCIBILITY_DUR + 0.1f); // clear the post-hit invincibility window
+
+  player.takeDamage();
+  CHECK(player.getPowerUpState() == PowerUpState::Small,
+        "Big Mario downgrades to Small on a second hit");
+  CHECK(!player.isDead(), "Big Mario survives its second hit");
+
+  player.update(INVINCIBILITY_DUR + 0.1f);
+
+  player.takeDamage();
+  CHECK(player.isDead(), "Small Mario dies on a third hit");
+}
+
 int main() {
   testReflectHelperPure();
   testGoombaBouncesBothDirections();
@@ -1231,6 +1253,7 @@ int main() {
   testPlayerDeathAnimationUsesFacingPoses();
   testPlayerDeathIsIdempotentUnderEnemyCluster();
   testPlayerDeathSurvivesMultipleFixedUpdatesPerFrame();
+  testFireDamageFollowsBigThenSmallProgression();
 
   if (g_failures == 0) {
     std::cout << "All collision-resolution tests passed.\n";
