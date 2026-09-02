@@ -16,6 +16,12 @@ constexpr float SLOT_WIDTH = 580.0f;
 constexpr float SLOT_HEIGHT = 72.0f;
 constexpr float SLOT_TOP = 92.0f;
 constexpr float SLOT_GAP = 82.0f;
+
+std::string limitText(const std::string& value, std::size_t maxCharacters) {
+    if (value.size() <= maxCharacters) return value;
+    if (maxCharacters <= 3) return value.substr(0, maxCharacters);
+    return value.substr(0, maxCharacters - 3) + "...";
+}
 }
 
 SaveSlotState::SaveSlotState(
@@ -46,14 +52,15 @@ void SaveSlotState::onEnter() {
 
         sf::Text& text = m_slotTexts[static_cast<std::size_t>(i)];
         text.setFont(font);
-        text.setCharacterSize(15);
-        text.setPosition(SLOT_X + 18.0f, y + 10.0f);
+        text.setCharacterSize(14);
+        text.setLineSpacing(0.9f);
+        text.setPosition(SLOT_X + 18.0f, y + 7.0f);
     }
 
     m_status.setFont(font);
     m_status.setCharacterSize(14);
     m_status.setFillColor(sf::Color::White);
-    m_status.setPosition(WINDOW_WIDTH * 0.5f, 530.0f);
+    setStatus("");
 
     m_help.setFont(font);
     m_help.setCharacterSize(12);
@@ -75,20 +82,29 @@ void SaveSlotState::refreshSlots() {
 }
 
 std::string SaveSlotState::slotLabel(const SaveSlotInfo& info) const {
-    const std::string prefix = "SLOT " + std::to_string(info.slot) + "  ";
+    const std::string prefix = "SLOT " + std::to_string(info.slot);
     switch (info.status) {
     case SaveSlotStatus::Empty:
-        return prefix + "EMPTY SLOT";
+        return prefix + "\nEMPTY SLOT";
     case SaveSlotStatus::Corrupt:
-        return prefix + "CORRUPT SAVE - " + info.error;
+        return prefix + "\nCORRUPT SAVE: " + limitText(info.error, 47);
     case SaveSlotStatus::Occupied:
-        return prefix + info.character + "   LEVEL " + std::to_string(info.level) +
+        return prefix + "    " + limitText(info.character, 16) +
+               "\nLEVEL " + std::to_string(info.level) +
                "   SCORE " + std::to_string(info.score) +
                "   LIVES " + std::to_string(info.lives) +
                "   COINS " + std::to_string(info.coins) +
                "   TIME " + std::to_string(info.remainingSeconds);
     }
     return prefix;
+}
+
+void SaveSlotState::setStatus(const std::string& message) {
+    m_status.setString(message);
+    const sf::FloatRect bounds = m_status.getLocalBounds();
+    m_status.setOrigin(bounds.left + bounds.width * 0.5f,
+                       bounds.top + bounds.height * 0.5f);
+    m_status.setPosition(WINDOW_WIDTH * 0.5f, 532.0f);
 }
 
 void SaveSlotState::updateVisuals() {
@@ -115,17 +131,18 @@ void SaveSlotState::updateVisuals() {
 
 void SaveSlotState::saveToSlot(int slot) {
     if (!m_snapshot) {
-        m_status.setString("NO SINGLE-PLAYER SNAPSHOT IS AVAILABLE");
+        setStatus("NO SINGLE-PLAYER SNAPSHOT IS AVAILABLE");
         return;
     }
     std::string error;
     if (!SaveManager::saveSlot(slot, *m_snapshot, &error)) {
-        m_status.setString("SAVE FAILED: " + error);
+        setStatus("SAVE FAILED: " + error);
         return;
     }
     m_confirmOverwrite = false;
     m_saveCompleted = true;
-    m_status.setString("GAME SAVED TO SLOT " + std::to_string(slot) + " - PRESS ENTER OR ESC");
+    setStatus("GAME SAVED TO SLOT " + std::to_string(slot) +
+              "\nPRESS ENTER OR ESC");
     SoundManager::getInstance().playSound(SoundID::Coin);
     refreshSlots();
 }
@@ -134,7 +151,7 @@ void SaveSlotState::loadFromSlot(int slot) {
     std::string error;
     const auto snapshot = SaveManager::loadSlot(slot, &error);
     if (!snapshot) {
-        m_status.setString("LOAD FAILED: " + error);
+        setStatus("LOAD FAILED: " + error);
         refreshSlots();
         return;
     }
@@ -155,9 +172,9 @@ void SaveSlotState::activateSelectedSlot() {
     const SaveSlotInfo& slot = m_slots[static_cast<std::size_t>(m_selected)];
     if (m_mode == SaveSlotMode::Load) {
         if (slot.status != SaveSlotStatus::Occupied) {
-            m_status.setString(slot.status == SaveSlotStatus::Empty
+            setStatus(slot.status == SaveSlotStatus::Empty
                 ? "THIS SLOT IS EMPTY"
-                : "THIS SLOT IS CORRUPT AND CANNOT BE LOADED");
+                : "THIS SLOT IS CORRUPT\nAND CANNOT BE LOADED");
             return;
         }
         loadFromSlot(slot.slot);
@@ -165,7 +182,7 @@ void SaveSlotState::activateSelectedSlot() {
     }
 
     if (!m_snapshot) {
-        m_status.setString("SAVING IS AVAILABLE ONLY IN 1 PLAYER MODE");
+        setStatus("SAVING IS AVAILABLE ONLY IN 1 PLAYER MODE");
         return;
     }
     if (slot.status == SaveSlotStatus::Empty) {
@@ -175,14 +192,15 @@ void SaveSlotState::activateSelectedSlot() {
 
     m_confirmOverwrite = true;
     m_pendingSlot = slot.slot;
-    m_status.setString("OVERWRITE SLOT " + std::to_string(slot.slot) + "?  Y: YES   N/ESC: NO");
+    setStatus("OVERWRITE SLOT " + std::to_string(slot.slot) +
+              "?\nY: YES    N / ESC: NO");
 }
 
 void SaveSlotState::cancelOrBack() {
     if (m_confirmOverwrite) {
         m_confirmOverwrite = false;
         m_pendingSlot = 0;
-        m_status.setString("OVERWRITE CANCELLED");
+        setStatus("OVERWRITE CANCELLED");
         return;
     }
     Game::getInstance().getStateManager().popState();

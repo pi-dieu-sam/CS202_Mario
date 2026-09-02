@@ -33,6 +33,7 @@ private:
     void saveToSlot(int slot);
     void loadFromSlot(int slot);
     void cancelOrBack();
+    void setStatus(const std::string& message);
     std::string slotLabel(const SaveSlotInfo& info) const;
 
     SaveSlotMode m_mode;
