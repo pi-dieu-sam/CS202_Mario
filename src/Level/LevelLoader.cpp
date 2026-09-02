@@ -57,6 +57,8 @@ LevelLoader::LevelData LevelLoader::loadLevel(const std::string& filename,
 
     if (lines.empty()) return data;
 
+    data.loaded = true;
+
     int rows = static_cast<int>(lines.size());
     int cols = 0;
     for (auto& l : lines) {

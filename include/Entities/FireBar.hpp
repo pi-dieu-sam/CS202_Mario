@@ -8,6 +8,7 @@
 /// fire segments rotate around it at a constant angular velocity. Contact
 /// with any segment kills the player.
 class FireBar : public GameObject {
+  friend class SnapshotAccess;
 public:
   FireBar();
   FireBar(float x, float y, int segmentCount = 8);

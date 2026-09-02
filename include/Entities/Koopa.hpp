@@ -12,6 +12,7 @@ enum class KoopaState {
 /// The shell can be kicked by the player and slides at high speed,
 /// killing Goombas and turning other Koopas into shells on contact.
 class Koopa : public Enemy {
+    friend class SnapshotAccess;
 public:
     Koopa();
 

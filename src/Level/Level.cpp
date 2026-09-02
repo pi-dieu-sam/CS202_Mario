@@ -3,6 +3,14 @@
 #include "Entities/Koopa.hpp"
 #include "Entities/Bowser.hpp"
 #include "Entities/BowserFireball.hpp"
+#include "Entities/Goomba.hpp"
+#include "Entities/Troopa.hpp"
+#include "Entities/PiranhaPlant.hpp"
+#include "Entities/Coin.hpp"
+#include "Entities/Mushroom.hpp"
+#include "Entities/FireFlower.hpp"
+#include "Entities/Star.hpp"
+#include "Entities/FlowersBuff.hpp"
 #include "Factory/EntityFactory.hpp"
 #include "Level/LevelLoader.hpp"
 #include "Observers/EventManager.hpp"
@@ -27,6 +35,549 @@ void publishEnemyDefeated(Enemy& enemy, const sf::Vector2f& worldPosition) {
 }
 } // namespace
 
+class SnapshotAccess {
+public:
+  static SaveData::LevelState capture(const Level &level) {
+    SaveData::LevelState snapshot;
+    if (level.m_player) {
+      capturePlayer(*level.m_player, snapshot.player);
+    }
+
+    snapshot.blocks.reserve(level.m_blocks.size());
+    for (const auto &block : level.m_blocks) {
+      snapshot.blocks.push_back(captureBlock(*block));
+    }
+    snapshot.enemies.reserve(level.m_enemies.size());
+    for (const auto &enemy : level.m_enemies) {
+      snapshot.enemies.push_back(captureEnemy(*enemy));
+    }
+    snapshot.items.reserve(level.m_items.size());
+    for (const auto &item : level.m_items) {
+      snapshot.items.push_back(captureItem(*item));
+    }
+    snapshot.fireballs.reserve(level.m_fireballs.size());
+    for (const auto &fireball : level.m_fireballs) {
+      snapshot.fireballs.push_back(captureFireball(*fireball));
+    }
+    snapshot.bowserFireballs.reserve(level.m_bowserFireballs.size());
+    for (const auto &fireball : level.m_bowserFireballs) {
+      snapshot.bowserFireballs.push_back(captureBowserFireball(*fireball));
+    }
+    snapshot.escalaters.reserve(level.m_escalaters.size());
+    for (const auto &escalater : level.m_escalaters) {
+      snapshot.escalaters.push_back(captureEscalater(*escalater));
+    }
+    snapshot.fireBars.reserve(level.m_fireBars.size());
+    for (const auto &fireBar : level.m_fireBars) {
+      snapshot.fireBars.push_back(captureFireBar(*fireBar));
+    }
+    snapshot.lavaFireballs.reserve(level.m_lavaFireballs.size());
+    for (const auto &lavaFireball : level.m_lavaFireballs) {
+      snapshot.lavaFireballs.push_back(captureLavaFireball(*lavaFireball));
+    }
+    if (level.m_flagpole) {
+      snapshot.flagpole.present = true;
+      snapshot.flagpole.object = captureObject(*level.m_flagpole);
+      snapshot.flagpole.flagPosition = captureVec(level.m_flagpole->m_flagPos);
+      snapshot.flagpole.reached = level.m_flagpole->m_reached;
+      snapshot.flagpole.flagDropY = level.m_flagpole->m_flagDropY;
+    }
+    return snapshot;
+  }
+
+  static bool restore(Level &level, const SaveData::LevelState &snapshot) {
+    if (!level.m_player || snapshot.player.character.dead) return false;
+
+    // The terrain grid is immutable and was loaded from a trusted map file.
+    // Every mutable collection is replaced with the saved contents so defeated
+    // enemies, broken blocks, collected items, and active projectiles survive.
+    restorePlayer(*level.m_player, snapshot.player);
+    level.m_player2.reset();
+
+    level.m_blocks.clear();
+    for (const auto &state : snapshot.blocks) {
+      auto block = std::make_unique<Block>(
+          static_cast<BlockType>(state.blockType), state.object.position.x,
+          state.object.position.y, static_cast<LevelTheme>(state.theme), state.used);
+      restoreBlock(*block, state);
+      level.m_blocks.push_back(std::move(block));
+    }
+
+    level.m_enemies.clear();
+    for (const auto &state : snapshot.enemies) {
+      auto enemy = makeEnemy(state);
+      if (!enemy) return false;
+      level.m_enemies.push_back(std::move(enemy));
+    }
+
+    level.m_items.clear();
+    for (const auto &state : snapshot.items) {
+      auto item = makeItem(state);
+      if (!item) return false;
+      level.m_items.push_back(std::move(item));
+    }
+
+    level.m_fireballs.clear();
+    for (const auto &state : snapshot.fireballs) {
+      auto fireball = std::make_unique<Fireball>(
+          state.object.position.x, state.object.position.y, state.direction);
+      restoreFireball(*fireball, state);
+      level.m_fireballs.push_back(std::move(fireball));
+    }
+
+    level.m_bowserFireballs.clear();
+    for (const auto &state : snapshot.bowserFireballs) {
+      const int direction = state.object.velocity.x < 0.0f ? -1 : 1;
+      auto fireball = std::make_unique<BowserFireball>(
+          state.object.position.x, state.object.position.y, direction);
+      restoreBowserFireball(*fireball, state);
+      level.m_bowserFireballs.push_back(std::move(fireball));
+    }
+
+    level.m_escalaters.clear();
+    for (const auto &state : snapshot.escalaters) {
+      auto escalater = std::make_unique<Escalater>(
+          state.object.position.x, state.object.position.y,
+          static_cast<Escalater::MovementAxis>(state.axis));
+      restoreEscalater(*escalater, state);
+      level.m_escalaters.push_back(std::move(escalater));
+    }
+
+    level.m_fireBars.clear();
+    for (const auto &state : snapshot.fireBars) {
+      auto fireBar = std::make_unique<FireBar>(state.object.position.x,
+                                               state.object.position.y,
+                                               state.segmentCount);
+      restoreFireBar(*fireBar, state);
+      level.m_fireBars.push_back(std::move(fireBar));
+    }
+
+    level.m_lavaFireballs.clear();
+    for (const auto &state : snapshot.lavaFireballs) {
+      auto lavaFireball = std::make_unique<LavaFireball>(
+          state.launchPosition.x, state.launchPosition.y);
+      restoreLavaFireball(*lavaFireball, state);
+      level.m_lavaFireballs.push_back(std::move(lavaFireball));
+    }
+
+    if (snapshot.flagpole.present) {
+      if (!level.m_flagpole) {
+        level.m_flagpole = std::make_unique<Flagpole>(
+            snapshot.flagpole.object.position.x, snapshot.flagpole.object.position.y);
+      }
+      restoreObject(*level.m_flagpole, snapshot.flagpole.object);
+      level.m_flagpole->m_flagPos = restoreVec(snapshot.flagpole.flagPosition);
+      level.m_flagpole->m_reached = snapshot.flagpole.reached;
+      level.m_flagpole->m_flagDropY = snapshot.flagpole.flagDropY;
+    } else {
+      level.m_flagpole.reset();
+    }
+    return true;
+  }
+
+private:
+  static SaveData::Vec2 captureVec(const sf::Vector2f &value) {
+    return {value.x, value.y};
+  }
+
+  static sf::Vector2f restoreVec(const SaveData::Vec2 &value) {
+    return {value.x, value.y};
+  }
+
+  static SaveData::ObjectState captureObject(const GameObject &object) {
+    SaveData::ObjectState state;
+    state.position = captureVec(object.m_position);
+    state.velocity = captureVec(object.m_velocity);
+    state.active = object.m_active;
+    return state;
+  }
+
+  static void restoreObject(GameObject &object, const SaveData::ObjectState &state) {
+    object.m_position = restoreVec(state.position);
+    object.m_velocity = restoreVec(state.velocity);
+    object.m_active = state.active;
+  }
+
+  static SaveData::CharacterState captureCharacter(const Character &character) {
+    SaveData::CharacterState state;
+    state.object = captureObject(character);
+    state.speed = character.m_speed;
+    state.jumpForce = character.m_jumpForce;
+    state.health = character.m_health;
+    state.grounded = character.m_grounded;
+    state.facingRight = character.m_facingRight;
+    state.dead = character.m_dead;
+    state.skidding = character.m_skidding;
+    state.animationTimer = character.m_animTimer;
+    state.animationFrame = character.m_animFrame;
+    state.animationFrames = character.m_animFrames;
+    state.animationSpeed = character.m_animSpeed;
+    return state;
+  }
+
+  static void restoreCharacter(Character &character,
+                               const SaveData::CharacterState &state) {
+    restoreObject(character, state.object);
+    character.m_speed = state.speed;
+    character.m_jumpForce = state.jumpForce;
+    character.m_health = state.health;
+    character.m_grounded = state.grounded;
+    character.m_facingRight = state.facingRight;
+    character.m_dead = state.dead;
+    character.m_skidding = state.skidding;
+    character.m_animTimer = state.animationTimer;
+    character.m_animFrame = state.animationFrame;
+    character.m_animFrames = state.animationFrames;
+    character.m_animSpeed = state.animationSpeed;
+  }
+
+  static void capturePlayer(const Player &player, SaveData::PlayerState &state) {
+    state.character = captureCharacter(player);
+    state.powerUp = static_cast<int>(player.m_powerUp);
+    state.lives = player.m_lives;
+    state.sprinting = player.m_sprinting;
+    state.wantsToShoot = player.m_wantsToShoot;
+    state.climbing = player.m_climbing;
+    state.climbMoving = player.m_climbMoving;
+    state.vineReattachLocked = player.m_vineReattachLocked;
+    state.vineHorizontalReleaseRequired = player.m_vineHorizontalReleaseRequired;
+    state.hasVineAnchor = player.m_hasVineAnchor;
+    state.lastVineAnchor = captureVec(player.m_lastVineAnchor);
+    state.playerId = player.m_playerId;
+    state.invincibilityTimer = player.m_invincibleTimer;
+    state.invincible = player.m_invincible;
+    state.starTimer = player.m_starTimer;
+    state.starPower = player.m_starPower;
+    state.sizeScale = player.m_sizeScale;
+    state.growing = player.m_growing;
+    state.growTimer = player.m_growTimer;
+    state.buffTimer = player.m_buffTimer;
+    state.blinkTimer = player.m_blinkTimer;
+    state.visible = player.m_visible;
+    state.characterId = static_cast<int>(player.m_characterId);
+    state.currentAnimation = static_cast<int>(player.m_currentAnim);
+    state.shootAnimationTimer = player.m_shootAnimTimer;
+  }
+
+  static void restorePlayer(Player &player, const SaveData::PlayerState &state) {
+    restoreCharacter(player, state.character);
+    player.m_powerUp = static_cast<PowerUpState>(state.powerUp);
+    player.m_lives = state.lives;
+    player.m_sprinting = state.sprinting;
+    player.m_wantsToShoot = state.wantsToShoot;
+    // Input state is intentionally reset on a load; preserving a physical
+    // held key can make the player move before the user regains control.
+    player.m_jumpHeld = false;
+    player.m_climbing = state.climbing;
+    player.m_climbMoving = state.climbMoving;
+    player.m_vineReattachLocked = state.vineReattachLocked;
+    player.m_vineHorizontalReleaseRequired = state.vineHorizontalReleaseRequired;
+    player.m_hasVineAnchor = state.hasVineAnchor;
+    player.m_lastVineAnchor = restoreVec(state.lastVineAnchor);
+    player.m_playerId = state.playerId;
+    player.m_invincibleTimer = state.invincibilityTimer;
+    player.m_invincible = state.invincible;
+    player.m_starTimer = state.starTimer;
+    player.m_starPower = state.starPower;
+    player.m_sizeScale = state.sizeScale;
+    player.m_growing = state.growing;
+    player.m_growTimer = state.growTimer;
+    player.m_buffTimer = state.buffTimer;
+    player.m_blinkTimer = state.blinkTimer;
+    player.m_visible = state.visible;
+    player.m_characterId = static_cast<CharacterId>(state.characterId);
+    player.m_currentAnim = static_cast<SpriteRegistry::PlayerAnim>(state.currentAnimation);
+    player.m_shootAnimTimer = state.shootAnimationTimer;
+  }
+
+  static SaveData::EnemyState captureEnemy(const Enemy &enemy) {
+    SaveData::EnemyState state;
+    state.character = captureCharacter(enemy);
+    state.scoreValue = enemy.m_scoreValue;
+    state.theme = static_cast<int>(enemy.m_theme);
+    if (const auto *goomba = dynamic_cast<const Goomba *>(&enemy)) {
+      state.kind = SaveData::EnemyKind::Goomba;
+      state.goombaDeathTimer = goomba->m_deathTimer;
+      state.goombaSquished = goomba->m_squished;
+    } else if (const auto *koopa = dynamic_cast<const Koopa *>(&enemy)) {
+      state.kind = SaveData::EnemyKind::Koopa;
+      state.koopaState = static_cast<int>(koopa->m_koopaState);
+      state.koopaSliding = koopa->m_sliding;
+      state.koopaBrakingAfterWall = koopa->m_brakingAfterWall;
+      state.koopaDieTimer = koopa->m_dieTimer;
+      state.koopaShellSpeed = koopa->m_shellSpeed;
+    } else if (const auto *troopa = dynamic_cast<const Troopa *>(&enemy)) {
+      (void)troopa;
+      state.kind = SaveData::EnemyKind::Troopa;
+    } else if (const auto *bowser = dynamic_cast<const Bowser *>(&enemy)) {
+      state.kind = SaveData::EnemyKind::Bowser;
+      state.bowserState = static_cast<int>(bowser->m_state);
+      state.bowserStateTimer = bowser->m_stateTimer;
+      state.bowserBreathFrame = bowser->m_breathFrame;
+      state.bowserFireballHits = bowser->m_fireballHits;
+      state.bowserPlayerPosition = captureVec(bowser->m_playerPosition);
+      state.bowserHasPlayerPosition = bowser->m_hasPlayerPosition;
+      state.bowserNextFireTime = bowser->m_nextFireTime;
+      state.bowserPendingFireballs = bowser->m_pendingFireballs;
+    } else if (const auto *plant = dynamic_cast<const PiranhaPlant *>(&enemy)) {
+      state.kind = SaveData::EnemyKind::PiranhaPlant;
+      state.piranhaState = static_cast<int>(plant->m_state);
+      state.piranhaCurrentFrame = plant->m_currentFrame;
+      state.piranhaFrameTimer = plant->m_frameTimer;
+      state.piranhaHideTimer = plant->m_hideTimer;
+      state.piranhaWaitTimer = plant->m_waitTimer;
+      state.piranhaBasePosition = captureVec(plant->m_basePosition);
+      state.piranhaBaseCaptured = plant->m_baseCaptured;
+    }
+    return state;
+  }
+
+  static void restoreEnemy(Enemy &enemy, const SaveData::EnemyState &state) {
+    restoreCharacter(enemy, state.character);
+    enemy.m_scoreValue = state.scoreValue;
+    enemy.m_theme = static_cast<LevelTheme>(state.theme);
+    if (auto *goomba = dynamic_cast<Goomba *>(&enemy)) {
+      goomba->m_deathTimer = state.goombaDeathTimer;
+      goomba->m_squished = state.goombaSquished;
+    } else if (auto *koopa = dynamic_cast<Koopa *>(&enemy)) {
+      koopa->m_koopaState = static_cast<KoopaState>(state.koopaState);
+      koopa->m_sliding = state.koopaSliding;
+      koopa->m_brakingAfterWall = state.koopaBrakingAfterWall;
+      koopa->m_dieTimer = state.koopaDieTimer;
+      koopa->m_shellSpeed = state.koopaShellSpeed;
+      if (koopa->m_koopaState == KoopaState::Shell) {
+        koopa->m_strategy.reset();
+      }
+    } else if (auto *bowser = dynamic_cast<Bowser *>(&enemy)) {
+      bowser->m_state = static_cast<Bowser::State>(state.bowserState);
+      bowser->m_stateTimer = state.bowserStateTimer;
+      bowser->m_breathFrame = state.bowserBreathFrame;
+      bowser->m_fireballHits = state.bowserFireballHits;
+      bowser->m_playerPosition = restoreVec(state.bowserPlayerPosition);
+      bowser->m_hasPlayerPosition = state.bowserHasPlayerPosition;
+      bowser->m_nextFireTime = state.bowserNextFireTime;
+      bowser->m_pendingFireballs = state.bowserPendingFireballs;
+    } else if (auto *plant = dynamic_cast<PiranhaPlant *>(&enemy)) {
+      plant->m_state = static_cast<PiranhaPlant::State>(state.piranhaState);
+      plant->m_currentFrame = state.piranhaCurrentFrame;
+      plant->m_frameTimer = state.piranhaFrameTimer;
+      plant->m_hideTimer = state.piranhaHideTimer;
+      plant->m_waitTimer = state.piranhaWaitTimer;
+      plant->m_basePosition = restoreVec(state.piranhaBasePosition);
+      plant->m_baseCaptured = state.piranhaBaseCaptured;
+    }
+  }
+
+  static std::unique_ptr<Enemy> makeEnemy(const SaveData::EnemyState &state) {
+    EnemyType type = EnemyType::Goomba;
+    switch (state.kind) {
+    case SaveData::EnemyKind::Goomba: type = EnemyType::Goomba; break;
+    case SaveData::EnemyKind::Koopa: type = EnemyType::Koopa; break;
+    case SaveData::EnemyKind::Troopa: type = EnemyType::Troopa; break;
+    case SaveData::EnemyKind::Bowser: type = EnemyType::Bowser; break;
+    case SaveData::EnemyKind::PiranhaPlant: type = EnemyType::PiranhaPlant; break;
+    }
+    auto enemy = EntityFactory::createEnemy(
+        type, restoreVec(state.character.object.position),
+        static_cast<LevelTheme>(state.theme));
+    if (enemy) restoreEnemy(*enemy, state);
+    return enemy;
+  }
+
+  static SaveData::ItemState captureItem(const Item &item) {
+    SaveData::ItemState state;
+    state.object = captureObject(item);
+    state.moving = item.m_moving;
+    state.collected = item.m_collected;
+    state.theme = static_cast<int>(item.m_theme);
+    state.animationTimer = item.m_animTimer;
+    state.animationFrame = item.m_animFrame;
+    switch (item.m_type) {
+    case ObjectType::Coin: state.kind = SaveData::ItemKind::Coin; break;
+    case ObjectType::Mushroom: state.kind = SaveData::ItemKind::Mushroom; break;
+    case ObjectType::FireFlower: state.kind = SaveData::ItemKind::FireFlower; break;
+    case ObjectType::Star: state.kind = SaveData::ItemKind::Star; break;
+    case ObjectType::FlowersBuff: state.kind = SaveData::ItemKind::FlowersBuff; break;
+    default: state.kind = SaveData::ItemKind::Coin; break;
+    }
+    return state;
+  }
+
+  static void restoreItem(Item &item, const SaveData::ItemState &state) {
+    restoreObject(item, state.object);
+    item.m_moving = state.moving;
+    item.m_collected = state.collected;
+    item.m_theme = static_cast<LevelTheme>(state.theme);
+    item.m_animTimer = state.animationTimer;
+    item.m_animFrame = state.animationFrame;
+    item.refreshSprite();
+  }
+
+  static std::unique_ptr<Item> makeItem(const SaveData::ItemState &state) {
+    ItemType type = ItemType::Coin;
+    switch (state.kind) {
+    case SaveData::ItemKind::Coin: type = ItemType::Coin; break;
+    case SaveData::ItemKind::Mushroom: type = ItemType::Mushroom; break;
+    case SaveData::ItemKind::FireFlower: type = ItemType::FireFlower; break;
+    case SaveData::ItemKind::Star: type = ItemType::Star; break;
+    case SaveData::ItemKind::FlowersBuff: type = ItemType::FlowersBuff; break;
+    }
+    auto item = EntityFactory::createItem(
+        type, restoreVec(state.object.position), static_cast<LevelTheme>(state.theme));
+    if (item) restoreItem(*item, state);
+    return item;
+  }
+
+  static SaveData::BlockState captureBlock(const Block &block) {
+    SaveData::BlockState state;
+    state.object = captureObject(block);
+    state.blockType = static_cast<int>(block.m_blockType);
+    state.containedItem = static_cast<int>(block.m_containedItem);
+    state.used = block.m_used;
+    state.theme = static_cast<int>(block.m_theme);
+    state.bumpOffset = block.m_bumpOffset;
+    state.bumpTimer = block.m_bumpTimer;
+    state.bumping = block.m_bumping;
+    return state;
+  }
+
+  static void restoreBlock(Block &block, const SaveData::BlockState &state) {
+    restoreObject(block, state.object);
+    block.m_blockType = static_cast<BlockType>(state.blockType);
+    block.m_containedItem = static_cast<ObjectType>(state.containedItem);
+    block.m_used = state.used;
+    block.m_theme = static_cast<LevelTheme>(state.theme);
+    block.m_bumpOffset = state.bumpOffset;
+    block.m_bumpTimer = state.bumpTimer;
+    block.m_bumping = state.bumping;
+  }
+
+  static SaveData::FireballState captureFireball(const Fireball &fireball) {
+    SaveData::FireballState state;
+    state.object = captureObject(fireball);
+    state.lifetime = fireball.m_lifetime;
+    state.direction = fireball.m_direction;
+    state.animationTimer = fireball.m_animTimer;
+    state.animationFrame = fireball.m_animFrame;
+    state.surfaceHits = fireball.m_surfaceHits;
+    return state;
+  }
+
+  static void restoreFireball(Fireball &fireball, const SaveData::FireballState &state) {
+    restoreObject(fireball, state.object);
+    fireball.m_lifetime = state.lifetime;
+    fireball.m_direction = state.direction;
+    fireball.m_animTimer = state.animationTimer;
+    fireball.m_animFrame = state.animationFrame;
+    fireball.m_surfaceHits = state.surfaceHits;
+  }
+
+  static SaveData::BowserFireballState captureBowserFireball(
+      const BowserFireball &fireball) {
+    SaveData::BowserFireballState state;
+    state.object = captureObject(fireball);
+    state.lifetime = fireball.m_lifetime;
+    state.animationTimer = fireball.m_animTimer;
+    state.animationFrame = fireball.m_animFrame;
+    return state;
+  }
+
+  static void restoreBowserFireball(BowserFireball &fireball,
+                                    const SaveData::BowserFireballState &state) {
+    restoreObject(fireball, state.object);
+    fireball.m_lifetime = state.lifetime;
+    fireball.m_animTimer = state.animationTimer;
+    fireball.m_animFrame = state.animationFrame;
+  }
+
+  static SaveData::EscalaterState captureEscalater(const Escalater &escalater) {
+    SaveData::EscalaterState state;
+    state.object = captureObject(escalater);
+    state.axis = static_cast<int>(escalater.m_axis);
+    state.size = captureVec(escalater.m_size);
+    state.renderSize = captureVec(escalater.m_renderSize);
+    state.centerX = escalater.m_centerX;
+    state.centerY = escalater.m_centerY;
+    state.range = escalater.m_range;
+    state.speed = escalater.m_speed;
+    state.direction = escalater.m_direction;
+    state.mapLeft = escalater.m_mapLeft;
+    state.mapRight = escalater.m_mapRight;
+    state.mapTop = escalater.m_mapTop;
+    state.mapBottom = escalater.m_mapBottom;
+    return state;
+  }
+
+  static void restoreEscalater(Escalater &escalater,
+                               const SaveData::EscalaterState &state) {
+    restoreObject(escalater, state.object);
+    escalater.m_axis = static_cast<Escalater::MovementAxis>(state.axis);
+    escalater.m_size = restoreVec(state.size);
+    escalater.m_renderSize = restoreVec(state.renderSize);
+    escalater.m_centerX = state.centerX;
+    escalater.m_centerY = state.centerY;
+    escalater.m_range = state.range;
+    escalater.m_speed = state.speed;
+    escalater.m_direction = state.direction;
+    escalater.m_mapLeft = state.mapLeft;
+    escalater.m_mapRight = state.mapRight;
+    escalater.m_mapTop = state.mapTop;
+    escalater.m_mapBottom = state.mapBottom;
+  }
+
+  static SaveData::FireBarState captureFireBar(const FireBar &fireBar) {
+    SaveData::FireBarState state;
+    state.object = captureObject(fireBar);
+    state.angle = fireBar.m_angle;
+    state.angularSpeed = fireBar.m_angularSpeed;
+    state.fireballRotationDegrees = fireBar.m_fireballRotationDegrees;
+    state.fireballSpinSpeed = fireBar.m_fireballSpinSpeed;
+    state.animationTimer = fireBar.m_animationTimer;
+    state.animationFrame = fireBar.m_animationFrame;
+    state.segmentCount = fireBar.m_segmentCount;
+    state.segmentSpacing = fireBar.m_segmentSpacing;
+    return state;
+  }
+
+  static void restoreFireBar(FireBar &fireBar, const SaveData::FireBarState &state) {
+    restoreObject(fireBar, state.object);
+    fireBar.m_angle = state.angle;
+    fireBar.m_angularSpeed = state.angularSpeed;
+    fireBar.m_fireballRotationDegrees = state.fireballRotationDegrees;
+    fireBar.m_fireballSpinSpeed = state.fireballSpinSpeed;
+    fireBar.m_animationTimer = state.animationTimer;
+    fireBar.m_animationFrame = state.animationFrame;
+    fireBar.m_segmentCount = state.segmentCount;
+    fireBar.m_segmentSpacing = state.segmentSpacing;
+  }
+
+  static SaveData::LavaFireballState captureLavaFireball(
+      const LavaFireball &lavaFireball) {
+    SaveData::LavaFireballState state;
+    state.object = captureObject(lavaFireball);
+    state.launchPosition = captureVec(lavaFireball.m_launchPosition);
+    state.launchSpeed = lavaFireball.m_launchSpeed;
+    state.totalFlightTime = lavaFireball.m_totalFlightTime;
+    state.flightTimer = lavaFireball.m_flightTimer;
+    state.cooldownTimer = lavaFireball.m_cooldownTimer;
+    state.animationFrame = lavaFireball.m_animationFrame;
+    state.visible = lavaFireball.m_visible;
+    return state;
+  }
+
+  static void restoreLavaFireball(LavaFireball &lavaFireball,
+                                  const SaveData::LavaFireballState &state) {
+    restoreObject(lavaFireball, state.object);
+    lavaFireball.m_launchPosition = restoreVec(state.launchPosition);
+    lavaFireball.m_launchSpeed = state.launchSpeed;
+    lavaFireball.m_totalFlightTime = state.totalFlightTime;
+    lavaFireball.m_flightTimer = state.flightTimer;
+    lavaFireball.m_cooldownTimer = state.cooldownTimer;
+    lavaFireball.m_animationFrame = state.animationFrame;
+    lavaFireball.m_visible = state.visible;
+  }
+};
+
 Level::Level() {}
 Level::~Level() {}
 
@@ -34,6 +585,9 @@ bool Level::loadFromFile(const std::string &filename,
                          const std::string &characterName, LevelTheme theme,
                          bool autoPlaceFlagpole) {
   auto data = LevelLoader::loadLevel(filename, theme, autoPlaceFlagpole);
+  if (!data.loaded) {
+    return false;
+  }
 
   m_tiles = std::move(data.tiles);
   m_tileGrid.build(m_tiles);
@@ -503,6 +1057,14 @@ std::optional<sf::Vector2f> Level::getCastleDoorEntryPosition() const {
 }
 
 bool Level::isComplete() const { return m_flagpole && m_flagpole->isReached(); }
+
+SaveData::LevelState Level::captureSnapshot() const {
+  return SnapshotAccess::capture(*this);
+}
+
+bool Level::restoreSnapshot(const SaveData::LevelState &snapshot) {
+  return SnapshotAccess::restore(*this, snapshot);
+}
 
 void Level::handlePlayerCollisions(Player* player, float dt) {
   if (!player || player->isDead()) return;

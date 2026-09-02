@@ -1,5 +1,6 @@
 #pragma once
 #include "LevelTheme.hpp"
+#include "Core/GameSnapshot.hpp"
 #include "Background.hpp"
 #include "TileGrid.hpp"
 #include "../Entities/Block.hpp"
@@ -21,6 +22,7 @@
 /// Level — holds all entities for a single game level.
 /// Manages updates, rendering, and collision checking.
 class Level {
+  friend class SnapshotAccess;
 public:
   Level();
   ~Level();
@@ -78,6 +80,12 @@ public:
 
   /// Check if the level is complete.
   bool isComplete() const;
+
+  /// Capture or restore the mutable state of a level. Static terrain is always
+  /// rebuilt from the trusted map file; these methods cover every object whose
+  /// gameplay state can change while the player is running the level.
+  SaveData::LevelState captureSnapshot() const;
+  bool restoreSnapshot(const SaveData::LevelState &snapshot);
 
 private:
   /// Main collision loop.

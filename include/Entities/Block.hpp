@@ -15,6 +15,7 @@ enum class BlockType {
 /// Block — interactive blocks that can be hit from below.
 /// QuestionBlocks spawn items; BrickBlocks break when the player is Big.
 class Block : public GameObject {
+  friend class SnapshotAccess;
 public:
   Block();
   Block(BlockType blockType, float x, float y, LevelTheme theme,

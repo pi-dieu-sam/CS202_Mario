@@ -20,6 +20,7 @@ enum class CharacterId {
 /// Player — base class for player-controlled characters (Mario, Luigi).
 /// Adds lives, score, power-up system, and invincibility after damage.
 class Player : public Character {
+  friend class SnapshotAccess;
 public:
   Player();
   virtual ~Player() = default;

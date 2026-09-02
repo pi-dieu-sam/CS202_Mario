@@ -23,6 +23,7 @@ enum class ObjectType {
 /// GameObject — Abstract base class for ALL entities in the game.
 /// Defines the common interface: position, velocity, bounds, update, draw.
 class GameObject {
+    friend class SnapshotAccess;
 public:
     GameObject();
     virtual ~GameObject() = default;

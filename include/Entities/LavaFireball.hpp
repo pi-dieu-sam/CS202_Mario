@@ -9,6 +9,7 @@
 /// launch point: this entity passes through map geometry and kills players on
 /// contact while it is visible.
 class LavaFireball : public GameObject {
+  friend class SnapshotAccess;
 public:
   /// Maximum height above the lava launch point. Adjust this value to tune
   /// every lava fireball in the game.
