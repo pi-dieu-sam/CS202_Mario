@@ -8,6 +8,7 @@
 /// Enemy — Abstract base class for all enemy characters.
 /// Uses the Strategy pattern for AI behavior.
 class Enemy : public Character {
+  friend class SnapshotAccess;
 public:
   Enemy();
   virtual ~Enemy() = default;

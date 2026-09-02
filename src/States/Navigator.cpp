@@ -4,6 +4,7 @@
 #include "States/CharacterSelectState.hpp"
 #include "States/LevelSelectState.hpp"
 #include "States/PlayingState.hpp"
+#include "States/SaveSlotState.hpp"
 #include "Core/Game.hpp"
 #include <memory>
 
@@ -18,6 +19,8 @@ std::unique_ptr<GameState> createScreen(ScreenFlow::Screen screen) {
     switch (screen) {
         case ScreenFlow::Screen::MainMenu:
             return std::make_unique<MenuState>();
+        case ScreenFlow::Screen::SaveSlots:
+            return std::make_unique<SaveSlotState>(SaveSlotMode::Load);
         case ScreenFlow::Screen::CharacterSelect:
             return std::make_unique<CharacterSelectState>();
         case ScreenFlow::Screen::LevelSelect:

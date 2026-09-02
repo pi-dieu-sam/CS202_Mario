@@ -51,6 +51,7 @@ class LavaFireball;
 class LevelLoader {
 public:
     struct LevelData {
+        bool                                  loaded = false;
         std::vector<std::unique_ptr<Tile>>   tiles;
         std::vector<std::unique_ptr<Block>>  blocks;
         std::vector<std::unique_ptr<Enemy>>  enemies;

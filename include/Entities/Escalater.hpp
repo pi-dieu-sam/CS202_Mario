@@ -7,6 +7,7 @@
 /// Maps to character 'E' in the level file. The player can stand on it
 /// and is carried along with its vertical movement.
 class Escalater : public GameObject {
+  friend class SnapshotAccess;
 public:
   enum class MovementAxis { Vertical, Horizontal };
 

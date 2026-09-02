@@ -3,7 +3,6 @@
 #include "Core/Game.hpp"
 #include "Core/AssetManager.hpp"
 #include "Core/PlayerProgress.hpp"
-#include "Core/SaveManager.hpp"
 #include "Core/SoundManager.hpp"
 #include "Physics/PhysicsConstants.hpp"
 #include "Graphics/SpriteRegistry.hpp"
@@ -165,7 +164,7 @@ void MenuState::handleEvent(const sf::Event& event) {
 
     if (event.type == sf::Event::MouseMoved) {
         sf::Vector2f mousePos = window.mapPixelToCoords({event.mouseMove.x, event.mouseMove.y});
-        for (int i = 0; i < 3; i++) {
+        for (int i = 0; i < 5; i++) {
             if (m_options[i].getGlobalBounds().contains(mousePos)) {
                 if (m_selectedOption != i) {
                     m_selectedOption = i;
@@ -206,13 +205,11 @@ void MenuState::handleEvent(const sf::Event& event) {
                                          Game::getInstance().getStateManager(),
                                          Game::getInstance().getProgress().getGameMode());
                         break;
-                    case 3: { // Load Game
-                        bool loaded = SaveManager::loadGame();
-                        Navigator::apply(ScreenFlow::onMenuOption(3, loaded),
+                    case 3: // Load Game
+                        Navigator::apply(ScreenFlow::onMenuOption(3, false),
                                          Game::getInstance().getStateManager(),
                                          Game::getInstance().getProgress().getGameMode());
                         break;
-                    }
                     case 4: // Exit
                         Navigator::apply(ScreenFlow::onMenuOption(4, false),
                                          Game::getInstance().getStateManager(),
@@ -262,13 +259,11 @@ void MenuState::handleEvent(const sf::Event& event) {
                                          Game::getInstance().getStateManager(),
                                          Game::getInstance().getProgress().getGameMode());
                         break;
-                    case 3: { // Load Game
-                        bool loaded = SaveManager::loadGame();
-                        Navigator::apply(ScreenFlow::onMenuOption(3, loaded),
+                    case 3: // Load Game
+                        Navigator::apply(ScreenFlow::onMenuOption(3, false),
                                          Game::getInstance().getStateManager(),
                                          Game::getInstance().getProgress().getGameMode());
                         break;
-                    }
                     case 4: // Exit
                         Navigator::apply(ScreenFlow::onMenuOption(4, false),
                                          Game::getInstance().getStateManager(),

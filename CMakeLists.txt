@@ -82,6 +82,21 @@ if(BUILD_TESTS)
     set_tests_properties(NavigationTests PROPERTIES
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     )
+
+    add_executable(SaveManagerTests tests/SaveManagerTests.cpp ${TEST_SOURCES})
+    target_include_directories(SaveManagerTests PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
+    )
+    target_link_libraries(SaveManagerTests PRIVATE
+        sfml-graphics
+        sfml-window
+        sfml-system
+        sfml-audio
+    )
+    add_test(NAME SaveManagerTests COMMAND SaveManagerTests)
+    set_tests_properties(SaveManagerTests PROPERTIES
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    )
 endif()
 
 # --- Copy assets to build directory ---

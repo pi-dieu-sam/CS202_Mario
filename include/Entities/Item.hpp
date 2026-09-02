@@ -9,6 +9,7 @@ class Player;
 /// Item — Abstract base class for collectible items.
 /// Each item defines its own activate() behavior on the player.
 class Item : public GameObject {
+    friend class SnapshotAccess;
 public:
     Item();
     virtual ~Item() = default;

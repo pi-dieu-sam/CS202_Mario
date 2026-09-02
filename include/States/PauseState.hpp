@@ -1,12 +1,15 @@
 #pragma once
 #include "GameState.hpp"
+#include "Core/GameSnapshot.hpp"
 #include <SFML/Graphics.hpp>
+#include <optional>
 
 /// PauseState — overlay drawn on top of PlayingState.
-/// Shows "Resume", "Quit to Menu", and an interactive Audio Control Panel (Mute, Vol +/-, Track Selector).
+/// Shows Resume, a single-player Save Game entry, Quit to Menu, and an
+/// interactive Audio Control Panel (Mute, Vol +/-, Track Selector).
 class PauseState : public GameState {
 public:
-    PauseState();
+    explicit PauseState(std::optional<SaveData::GameSnapshot> snapshot = std::nullopt);
 
     void onEnter() override;
     void onExit() override;
@@ -22,8 +25,10 @@ private:
 
     sf::RectangleShape m_overlay;  // semi-transparent dark overlay
     sf::Text           m_title;
-    sf::Text           m_options[2]; // Resume, Quit
+    sf::Text           m_options[3]; // Resume, Save Game (single-player), Quit
     int                m_selected = 0;
+    int                m_optionCount = 2;
+    std::optional<SaveData::GameSnapshot> m_snapshot;
 
     // ── Audio Control Panel UI ──────────────────────────────────────────────
     sf::RectangleShape m_audioPanel;

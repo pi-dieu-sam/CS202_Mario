@@ -4,6 +4,7 @@
 
 /// Goomba — basic walking enemy. Dies on stomp.
 class Goomba : public Enemy {
+    friend class SnapshotAccess;
 public:
     Goomba();
 

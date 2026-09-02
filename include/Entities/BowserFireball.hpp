@@ -6,6 +6,7 @@
 /// line, disappears on solid terrain, and is handled as lethal to players by
 /// Level's collision loop.
 class BowserFireball final : public GameObject {
+  friend class SnapshotAccess;
 public:
   BowserFireball(float x, float y, int direction = -1);
 

@@ -1,12 +1,14 @@
 #include "States/PauseState.hpp"
 #include "States/Navigator.hpp"
+#include "States/SaveSlotState.hpp"
+#include "States/StateManager.hpp"
 #include "Core/Game.hpp"
 #include "Core/AssetManager.hpp"
-#include "Core/SaveManager.hpp"
 #include "Core/SoundManager.hpp"
 #include "Physics/PhysicsConstants.hpp"
 
-PauseState::PauseState() {}
+PauseState::PauseState(std::optional<SaveData::GameSnapshot> snapshot)
+    : m_snapshot(std::move(snapshot)) {}
 
 void PauseState::onEnter() {
     sf::Font& font = AssetManager::getInstance().getFont("assets/fonts/mario_font.ttf");
@@ -23,10 +25,13 @@ void PauseState::onEnter() {
     m_title.setOrigin(tb.left + tb.width / 2.0f, tb.top + tb.height / 2.0f);
     m_title.setPosition(WINDOW_WIDTH / 2.0f, 75.0f);
 
-    std::string labels[] = {"RESUME", "QUIT TO MENU"};
-    for (int i = 0; i < 2; i++) {
+    const bool canSave = m_snapshot.has_value();
+    m_optionCount = canSave ? 3 : 2;
+    const std::string labels[] = {"RESUME", "SAVE GAME", "QUIT TO MENU"};
+    for (int i = 0; i < m_optionCount; i++) {
+        const int labelIndex = canSave ? i : (i == 0 ? 0 : 2);
         m_options[i].setFont(font);
-        m_options[i].setString(labels[i]);
+        m_options[i].setString(labels[labelIndex]);
         m_options[i].setCharacterSize(22);
         auto ob = m_options[i].getLocalBounds();
         m_options[i].setOrigin(ob.left + ob.width / 2.0f, ob.top + ob.height / 2.0f);
@@ -166,11 +171,11 @@ void PauseState::handleEvent(const sf::Event& event) {
     // Mouse movement
     if (event.type == sf::Event::MouseMoved) {
         sf::Vector2f mousePos = window.mapPixelToCoords({event.mouseMove.x, event.mouseMove.y});
-        for (int i = 0; i < 2; i++) {
+        for (int i = 0; i < m_optionCount; i++) {
             if (m_options[i].getGlobalBounds().contains(mousePos)) {
                 if (m_selected != i) {
                     m_selected = i;
-                    for (int j = 0; j < 2; j++)
+                    for (int j = 0; j < m_optionCount; j++)
                         m_options[j].setFillColor(j == m_selected ? sf::Color::Yellow : sf::Color::White);
                 }
                 break;
@@ -183,17 +188,19 @@ void PauseState::handleEvent(const sf::Event& event) {
     if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left) {
         sf::Vector2f mousePos = window.mapPixelToCoords({event.mouseButton.x, event.mouseButton.y});
 
-        // Click Resume or Quit
-        for (int i = 0; i < 2; i++) {
+        // Click Resume, Save Game, or Quit
+        for (int i = 0; i < m_optionCount; i++) {
             if (m_options[i].getGlobalBounds().contains(mousePos)) {
                 m_selected = i;
                 if (m_selected == 0) {
                     Navigator::apply(ScreenFlow::onPauseOption(0),
                                       Game::getInstance().getStateManager(),
                                       Game::getInstance().getProgress().getGameMode());
+                } else if (m_snapshot && m_selected == 1) {
+                    Game::getInstance().getStateManager().pushState(
+                        std::make_unique<SaveSlotState>(SaveSlotMode::Save, *m_snapshot));
                 } else {
-                    SaveManager::saveGame();
-                    Navigator::apply(ScreenFlow::onPauseOption(1),
+                    Navigator::apply(ScreenFlow::onPauseOption(2),
                                       Game::getInstance().getStateManager(),
                                       Game::getInstance().getProgress().getGameMode());
                 }
@@ -244,15 +251,15 @@ void PauseState::handleEvent(const sf::Event& event) {
 
             case sf::Keyboard::Up:
             case sf::Keyboard::W:
-                m_selected = (m_selected - 1 + 2) % 2;
-                for (int i = 0; i < 2; i++)
+                m_selected = (m_selected - 1 + m_optionCount) % m_optionCount;
+                for (int i = 0; i < m_optionCount; i++)
                     m_options[i].setFillColor(i == m_selected ? sf::Color::Yellow : sf::Color::White);
                 break;
 
             case sf::Keyboard::Down:
             case sf::Keyboard::S:
-                m_selected = (m_selected + 1) % 2;
-                for (int i = 0; i < 2; i++)
+                m_selected = (m_selected + 1) % m_optionCount;
+                for (int i = 0; i < m_optionCount; i++)
                     m_options[i].setFillColor(i == m_selected ? sf::Color::Yellow : sf::Color::White);
                 break;
 
@@ -287,9 +294,11 @@ void PauseState::handleEvent(const sf::Event& event) {
                     Navigator::apply(ScreenFlow::onPauseOption(0),
                                       Game::getInstance().getStateManager(),
                                       Game::getInstance().getProgress().getGameMode());
+                } else if (m_snapshot && m_selected == 1) {
+                    Game::getInstance().getStateManager().pushState(
+                        std::make_unique<SaveSlotState>(SaveSlotMode::Save, *m_snapshot));
                 } else {
-                    SaveManager::saveGame();
-                    Navigator::apply(ScreenFlow::onPauseOption(1),
+                    Navigator::apply(ScreenFlow::onPauseOption(2),
                                       Game::getInstance().getStateManager(),
                                       Game::getInstance().getProgress().getGameMode());
                 }
@@ -307,7 +316,7 @@ void PauseState::render(sf::RenderWindow& window) {
     window.setView(window.getDefaultView());
     window.draw(m_overlay);
     window.draw(m_title);
-    for (int i = 0; i < 2; i++) {
+    for (int i = 0; i < m_optionCount; i++) {
         window.draw(m_options[i]);
     }
 

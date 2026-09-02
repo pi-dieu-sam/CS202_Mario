@@ -30,6 +30,7 @@ namespace ScreenFlow {
 
 enum class Screen {
     MainMenu,
+    SaveSlots,
     CharacterSelect,
     LevelSelect,
     Playing,
@@ -65,16 +66,16 @@ struct Transition {
 
 /// Main menu option selected (mouse click or Enter/Space), matching the
 /// index order of MenuState::m_options: 0 = 1 Player, 1 = 2P Co-op,
-/// 2 = 2P PvP, 3 = Load Game, 4 = Exit. `saveLoaded` is the result of
-/// having already called SaveManager::loadGame() for option 3; it's
-/// irrelevant for every other option.
-inline Transition onMenuOption(int option, bool saveLoaded) {
+/// 2 = 2P PvP, 3 = Load Game, 4 = Exit. Load Game always opens the
+/// five-slot picker; validation and restoration happen only after a slot is
+/// explicitly selected there. The second argument is retained temporarily so
+/// existing callers can migrate without changing unrelated menu behavior.
+inline Transition onMenuOption(int option, bool /*legacySaveLoaded*/) {
     switch (option) {
         case 0: return {Op::Push, Screen::CharacterSelect};
         case 1: return {Op::Push, Screen::LevelSelect};
         case 2: return {Op::ResetTo, Screen::Playing};
-        case 3: return saveLoaded ? Transition{Op::ResetTo, Screen::Playing}
-                                   : Transition{Op::None, Screen::MainMenu};
+        case 3: return {Op::Push, Screen::SaveSlots};
         case 4: return {Op::QuitApp, Screen::MainMenu};
         default: return {Op::None, Screen::MainMenu};
     }
@@ -104,6 +105,7 @@ inline Transition onBack(Screen current) {
     switch (current) {
         case Screen::CharacterSelect:
         case Screen::LevelSelect:
+        case Screen::SaveSlots:
         case Screen::Pause:
             return {Op::Back, current};
         default:
@@ -125,11 +127,13 @@ inline Transition onGameOverPrimary(GameResult result) {
     }
 }
 
-/// PauseState option selected: 0 = Resume, 1 = Quit to Menu.
+/// PauseState action selected: 0 = Resume, 2 = Quit to Menu. The middle
+/// Save Game action needs the paused in-memory snapshot, so PauseState pushes
+/// SaveSlotState directly rather than routing it through this pure policy.
 inline Transition onPauseOption(int option) {
     switch (option) {
         case 0: return {Op::Back, Screen::Pause};
-        case 1: return {Op::ResetTo, Screen::MainMenu};
+        case 2: return {Op::ResetTo, Screen::MainMenu};
         default: return {Op::None, Screen::Pause};
     }
 }
@@ -143,6 +147,8 @@ inline std::vector<Screen> canonicalStack(Screen screen, GameMode mode) {
     switch (screen) {
         case Screen::MainMenu:
             return {Screen::MainMenu};
+        case Screen::SaveSlots:
+            return {Screen::MainMenu, Screen::SaveSlots};
         case Screen::CharacterSelect:
             return {Screen::MainMenu, Screen::CharacterSelect};
         case Screen::LevelSelect:
