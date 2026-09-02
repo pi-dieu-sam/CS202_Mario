@@ -202,7 +202,10 @@ void GameOverState::update(float dt) {
         m_heroSprite, hero, won ? PowerUpState::Big : PowerUpState::Small,
         won ? SpriteRegistry::PlayerAnim::Jump : SpriteRegistry::PlayerAnim::Idle,
         static_cast<int>(m_animTime * 9.0f),
-        sf::FloatRect(WINDOW_WIDTH * 0.5f, 344.0f, 0.0f, 96.0f));
+        // applyPlayerFrame() treats the box as bottom-aligned. Keep the
+        // celebratory character in the gap between the detail and score
+        // instead of covering the score and the primary menu option.
+        sf::FloatRect(WINDOW_WIDTH * 0.5f, 240.0f, 0.0f, 96.0f));
     if (pvpResult) {
         // Pulse the title scale for celebration effect
         float pulse = 1.0f + 0.06f * std::sin(m_animTime * 4.0f);
