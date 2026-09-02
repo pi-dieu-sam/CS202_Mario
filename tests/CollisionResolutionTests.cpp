@@ -24,6 +24,7 @@
 #include "Factory/EntityFactory.hpp"
 #include "Entities/Escalater.hpp"
 #include "Entities/FireBar.hpp"
+#include "Entities/Fireball.hpp"
 #include "Entities/LavaFireball.hpp"
 #include "Entities/PiranhaPlant.hpp"
 #include "Entities/Luigi.hpp"
@@ -666,6 +667,269 @@ static void testEnemyScoreValuesMatchDifficultyTier() {
 
   Bowser bowser;
   CHECK(bowser.getScoreValue() == 1000, "Bowser is worth 1000 points");
+}
+
+// ── Flagpole ───────────────────────────────────────────────────────────
+
+static void testFlagpoleScoreTiersMatchClimbHeight() {
+  Flagpole pole(0.0f, 1000.0f);
+  const float poleTop = 1000.0f - TILE_SIZE * 7.0f;
+  const float range = TILE_SIZE * 7.0f;
+
+  CHECK(pole.calculateScore(poleTop) == 5000,
+        "touching the very top of the pole awards the maximum 5000 points");
+  CHECK(pole.calculateScore(poleTop + range * 0.2f) == 2000,
+        "climbing to the 20% mark awards 2000 points");
+  CHECK(pole.calculateScore(poleTop + range * 0.4f) == 800,
+        "climbing to the 40% mark awards 800 points");
+  CHECK(pole.calculateScore(poleTop + range * 0.6f) == 400,
+        "climbing to the 60% mark awards 400 points");
+  CHECK(pole.calculateScore(poleTop + range) == 100,
+        "touching the very bottom of the pole awards the minimum 100 points");
+}
+
+static void testFlagpoleFlagDropAnimationReachesTheBottomOnce() {
+  Flagpole pole(0.0f, 1000.0f);
+  CHECK(!pole.isReached() && !pole.isFlagDropComplete(),
+        "a freshly-created flagpole has not been reached yet");
+
+  pole.setReached(true);
+  CHECK(pole.isReached(), "setReached(true) marks the flagpole reached");
+  CHECK(!pole.isFlagDropComplete(),
+        "the flag has not finished dropping the instant it is reached");
+
+  for (int i = 0; i < 100 && !pole.isFlagDropComplete(); ++i) {
+    pole.update(0.1f); // up to 10s, comfortably enough for a 150px/s drop
+  }
+  CHECK(pole.isFlagDropComplete(),
+        "the flag eventually finishes dropping to the bottom of the pole");
+
+  pole.update(1.0f);
+  CHECK(pole.isFlagDropComplete(),
+        "the flag stays at the bottom instead of overshooting on later updates");
+}
+
+static void testFlagpoleSlideAnchorAndEndPositions() {
+  Flagpole pole(64.0f, 1000.0f);
+  CHECK(pole.getSlideAnchorX() == 64.0f + TILE_SIZE / 2.0f,
+        "the slide anchor sits centered on the pole's tile column");
+  CHECK(pole.getSlideEndY() == 1000.0f - TILE_SIZE,
+        "the slide end position sits one tile above the pole's base");
+}
+
+// ── FireBar ────────────────────────────────────────────────────────────
+
+static void testFireBarAnchorAndSegmentZeroStayAtBlockCenter() {
+  FireBar bar(100.0f, 200.0f, 8);
+  CHECK(bar.getSegmentCount() == 8,
+        "the fire bar keeps the requested segment count");
+  CHECK(bar.getAnchorBounds() == sf::FloatRect(100.0f, 200.0f, TILE_SIZE, TILE_SIZE),
+        "the anchor block fills exactly one map tile");
+
+  const sf::FloatRect segment0 = bar.getSegmentBounds(0);
+  const float centerX = 100.0f + TILE_SIZE / 2.0f;
+  const float centerY = 200.0f + TILE_SIZE / 2.0f;
+  CHECK(std::abs(segment0.left + segment0.width / 2.0f - centerX) < 0.01f &&
+            std::abs(segment0.top + segment0.height / 2.0f - centerY) < 0.01f,
+        "segment 0 is the fixed pivot at the anchor's center, not on the "
+        "rotating arm");
+}
+
+static void testFireBarRotatesAtItsConfiguredAngularSpeed() {
+  FireBar bar(0.0f, 0.0f, 8);
+  bar.update(1.0f); // angularSpeed defaults to 1.5 rad/s
+
+  const float expectedAngle = 1.5f;
+  const sf::FloatRect segment1 = bar.getSegmentBounds(1);
+  const float centerX = TILE_SIZE / 2.0f;
+  const float centerY = TILE_SIZE / 2.0f;
+  const float expectedX = centerX + std::cos(expectedAngle) * 16.0f - 8.0f;
+  const float expectedY = centerY + std::sin(expectedAngle) * 16.0f - 8.0f;
+  CHECK(std::abs(segment1.left - expectedX) < 0.1f &&
+            std::abs(segment1.top - expectedY) < 0.1f,
+        "after 1s, segment 1 has orbited to the position matching a "
+        "1.5 rad/s angular speed");
+}
+
+static void testFireBarAngleWrapsAfterAFullRevolution() {
+  FireBar bar(0.0f, 0.0f, 4);
+  CHECK(bar.getSegmentCount() == 4,
+        "a fire bar can be configured with fewer than the default 8 segments");
+
+  const sf::FloatRect before = bar.getSegmentBounds(1);
+  constexpr float twoPi = 6.283185307f;
+  const float revolutionTime = twoPi / 1.5f;
+  for (int i = 0; i < 1000; ++i) bar.update(revolutionTime / 1000.0f);
+  const sf::FloatRect after = bar.getSegmentBounds(1);
+  CHECK(std::abs(before.left - after.left) < 1.0f &&
+            std::abs(before.top - after.top) < 1.0f,
+        "the rotation angle wraps at a full revolution instead of growing "
+        "without bound");
+}
+
+// ── LavaFireball ───────────────────────────────────────────────────────
+
+static void testLavaFireballCompletesLaunchCycleAndCoolsDownBeforeRelaunch() {
+  LavaFireball lava(0.0f, TILE_SIZE);
+  CHECK(lava.isVisible(),
+        "a freshly-constructed lava fireball launches immediately");
+  const sf::FloatRect launchBounds = lava.getBounds();
+
+  for (int i = 0; i < 500 && lava.isVisible(); ++i) {
+    lava.update(0.01f); // up to 5s of simulated flight time
+  }
+  CHECK(!lava.isVisible(),
+        "the fireball becomes invisible after completing its full launch "
+        "arc back down to the launch height");
+  CHECK(lava.getBounds().top == launchBounds.top,
+        "the fireball settles back at its exact launch position, not "
+        "mid-arc, when it goes invisible");
+
+  lava.update(2.9f);
+  CHECK(!lava.isVisible(),
+        "the fireball stays hidden through most of its cooldown period");
+
+  lava.update(0.2f); // crosses the 3.0s cooldown threshold
+  CHECK(lava.isVisible(),
+        "the fireball relaunches once its cooldown period fully elapses");
+}
+
+// ── Fireball (player projectile) ──────────────────────────────────────
+
+static void testFireballInitialVelocityMatchesDirection() {
+  Fireball right(0.0f, 0.0f, 1);
+  CHECK(right.getVelocity().x == 350.0f && right.getVelocity().y == 0.0f,
+        "a fireball shot right launches at +350 horizontal speed");
+
+  Fireball left(0.0f, 0.0f, -1);
+  CHECK(left.getVelocity().x == -350.0f,
+        "a fireball shot left launches at -350 horizontal speed");
+}
+
+static void testFireballFallsUnderGravityAndDespawnsAfterLifetime() {
+  Fireball ball(0.0f, 0.0f, 1);
+  const float startY = ball.getPosition().y;
+  ball.update(1.0f);
+  CHECK(ball.getVelocity().y > 0.0f && ball.getPosition().y > startY,
+        "gravity pulls a flying fireball downward over time");
+
+  Fireball shortLived(0.0f, 0.0f, 1);
+  for (int i = 0; i < 40 && shortLived.isActive(); ++i) {
+    shortLived.update(0.1f); // up to 4s, past the 3s lifetime
+  }
+  CHECK(!shortLived.isActive(),
+        "a fireball despawns once its 3-second lifetime elapses");
+}
+
+static void testFireballDespawnsAfterThreeSurfaceHitsNotBefore() {
+  Fireball ball(0.0f, 0.0f, 1);
+  ball.noteSurfaceHit();
+  CHECK(ball.isActive(), "the fireball survives its first surface hit");
+  ball.noteSurfaceHit();
+  CHECK(ball.isActive(), "the fireball survives its second surface hit");
+  ball.noteSurfaceHit();
+  CHECK(!ball.isActive(), "the fireball despawns on its third surface hit");
+}
+
+static void testFireballDespawnsWhenFarOffscreen() {
+  Fireball fallenBelow(0.0f, 900.0f, 1); // already below the 800 cutoff
+  fallenBelow.update(0.001f);
+  CHECK(!fallenBelow.isActive(), "a fireball far below the level is culled");
+
+  Fireball farRight(20000.0f, 0.0f, 1);
+  farRight.update(0.001f);
+  CHECK(!farRight.isActive(), "a fireball far to the right is culled");
+}
+
+// ── Block bump animation ───────────────────────────────────────────────
+
+static void testBlockBumpAnimationRisesAndSettlesWithinDuration() {
+  auto block = EntityFactory::createBlock('?', 0.0f, 100.0f, LevelTheme::Overworld);
+  CHECK(block && block->getBounds().top == 100.0f,
+        "setup: an unbumped block sits at its exact placed position");
+  if (!block) return;
+
+  block->hit(false); // starts the bump animation
+
+  block->update(0.0f);
+  CHECK(block->getBounds().top < 100.0f,
+        "the block visibly rises the instant a bump starts");
+
+  block->update(0.10f); // 0.10s into the 0.15s bump
+  CHECK(block->getBounds().top < 100.0f,
+        "the block is still risen partway through the bump duration");
+
+  block->update(0.10f); // now past the 0.15s bump duration
+  CHECK(block->getBounds().top == 100.0f,
+        "the block settles back to its exact original position once the "
+        "bump animation finishes");
+}
+
+// ── EntityFactory::createPlayer ───────────────────────────────────────
+
+static void testEntityFactoryCreatePlayerDispatchesByNameAndRejectsUnknown() {
+  auto mario = EntityFactory::createPlayer("Mario", sf::Vector2f(50.0f, 60.0f));
+  CHECK(mario && dynamic_cast<Mario *>(mario.get()) != nullptr,
+        "createPlayer(\"Mario\") returns an actual Mario instance");
+  if (mario) {
+    CHECK(mario->getPosition().x == 50.0f && mario->getPosition().y == 60.0f,
+          "the created player is placed at the requested position");
+  }
+
+  auto luigi = EntityFactory::createPlayer("Luigi", sf::Vector2f(0.0f, 0.0f));
+  CHECK(luigi && dynamic_cast<Luigi *>(luigi.get()) != nullptr,
+        "createPlayer(\"Luigi\") returns an actual Luigi instance");
+
+  auto unknown = EntityFactory::createPlayer("Wario", sf::Vector2f(0.0f, 0.0f));
+  CHECK(unknown == nullptr,
+        "an unrecognized character name returns null instead of silently "
+        "defaulting to Mario");
+}
+
+// ── Escalater ──────────────────────────────────────────────────────────
+
+static void testEscalaterVerticalAxisOscillatesWithinRange() {
+  Escalater escalater(100.0f, 300.0f, Escalater::MovementAxis::Vertical);
+  CHECK(!escalater.movesHorizontally(),
+        "a Vertical-axis escalater reports itself as not horizontal");
+  CHECK(escalater.getBounds() == sf::FloatRect(100.0f, 300.0f, TILE_SIZE, TILE_SIZE),
+        "the escalater's collision bounds start at its placed position");
+
+  for (int i = 0; i < 500; ++i) escalater.update(0.05f); // 25s, several round trips
+  CHECK(escalater.getPosition().y >= 300.0f - 96.0f - 0.5f &&
+            escalater.getPosition().y <= 300.0f + 96.0f + 0.5f,
+        "the escalater's vertical position never leaves its default "
+        "3-tile (96px) range");
+}
+
+static void testEscalaterReverseDirectionFlipsVelocityImmediately() {
+  Escalater escalater(0.0f, 0.0f, Escalater::MovementAxis::Vertical);
+  escalater.update(0.1f);
+  const float initialVy = escalater.getVelocity().y;
+  CHECK(initialVy < 0.0f, "the default vertical direction is upward (negative y)");
+
+  escalater.reverseDirection();
+  CHECK(escalater.getVelocity().y == -initialVy,
+        "reverseDirection() immediately flips the velocity sign");
+}
+
+static void testEscalaterSetMapBoundsClampsWithinLevelEdges() {
+  Escalater escalater(100.0f, 100.0f, Escalater::MovementAxis::Vertical);
+  escalater.setRange(1000.0f); // wide enough that the map bound is the real limit
+  escalater.setMapBounds(0.0f, 800.0f, 50.0f, 150.0f);
+
+  for (int i = 0; i < 200; ++i) escalater.update(0.05f); // 10s, several bounces
+  CHECK(escalater.getPosition().y >= 50.0f - 0.5f &&
+            escalater.getPosition().y + TILE_SIZE <= 150.0f + 0.5f,
+        "the escalater never crosses the map's top/bottom boundary once set");
+}
+
+static void testEscalaterSetSpeedChangesVelocityMagnitude() {
+  Escalater escalater(0.0f, 0.0f, Escalater::MovementAxis::Vertical);
+  escalater.setSpeed(200.0f);
+  escalater.update(0.1f);
+  CHECK(std::abs(escalater.getVelocity().y) == 200.0f,
+        "setSpeed() changes the magnitude of the escalater's movement velocity");
 }
 
 static void testHorizontalEscalaterMovement() {
@@ -2184,6 +2448,23 @@ int main() {
   testBowserFireballs();
   testStarPowerOnlyDefeatsEnemiesItActuallyKills();
   testEnemyScoreValuesMatchDifficultyTier();
+  testFlagpoleScoreTiersMatchClimbHeight();
+  testFlagpoleFlagDropAnimationReachesTheBottomOnce();
+  testFlagpoleSlideAnchorAndEndPositions();
+  testFireBarAnchorAndSegmentZeroStayAtBlockCenter();
+  testFireBarRotatesAtItsConfiguredAngularSpeed();
+  testFireBarAngleWrapsAfterAFullRevolution();
+  testLavaFireballCompletesLaunchCycleAndCoolsDownBeforeRelaunch();
+  testFireballInitialVelocityMatchesDirection();
+  testFireballFallsUnderGravityAndDespawnsAfterLifetime();
+  testFireballDespawnsAfterThreeSurfaceHitsNotBefore();
+  testFireballDespawnsWhenFarOffscreen();
+  testBlockBumpAnimationRisesAndSettlesWithinDuration();
+  testEntityFactoryCreatePlayerDispatchesByNameAndRejectsUnknown();
+  testEscalaterVerticalAxisOscillatesWithinRange();
+  testEscalaterReverseDirectionFlipsVelocityImmediately();
+  testEscalaterSetMapBoundsClampsWithinLevelEdges();
+  testEscalaterSetSpeedChangesVelocityMagnitude();
   testHorizontalEscalaterMovement();
   testLevel2LavaTilesKillPlayer();
   testLevel2VineEntersClimbState();
