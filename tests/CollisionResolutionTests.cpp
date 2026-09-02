@@ -30,6 +30,7 @@
 #include "Entities/Tile.hpp"
 #include <cmath>
 #include <filesystem>
+#include <fstream>
 #include <iostream>
 #include <memory>
 #include <vector>
@@ -714,6 +715,34 @@ static void testLevel2PlacesAReachableFireFlowerBlock() {
         "(regresses if the F placement is ever removed from level2.txt)");
 }
 
+static void testShippedLevelsAdvertiseEveryEnemyAndPowerUp() {
+  const char *levelFiles[] = {"assets/levels/level1.txt",
+                              "assets/levels/level2.txt",
+                              "assets/levels/level3.txt"};
+
+  std::string combined;
+  for (const char *path : levelFiles) {
+    std::ifstream file(path);
+    CHECK(file.is_open(), std::string("shipped level file opens: ") + path);
+    combined += std::string((std::istreambuf_iterator<char>(file)),
+                             std::istreambuf_iterator<char>());
+  }
+
+  struct AdvertisedSymbol {
+    char symbol;
+    const char *label;
+  };
+  const AdvertisedSymbol advertised[] = {
+      {'G', "Goomba"},      {'K', "Koopa"},      {'P', "Piranha Plant"},
+      {'M', "Mushroom"},    {'F', "Fire Flower"}, {'s', "Star"},
+  };
+  for (const auto &entry : advertised) {
+    CHECK(combined.find(entry.symbol) != std::string::npos,
+          std::string("the shipped levels contain at least one ") +
+              entry.label + " (regression guard for issue #26)");
+  }
+}
+
 // Confirms resolveCollision() itself is unchanged: the player's wall-stop
 // behavior (which never calls reflectHorizontalVelocity) must keep zeroing
 // horizontal velocity on Left/Right and vertical velocity on Bottom/Top.
@@ -1343,6 +1372,7 @@ int main() {
   testCollectingFireFlowerGrantsFireState();
   testLevel1PlacesAReachableMushroomBlock();
   testLevel2PlacesAReachableFireFlowerBlock();
+  testShippedLevelsAdvertiseEveryEnemyAndPowerUp();
   testResolveCollisionAloneStillZeroesVelocity();
   testTileGridExcludesDistantTiles();
   testUpwardEdgeHitResolvesAsWall();
