@@ -174,6 +174,31 @@ static void testMovingItemCollidesWithBlocks() {
         "a moving item reverses off a block just like it does off a tile");
 }
 
+static void testFallingItemIsCulledBelowLevel() {
+  Level level;
+  CHECK(level.loadFromFile("assets/levels/level1.txt", "Mario",
+                           LevelTheme::Overworld),
+        "level 1 loads for the item-culling test");
+
+  // level1.txt already places map items (coins) directly, so compare
+  // against a baseline count instead of assuming the level starts empty.
+  const std::size_t baseline = level.captureSnapshot().items.size();
+
+  auto mushroom = std::make_unique<Mushroom>();
+  mushroom->setPosition(100.0f, level.getHeight() + TILE_SIZE * 2.0f);
+  mushroom->setVelocity(0.0f, 0.0f);
+  level.addItem(std::move(mushroom));
+
+  CHECK(level.captureSnapshot().items.size() == baseline + 1,
+        "the item was actually added to the level before the culling check");
+
+  level.update(FIXED_DT);
+
+  CHECK(level.captureSnapshot().items.size() == baseline,
+        "an item far below the level bottom is deactivated and swept up "
+        "by removeInactiveEntities() in the same update()");
+}
+
 static void testKoopaDyingAndRespawn() {
   {
     Koopa koopa;
@@ -1179,6 +1204,7 @@ int main() {
   testMushroomReversesInsteadOfStopping();
   testStarBouncesOffFloor();
   testMovingItemCollidesWithBlocks();
+  testFallingItemIsCulledBelowLevel();
   testKoopaDyingAndRespawn();
   testWalkingKoopaHitboxMatchesSprite();
   testFlyingTroopa();
