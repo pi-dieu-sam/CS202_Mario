@@ -616,6 +616,20 @@ static void testBrickBreaksOnThirdHit() {
   CHECK(!brick->isActive(), "brick breaks on its third hit");
 }
 
+static void testMushroomBlockSpawnsMushroomItem() {
+  auto block = EntityFactory::createBlock('M', 100.0f, 128.0f,
+                                          LevelTheme::Overworld);
+  CHECK(block && block->getBlockType() == BlockType::Question,
+        "M loads as a Question block");
+  if (!block) return;
+
+  auto spawned = block->hit(false);
+  CHECK(spawned != nullptr, "hitting an M block spawns an item");
+  if (!spawned) return;
+  CHECK(spawned->getType() == ObjectType::Mushroom,
+        "an M block spawns a Mushroom, not a Coin or anything else");
+}
+
 // Confirms resolveCollision() itself is unchanged: the player's wall-stop
 // behavior (which never calls reflectHorizontalVelocity) must keep zeroing
 // horizontal velocity on Left/Right and vertical velocity on Bottom/Top.
@@ -1239,6 +1253,7 @@ int main() {
   testGoombaStompDisablesCollisionImmediately();
   testEnlargedPlayersCanHitBlocksWithCompactBody();
   testBrickBreaksOnThirdHit();
+  testMushroomBlockSpawnsMushroomItem();
   testResolveCollisionAloneStillZeroesVelocity();
   testTileGridExcludesDistantTiles();
   testUpwardEdgeHitResolvesAsWall();
