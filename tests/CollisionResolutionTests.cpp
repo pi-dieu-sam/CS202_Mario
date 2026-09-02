@@ -25,6 +25,7 @@
 #include "Entities/Luigi.hpp"
 #include "Entities/Mario.hpp"
 #include "Entities/Mushroom.hpp"
+#include "Entities/Star.hpp"
 #include "Entities/Flagpole.hpp"
 #include "Entities/Tile.hpp"
 #include <cmath>
@@ -136,6 +137,26 @@ static void testMushroomReversesInsteadOfStopping() {
     CHECK(item.getVelocity().x == 80.0f,
           "Mushroom reverses (not stops) off left wall");
   }
+}
+
+static void testStarBouncesOffFloor() {
+  Star star;
+  star.setPosition(0.0f, 0.0f);
+  star.setVelocity(100.0f, 300.0f); // falling toward the floor below it
+  Tile floor;
+  placeWallBelow(star, floor);
+
+  auto result = CollisionDetector::checkCollision(star, floor);
+  CHECK(result.collided && result.side == CollisionDetector::Side::Bottom,
+        "setup lands the Star on a floor tile below it");
+
+  CollisionDetector::resolveCollision(star, floor, result);
+  CHECK(star.getVelocity().y == 0.0f,
+        "resolveCollision zeroes vertical velocity like any other landing");
+
+  star.onLanded();
+  CHECK(star.getVelocity().y < 0.0f,
+        "Star::onLanded() restores upward bounce velocity instead of resting at zero");
 }
 
 static void testKoopaDyingAndRespawn() {
@@ -1141,6 +1162,7 @@ int main() {
   testReflectHelperPure();
   testGoombaBouncesBothDirections();
   testMushroomReversesInsteadOfStopping();
+  testStarBouncesOffFloor();
   testKoopaDyingAndRespawn();
   testWalkingKoopaHitboxMatchesSprite();
   testFlyingTroopa();
