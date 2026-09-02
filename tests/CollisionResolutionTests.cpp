@@ -250,6 +250,33 @@ static void testFallingItemIsCulledBelowLevel() {
         "by removeInactiveEntities() in the same update()");
 }
 
+static void testShellIsCulledAfterFallingOffMap() {
+  // Koopa::update()'s Shell branch applied gravity and moved the position
+  // without ever checking the same fall-off-map bound Enemy::update()
+  // enforces for the Walking state, so a shell kicked off a ledge fell
+  // forever and stayed active indefinitely instead of being culled like
+  // every other enemy.
+  Koopa koopa;
+  koopa.onStomped();
+  koopa.setPosition(koopa.getPosition().x, 700.0f);
+  CHECK(koopa.getKoopaState() == KoopaState::Shell,
+        "setup: the shell is in Shell state before it falls");
+  CHECK(koopa.isActive(), "setup: a freshly-stomped shell starts active");
+
+  bool culled = false;
+  for (int i = 0; i < 80; ++i) { // up to 4s of simulated fall, well inside
+                                  // the 5s shell-respawn timer
+    koopa.update(0.05f);
+    if (!koopa.isActive()) {
+      culled = true;
+      break;
+    }
+  }
+  CHECK(culled,
+        "a shell that falls below the level is deactivated instead of "
+        "falling forever off-screen");
+}
+
 static void testKoopaDyingAndRespawn() {
   {
     Koopa koopa;
@@ -1525,6 +1552,7 @@ int main() {
   testStarBouncesOffFloor();
   testMovingItemCollidesWithBlocks();
   testFallingItemIsCulledBelowLevel();
+  testShellIsCulledAfterFallingOffMap();
   testKoopaDyingAndRespawn();
   testWalkingKoopaHitboxMatchesSprite();
   testFlyingTroopa();

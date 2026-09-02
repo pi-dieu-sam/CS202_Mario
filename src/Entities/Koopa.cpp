@@ -91,6 +91,14 @@ void Koopa::update(float dt) {
     }
     applyGravity(dt);
     m_position += m_velocity * dt;
+
+    // Enemy::update() does this for the Walking state (via the base class
+    // call below), but the Shell branch returns before ever reaching it, so
+    // a shell kicked off a ledge fell forever and stayed active/updating
+    // indefinitely instead of being culled like every other enemy.
+    if (m_position.y > 800.0f) {
+      m_active = false;
+    }
     return;
   }
 
