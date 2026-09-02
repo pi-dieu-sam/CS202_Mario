@@ -1,5 +1,6 @@
 #include "Core/GameSettings.hpp"
 
+#include <cmath>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -118,10 +119,46 @@ static void testMissingAndMalformedFilesStaySafe() {
     std::filesystem::remove(malformed);
 }
 
+static void testNonFiniteAudioValuesAreRejected() {
+    // Unlike "overdrive" (rejected by std::stof, caught before normalize()
+    // ever sees it), the literal string "nan" parses successfully into a
+    // real NaN float -- std::clamp leaves NaN unchanged since every
+    // comparison against it is false, so normalize() must reject it itself.
+    AudioSettings audio;
+    audio.masterVolume = std::nanf("");
+    audio.musicVolume = std::nanf("");
+    audio.sfxVolume = std::nanf("");
+    GameSettings settings;
+    settings.setAudio(audio);
+
+    CHECK(std::isfinite(settings.audio().masterVolume) &&
+              settings.audio().masterVolume >= 0.0f && settings.audio().masterVolume <= 100.0f,
+          "a NaN master volume normalizes to a finite value in range");
+    CHECK(std::isfinite(settings.audio().musicVolume) &&
+              settings.audio().musicVolume >= 0.0f && settings.audio().musicVolume <= 100.0f,
+          "a NaN music volume normalizes to a finite value in range");
+    CHECK(std::isfinite(settings.audio().sfxVolume) &&
+              settings.audio().sfxVolume >= 0.0f && settings.audio().sfxVolume <= 100.0f,
+          "a NaN SFX volume normalizes to a finite value in range");
+
+    const std::filesystem::path path = testPath("super_mario_game_settings_nan.cfg");
+    {
+        std::ofstream output(path);
+        output << "master_volume=nan\n";
+    }
+    GameSettings loaded;
+    CHECK(loaded.loadFromFile(path.string()),
+          "a config with a literal 'nan' value is still processed");
+    CHECK(std::isfinite(loaded.audio().masterVolume),
+          "loading a file with master_volume=nan does not leave a NaN active setting");
+    std::filesystem::remove(path);
+}
+
 int main() {
     testDefaultsAndNormalization();
     testRoundTrip();
     testMissingAndMalformedFilesStaySafe();
+    testNonFiniteAudioValuesAreRejected();
 
     if (g_failures == 0) {
         std::cout << "All game settings tests passed.\n";

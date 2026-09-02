@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cmath>
 #include <fstream>
 #include <sstream>
 
@@ -67,6 +68,13 @@ GraphicsSettings GameSettings::normalize(GraphicsSettings settings) {
 }
 
 AudioSettings GameSettings::normalize(AudioSettings settings) {
+    // std::clamp leaves a NaN input unchanged (every comparison against a
+    // NaN bound is false), so a non-finite value must be rejected before
+    // clamping rather than relied on to be clamped away.
+    if (!std::isfinite(settings.masterVolume)) settings.masterVolume = 100.0f;
+    if (!std::isfinite(settings.musicVolume)) settings.musicVolume = 100.0f;
+    if (!std::isfinite(settings.sfxVolume)) settings.sfxVolume = 100.0f;
+
     settings.masterVolume = std::clamp(settings.masterVolume, 0.0f, 100.0f);
     settings.musicVolume = std::clamp(settings.musicVolume, 0.0f, 100.0f);
     settings.sfxVolume = std::clamp(settings.sfxVolume, 0.0f, 100.0f);
