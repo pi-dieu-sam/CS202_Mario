@@ -669,6 +669,47 @@ static void testEnemyScoreValuesMatchDifficultyTier() {
   CHECK(bowser.getScoreValue() == 1000, "Bowser is worth 1000 points");
 }
 
+// Level.cpp's "Enemy vs Enemy" pass has zero prior coverage. Injects two
+// overlapping Goombas via the same restoreSnapshot() mechanism used for
+// save/load, positioned in the guaranteed-empty sky band above every
+// shipped map's actual content (row 0 always lands at y = rowOffset *
+// TILE_SIZE, so anything above that has no tiles/blocks/other entities to
+// interfere).
+static void testEnemyVsEnemyBounceOffEachOtherWhenNeitherIsASlidingShell() {
+  Level level;
+  CHECK(level.loadFromFile("assets/levels/level1.txt", "Mario",
+                           LevelTheme::Overworld),
+        "level 1 loads for the enemy-vs-enemy bounce test");
+
+  SaveData::LevelState snapshot = level.captureSnapshot();
+  snapshot.enemies.clear();
+
+  SaveData::EnemyState goombaA;
+  goombaA.kind = SaveData::EnemyKind::Goomba;
+  goombaA.character.object.position = {4000.0f, 50.0f};
+  goombaA.character.object.velocity = {40.0f, 0.0f};
+  snapshot.enemies.push_back(goombaA);
+
+  SaveData::EnemyState goombaB = goombaA;
+  goombaB.character.object.velocity = {-40.0f, 0.0f}; // same position, opposite velocity
+  snapshot.enemies.push_back(goombaB);
+
+  CHECK(level.restoreSnapshot(snapshot),
+        "the hand-built two-overlapping-Goomba snapshot restores successfully");
+
+  level.update(0.0f); // dt=0 so only collision resolution runs, nothing moves first
+
+  const auto afterEnemies = level.captureSnapshot().enemies;
+  CHECK(afterEnemies.size() == 2,
+        "setup: both Goombas survive the collision pass");
+  if (afterEnemies.size() == 2) {
+    CHECK(afterEnemies[0].character.object.velocity.x == -40.0f &&
+              afterEnemies[1].character.object.velocity.x == 40.0f,
+          "two overlapping non-shell enemies bounce off each other, each "
+          "reversing its own horizontal velocity");
+  }
+}
+
 // ── Flagpole ───────────────────────────────────────────────────────────
 
 static void testFlagpoleScoreTiersMatchClimbHeight() {
@@ -2448,6 +2489,7 @@ int main() {
   testBowserFireballs();
   testStarPowerOnlyDefeatsEnemiesItActuallyKills();
   testEnemyScoreValuesMatchDifficultyTier();
+  testEnemyVsEnemyBounceOffEachOtherWhenNeitherIsASlidingShell();
   testFlagpoleScoreTiersMatchClimbHeight();
   testFlagpoleFlagDropAnimationReachesTheBottomOnce();
   testFlagpoleSlideAnchorAndEndPositions();

@@ -157,6 +157,33 @@ static void testHundredCoinsAwardsExactlyOneExtraLife() {
         "the 200th coin awards a second extra life");
 }
 
+static void testGameModeAccessorsReflectSelectedMode() {
+  PlayerProgress progress;
+  CHECK(progress.getGameMode() == GameMode::SinglePlayer,
+        "a fresh PlayerProgress defaults to single-player mode");
+  CHECK(!progress.isCoop() && !progress.isPvP() && !progress.isMultiplayer(),
+        "single-player mode reports as neither co-op, PvP, nor multiplayer");
+
+  progress.setGameMode(GameMode::Coop);
+  CHECK(progress.isCoop() && !progress.isPvP() && progress.isMultiplayer(),
+        "Coop mode is multiplayer but not PvP");
+
+  progress.setGameMode(GameMode::PvP);
+  CHECK(!progress.isCoop() && progress.isPvP() && progress.isMultiplayer(),
+        "PvP mode is multiplayer but not Coop");
+}
+
+static void testFlagpoleBonusForNextTickHandlesZeroRemainingTicks() {
+  CHECK(LevelCompletion::flagpoleBonusForNextTick(5000, 4500, 0) == 500,
+        "with zero remaining ticks, the entire unconverted bonus is paid "
+        "out in one shot instead of dividing by zero");
+  CHECK(LevelCompletion::flagpoleBonusForNextTick(5000, 5000, 0) == 0,
+        "a fully-converted bonus pays out nothing even with zero remaining "
+        "ticks");
+  CHECK(LevelCompletion::flagpoleBonusForNextTick(5000, 4500, -3) == 500,
+        "a negative remaining-tick count is treated the same as zero");
+}
+
 static void testLoseLifeRemovesExactlyOneLifeAndFloorsAtZero() {
   PlayerProgress progress;
   progress.setLives(3);
@@ -201,6 +228,8 @@ int main() {
   testRetryPreservesProgressForEveryLevel();
   testAddCoinIncreasesCoinsAndScore();
   testHundredCoinsAwardsExactlyOneExtraLife();
+  testGameModeAccessorsReflectSelectedMode();
+  testFlagpoleBonusForNextTickHandlesZeroRemainingTicks();
   testLoseLifeRemovesExactlyOneLifeAndFloorsAtZero();
   testNewGameRemainsFullReset();
 

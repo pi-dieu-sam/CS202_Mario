@@ -1,4 +1,5 @@
 #include "Core/GameSettings.hpp"
+#include "Core/SoundManager.hpp"
 
 #include <cmath>
 #include <filesystem>
@@ -119,6 +120,107 @@ static void testMissingAndMalformedFilesStaySafe() {
     std::filesystem::remove(malformed);
 }
 
+static void testGraphicsSettingsBoundaryValuesAreExact() {
+    GameSettings settings;
+
+    GraphicsSettings atMin;
+    atMin.width = 640;
+    atMin.height = 480;
+    settings.setGraphics(atMin);
+    CHECK(settings.graphics().width == 640 && settings.graphics().height == 480,
+          "the exact minimum resolution is accepted unchanged");
+
+    GraphicsSettings atMax;
+    atMax.width = 7680;
+    atMax.height = 4320;
+    settings.setGraphics(atMax);
+    CHECK(settings.graphics().width == 7680 && settings.graphics().height == 4320,
+          "the exact maximum resolution is accepted unchanged");
+
+    GraphicsSettings belowMin;
+    belowMin.width = 639;
+    belowMin.height = 480;
+    settings.setGraphics(belowMin);
+    CHECK(settings.graphics().width == 800 && settings.graphics().height == 608,
+          "one pixel below the minimum width falls back to the default resolution");
+
+    GraphicsSettings aboveMax;
+    aboveMax.width = 7680;
+    aboveMax.height = 4321;
+    settings.setGraphics(aboveMax);
+    CHECK(settings.graphics().width == 800 && settings.graphics().height == 608,
+          "one pixel above the maximum height falls back to the default resolution");
+
+    for (unsigned fps : {0u, 30u, 60u, 120u, 144u}) {
+        GraphicsSettings graphics;
+        graphics.maxFps = fps;
+        settings.setGraphics(graphics);
+        CHECK(settings.graphics().maxFps == fps,
+              "each officially supported FPS cap is accepted unchanged");
+    }
+
+    GraphicsSettings unsupportedFps;
+    unsupportedFps.maxFps = 90;
+    settings.setGraphics(unsupportedFps);
+    CHECK(settings.graphics().maxFps == 60,
+          "an unsupported FPS value falls back to 60 FPS");
+}
+
+static void testSoundManagerVolumeClampingAndAutoUnmute() {
+    SoundManager &sound = SoundManager::getInstance();
+
+    sound.setMasterVolume(150.0f);
+    CHECK(sound.getMasterVolume() == 100.0f,
+          "master volume clamps to 100 at the high end");
+    sound.setMasterVolume(-10.0f);
+    CHECK(sound.getMasterVolume() == 0.0f,
+          "master volume clamps to 0 at the low end");
+
+    sound.setMuted(true);
+    CHECK(sound.isMuted(), "setMuted(true) mutes the sound manager");
+    sound.setMasterVolume(50.0f);
+    CHECK(!sound.isMuted(),
+          "raising the master volume above zero automatically unmutes");
+
+    sound.setSoundVolume(200.0f);
+    CHECK(sound.getSoundVolume() == 100.0f, "SFX volume clamps to 100");
+    sound.setMusicVolume(-5.0f);
+    CHECK(sound.getMusicVolume() == 0.0f, "music volume clamps to 0");
+
+    sound.toggleMute();
+    const bool afterFirstToggle = sound.isMuted();
+    sound.toggleMute();
+    CHECK(sound.isMuted() != afterFirstToggle,
+          "toggleMute() flips the mute state each call");
+
+    // Leave the manager in a known-safe state for anything that runs after
+    // this test in the same process.
+    sound.setMuted(false);
+    sound.setMasterVolume(100.0f);
+}
+
+static void testSoundManagerTrackNavigationWrapsAround() {
+    SoundManager &sound = SoundManager::getInstance();
+    const auto &tracks = sound.getMusicTracks();
+    CHECK(!tracks.empty(),
+          "setup: the sound manager has at least one music track");
+    if (tracks.empty()) return;
+
+    sound.selectTrack(0);
+    CHECK(sound.getCurrentTrackIndex() == 0,
+          "setup: track selection lands exactly on index 0");
+    CHECK(sound.getCurrentTrackName() == tracks[0].first,
+          "getCurrentTrackName() matches the selected track's stored name");
+
+    sound.prevTrack();
+    CHECK(sound.getCurrentTrackIndex() == tracks.size() - 1,
+          "stepping back from the first track wraps around to the last track");
+
+    sound.nextTrack();
+    CHECK(sound.getCurrentTrackIndex() == 0,
+          "stepping forward from the last track wraps back to the first track");
+}
+
 static void testNonFiniteAudioValuesAreRejected() {
     // Unlike "overdrive" (rejected by std::stof, caught before normalize()
     // ever sees it), the literal string "nan" parses successfully into a
@@ -158,6 +260,9 @@ int main() {
     testDefaultsAndNormalization();
     testRoundTrip();
     testMissingAndMalformedFilesStaySafe();
+    testGraphicsSettingsBoundaryValuesAreExact();
+    testSoundManagerVolumeClampingAndAutoUnmute();
+    testSoundManagerTrackNavigationWrapsAround();
     testNonFiniteAudioValuesAreRejected();
 
     if (g_failures == 0) {
