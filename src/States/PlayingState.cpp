@@ -14,7 +14,6 @@
 #include "Observers/EventManager.hpp"
 #include "UI/HUD.hpp"
 #include <algorithm>
-#include <algorithm>
 #include <iostream>
 #include <sstream>
 
@@ -35,13 +34,31 @@ PlayingState::PlayingState() : m_hud(std::make_unique<HUD>()) {
         m_inputP1.setSinglePlayerBindings();
     }
 }
+
+PlayingState::PlayingState(SaveData::GameSnapshot snapshot)
+    : m_hud(std::make_unique<HUD>()), m_pendingSnapshot(std::move(snapshot)) {
+    // Snapshot slots are single-player only, even if a previous session left
+    // PlayerProgress in a multiplayer mode before the user opened Load Game.
+    m_inputP1.setSinglePlayerBindings();
+}
+
 PlayingState::~PlayingState() {}
 
 void PlayingState::onEnter() {
     PlayerProgress& progress = Game::getInstance().getProgress();
-    loadLevel(progress.getCurrentLevel());
-    m_levelTimer = LEVEL_TIME;
-    m_levelComplete = false;
+    if (m_pendingSnapshot) {
+        if (!restoreSnapshot(*m_pendingSnapshot)) {
+            std::cerr << "[PlayingState] Failed to restore save snapshot\n";
+            Game::getInstance().getStateManager().changeState(
+                std::make_unique<MenuState>());
+            return;
+        }
+        m_pendingSnapshot.reset();
+    } else {
+        loadLevel(progress.getCurrentLevel());
+        m_levelTimer = LEVEL_TIME;
+        m_levelComplete = false;
+    }
 
     m_hud->init();
     m_scorePopups.init();
@@ -50,6 +67,7 @@ void PlayingState::onEnter() {
     m_hud->setLives(progress.getLives());
     m_hud->setScore(progress.getScore());
     m_hud->setCoins(progress.getCoins());
+    m_hud->setTime(m_levelTimer);
 
     // Start/continue selected background music track (does not restart if already playing)
     SoundManager& snd = SoundManager::getInstance();
@@ -158,7 +176,7 @@ void PlayingState::handleEvent(const sf::Event& event) {
             // pauseMusic() happens in onPause(), called by StateManager as
             // part of pushing PauseState on top of us.
             Game::getInstance().getStateManager().pushState(
-                std::make_unique<PauseState>());
+                std::make_unique<PauseState>(captureSnapshot()));
             return;
         }
 
@@ -405,6 +423,85 @@ void PlayingState::loadLevel(int levelNumber) {
     m_player = m_level->getPlayer();
     m_player2 = m_level->getPlayer2();
     m_camera.setLevelBounds(m_level->getWidth(), m_level->getHeight());
+}
+
+std::optional<SaveData::GameSnapshot> PlayingState::captureSnapshot() const {
+    const PlayerProgress& progress = Game::getInstance().getProgress();
+    if (progress.getGameMode() != GameMode::SinglePlayer || !m_level || !m_player ||
+        m_player2 || m_levelComplete ||
+        m_transitionStage != LevelTransitionStage::Inactive || m_player->isDead()) {
+        return std::nullopt;
+    }
+
+    SaveData::GameSnapshot snapshot;
+    snapshot.gameMode = static_cast<int>(GameMode::SinglePlayer);
+    snapshot.progress.level = progress.getCurrentLevel();
+    snapshot.progress.score = progress.getScore();
+    snapshot.progress.lives = progress.getLives();
+    snapshot.progress.coins = progress.getCoins();
+    snapshot.progress.character = progress.getSelectedCharacter();
+    snapshot.levelTimer = m_levelTimer;
+    snapshot.mainLevelNumber = m_mainLevelNumber;
+    snapshot.inSecretRoom = m_inSecretRoom;
+    snapshot.pipeReturnPosition = {m_pipeReturnPosition.x, m_pipeReturnPosition.y};
+    snapshot.pipeReturnPowerUp = static_cast<int>(m_pipeReturnPowerUp);
+    snapshot.level = m_level->captureSnapshot();
+    return snapshot;
+}
+
+bool PlayingState::restoreSnapshot(const SaveData::GameSnapshot& snapshot) {
+    if (snapshot.gameMode != static_cast<int>(GameMode::SinglePlayer) ||
+        snapshot.mainLevelNumber < 1 || snapshot.mainLevelNumber > TOTAL_LEVELS ||
+        snapshot.progress.level < 1 || snapshot.progress.level > TOTAL_LEVELS) {
+        return false;
+    }
+
+    PlayerProgress& progress = Game::getInstance().getProgress();
+    progress.setGameMode(GameMode::SinglePlayer);
+    progress.setCurrentLevel(snapshot.progress.level);
+    progress.setScore(snapshot.progress.score);
+    progress.setLives(snapshot.progress.lives);
+    progress.setCoins(snapshot.progress.coins);
+    progress.setSelectedCharacter(snapshot.progress.character);
+
+    m_scorePopups.clear();
+    m_mainLevelNumber = snapshot.mainLevelNumber;
+    m_inSecretRoom = snapshot.inSecretRoom;
+    m_pipeReturnPosition = {snapshot.pipeReturnPosition.x, snapshot.pipeReturnPosition.y};
+    m_pipeReturnPowerUp = static_cast<PowerUpState>(snapshot.pipeReturnPowerUp);
+    m_pipeReturnPowerUp2 = PowerUpState::Small;
+    m_pipeTransitionEnteringSecret = false;
+    m_transitionStage = LevelTransitionStage::Inactive;
+    m_transitionTimer = 0.0f;
+    m_transitionScoreTimer = 0.0f;
+    m_transitionStartScore = 0;
+    m_transitionFlagpoleBonus = 0;
+    m_transitionTimeBonus = 0;
+    m_transitionRemainingSeconds = 0;
+    m_transitionConvertedTimeScore = 0;
+    m_transitionConvertedFlagpoleScore = 0;
+    m_transitionDisplayScore = 0;
+    m_levelComplete = false;
+
+    const std::string filename = getLevelPath(m_mainLevelNumber, m_inSecretRoom);
+    const LevelTheme theme = getLevelTheme(m_mainLevelNumber, m_inSecretRoom);
+    m_level = std::make_unique<Level>();
+    if (!m_level->loadFromFile(filename, progress.getSelectedCharacter(), theme,
+                               !m_inSecretRoom) ||
+        !m_level->restoreSnapshot(snapshot.level)) {
+        m_level.reset();
+        m_player = nullptr;
+        m_player2 = nullptr;
+        return false;
+    }
+
+    m_player = m_level->getPlayer();
+    m_player2 = m_level->getPlayer2();
+    if (!m_player || m_player2) return false;
+    m_camera.setLevelBounds(m_level->getWidth(), m_level->getHeight());
+    m_camera.update(m_player->getPosition());
+    m_levelTimer = snapshot.levelTimer;
+    return true;
 }
 
 void PlayingState::checkLevelComplete() {

@@ -1,5 +1,6 @@
 #pragma once
 #include "GameState.hpp"
+#include "Core/GameSnapshot.hpp"
 #include "../Core/InputHandler.hpp"
 #include "../Core/Camera.hpp"
 #include "../Level/LevelTheme.hpp"
@@ -7,6 +8,7 @@
 #include "../Observers/EventManager.hpp"
 #include "../UI/ScorePopup.hpp"
 #include <memory>
+#include <optional>
 
 // Forward declarations
 class Level;
@@ -31,7 +33,12 @@ enum class LevelTransitionStage {
 class PlayingState : public GameState {
 public:
     PlayingState();
+    explicit PlayingState(SaveData::GameSnapshot snapshot);
     ~PlayingState();
+
+    /// Returns a complete, validated-in-memory snapshot only while a normal
+    /// single-player level is safely paused between transitions.
+    std::optional<SaveData::GameSnapshot> captureSnapshot() const;
 
     void onEnter() override;
     void onExit() override;
@@ -43,6 +50,7 @@ public:
 
 private:
     void loadLevel(int levelNumber);
+    bool restoreSnapshot(const SaveData::GameSnapshot& snapshot);
     void checkLevelComplete();
     bool tryEnterPipe();
     bool tryExitPipe();
@@ -96,4 +104,5 @@ private:
     sf::Vector2f m_pipeReturnPosition = {0.0f, 0.0f};
     PowerUpState m_pipeReturnPowerUp = PowerUpState::Small;
     PowerUpState m_pipeReturnPowerUp2 = PowerUpState::Small;
+    std::optional<SaveData::GameSnapshot> m_pendingSnapshot;
 };
