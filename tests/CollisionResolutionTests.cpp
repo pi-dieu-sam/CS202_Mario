@@ -105,6 +105,109 @@ static void testReflectHelperPure() {
 // ScopedEventSubscription being destroyed as a side effect of handling the
 // very event it's reacting to) mid-dispatch could invalidate the iterator
 // being walked. It now dispatches over a snapshot instead.
+static void testPublishDeliversCorrectPayloadToEverySubscriber() {
+  constexpr EventType type = EventType::PlayerDamaged;
+  int firstScore = -1;
+  int secondScore = -1;
+  auto firstSub = ScopedEventSubscription(
+      type, [&](const GameEvent &e) { firstScore = e.intData; });
+  auto secondSub = ScopedEventSubscription(
+      type, [&](const GameEvent &e) { secondScore = e.intData; });
+
+  EventManager::getInstance().publish(GameEvent{type, 42});
+
+  CHECK(firstScore == 42 && secondScore == 42,
+        "every subscriber of the same type receives the identical payload");
+}
+
+static void testPublishDoesNotCrossEventTypeBoundaries() {
+  int coinCount = 0;
+  int enemyCount = 0;
+  auto coinSub = ScopedEventSubscription(
+      EventType::CoinCollected, [&](const GameEvent &) { ++coinCount; });
+  auto enemySub = ScopedEventSubscription(
+      EventType::EnemyDefeated, [&](const GameEvent &) { ++enemyCount; });
+
+  EventManager::getInstance().publish(GameEvent{EventType::CoinCollected});
+  CHECK(coinCount == 1 && enemyCount == 0,
+        "publishing one event type only notifies its own subscribers");
+
+  EventManager::getInstance().publish(GameEvent{EventType::EnemyDefeated});
+  CHECK(coinCount == 1 && enemyCount == 1,
+        "publishing a different event type notifies only that type's subscribers");
+}
+
+static void testUnsubscribeRemovesOnlyItsOwnEntry() {
+  constexpr EventType type = EventType::BlockHit;
+  int firstCount = 0;
+  int secondCount = 0;
+  auto firstSub =
+      ScopedEventSubscription(type, [&](const GameEvent &) { ++firstCount; });
+  {
+    auto secondSub = ScopedEventSubscription(
+        type, [&](const GameEvent &) { ++secondCount; });
+    EventManager::getInstance().publish(GameEvent{type});
+    CHECK(firstCount == 1 && secondCount == 1,
+          "both subscriptions receive the publish while both are alive");
+  } // secondSub destructs here, unsubscribing only itself
+
+  EventManager::getInstance().publish(GameEvent{type});
+  CHECK(firstCount == 2 && secondCount == 1,
+        "destroying one subscription stops only that subscriber, leaving "
+        "the other unaffected");
+}
+
+static void testDoubleUnsubscribeIsSafe() {
+  constexpr EventType type = EventType::LevelCompleted;
+  int count = 0;
+  ScopedEventSubscription sub(type, [&](const GameEvent &) { ++count; });
+  sub.reset();
+  sub.reset(); // must not double-free or crash
+
+  EventManager::getInstance().publish(GameEvent{type});
+  CHECK(count == 0,
+        "an explicitly-reset subscription no longer receives events");
+}
+
+static void testMoveTransfersSubscriptionOwnershipExactlyOnce() {
+  constexpr EventType type = EventType::PlayerDied;
+  int count = 0;
+  ScopedEventSubscription original(type, [&](const GameEvent &) { ++count; });
+
+  ScopedEventSubscription moveConstructed(std::move(original));
+  EventManager::getInstance().publish(GameEvent{type});
+  CHECK(count == 1, "the move-constructed-to subscription still receives events");
+
+  ScopedEventSubscription moveAssigned;
+  moveAssigned = std::move(moveConstructed);
+  EventManager::getInstance().publish(GameEvent{type});
+  CHECK(count == 2, "the move-assigned-to subscription still receives events");
+
+  // original and moveConstructed are now moved-from and inert; letting them
+  // (and moveAssigned) go out of scope below must unsubscribe the live
+  // handle exactly once, not double-unsubscribe or crash.
+}
+
+static void testClearAllRemovesEverySubscriberOfEveryType() {
+  int coinCount = 0;
+  int enemyCount = 0;
+  ScopedEventSubscription coinSub(EventType::CoinCollected,
+                                  [&](const GameEvent &) { ++coinCount; });
+  ScopedEventSubscription enemySub(EventType::EnemyDefeated,
+                                   [&](const GameEvent &) { ++enemyCount; });
+
+  EventManager::getInstance().clearAll();
+
+  EventManager::getInstance().publish(GameEvent{EventType::CoinCollected});
+  EventManager::getInstance().publish(GameEvent{EventType::EnemyDefeated});
+  CHECK(coinCount == 0 && enemyCount == 0,
+        "clearAll() removes every subscriber across every event type");
+
+  // coinSub/enemySub still hold handles into the now-cleared manager; their
+  // destructors running below must be safe no-ops, not crash on a missing
+  // entry.
+}
+
 static void testPublishIsSafeWhenHandlersMutateSubscriptionsMidDispatch() {
   constexpr EventType type = EventType::BlockHit;
 
@@ -1800,6 +1903,12 @@ static void testFireDamageFollowsBigThenSmallProgression() {
 
 int main() {
   testReflectHelperPure();
+  testPublishDeliversCorrectPayloadToEverySubscriber();
+  testPublishDoesNotCrossEventTypeBoundaries();
+  testUnsubscribeRemovesOnlyItsOwnEntry();
+  testDoubleUnsubscribeIsSafe();
+  testMoveTransfersSubscriptionOwnershipExactlyOnce();
+  testClearAllRemovesEverySubscriberOfEveryType();
   testPublishIsSafeWhenHandlersMutateSubscriptionsMidDispatch();
   testGoombaBouncesBothDirections();
   testMushroomReversesInsteadOfStopping();
