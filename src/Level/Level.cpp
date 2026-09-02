@@ -690,8 +690,15 @@ void Level::update(float dt) {
 
   // Update items
   for (auto &item : m_items) {
-    if (item->isActive())
-      item->update(dt);
+    if (!item->isActive())
+      continue;
+    item->update(dt);
+    // An item that fell past the bottom of the map (e.g. into a pit) has
+    // no way back and would otherwise keep updating forever; removeInactiveEntities()
+    // sweeps it up later in this same update().
+    if (item->getBounds().top > m_height) {
+      item->setActive(false);
+    }
   }
 
   // Update blocks
