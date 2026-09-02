@@ -1300,6 +1300,260 @@ static void testPiranhaPlantAttackTypes() {
   }
 }
 
+// ── SpriteRegistry lookup-table coverage ──────────────────────────────────
+// SpriteRegistry is ~50 pure lookup functions mapping (entity, theme, state,
+// frame) to a texture path/rect. Before this batch only the flagpole-slide
+// and Piranha paths were exercised. A copy-paste error swapping two themes'
+// filenames, or a wrong frame-count constant, would previously go unnoticed
+// until it visibly broke on screen.
+
+static const std::vector<LevelTheme> kAllThemes = {
+    LevelTheme::Overworld, LevelTheme::Underground, LevelTheme::Castle};
+
+static void testGroundAndPipeTilePathsVaryDistinctlyByTheme() {
+  std::vector<std::string> groundPaths;
+  std::vector<std::string> pipePaths;
+  for (LevelTheme theme : kAllThemes) {
+    const std::string &ground = SpriteRegistry::tilePath(TileType::Ground, theme);
+    const std::string &pipe = SpriteRegistry::tilePath(TileType::PipeTopLeft, theme);
+    CHECK(std::filesystem::exists(ground),
+          "ground tile art exists on disk for every theme");
+    CHECK(std::filesystem::exists(pipe),
+          "pipe tile art exists on disk for every theme");
+    groundPaths.push_back(ground);
+    pipePaths.push_back(pipe);
+  }
+  CHECK(groundPaths[0] != groundPaths[1] && groundPaths[1] != groundPaths[2] &&
+            groundPaths[0] != groundPaths[2],
+        "each theme uses a distinct ground tile file");
+  CHECK(pipePaths[0] != pipePaths[1] && pipePaths[1] != pipePaths[2] &&
+            pipePaths[0] != pipePaths[2],
+        "each theme uses a distinct pipe tile file");
+
+  // The four pipe-piece tile types share the same themed art (only the crop
+  // rect differs, applied elsewhere by Tile itself).
+  for (LevelTheme theme : kAllThemes) {
+    const std::string &topLeft = SpriteRegistry::tilePath(TileType::PipeTopLeft, theme);
+    CHECK(SpriteRegistry::tilePath(TileType::PipeTopRight, theme) == topLeft &&
+              SpriteRegistry::tilePath(TileType::PipeBodyLeft, theme) == topLeft &&
+              SpriteRegistry::tilePath(TileType::PipeBodyRight, theme) == topLeft,
+          "all four pipe-piece tile types share one themed sheet");
+  }
+
+  // Non-themed decorative tiles are the same file across every theme.
+  for (const std::string &path :
+       {SpriteRegistry::tilePath(TileType::CastlePiece, LevelTheme::Overworld),
+        SpriteRegistry::tilePath(TileType::WardPipePiece, LevelTheme::Overworld),
+        SpriteRegistry::tilePath(TileType::VineTop, LevelTheme::Overworld)}) {
+    CHECK(std::filesystem::exists(path),
+          "non-themed decorative tile art exists on disk");
+  }
+  CHECK(SpriteRegistry::tilePath(TileType::CastlePiece, LevelTheme::Castle) ==
+            SpriteRegistry::tilePath(TileType::CastlePiece, LevelTheme::Overworld),
+        "castle-piece decoration ignores theme (one shared sheet)");
+}
+
+static void testBlockPathsVaryByThemeExceptUsedState() {
+  std::vector<std::string> brickPaths;
+  std::vector<std::string> questionPaths;
+  for (LevelTheme theme : kAllThemes) {
+    const std::string &brick = SpriteRegistry::blockPath(
+        BlockType::Brick, theme, SpriteRegistry::BlockVisualState::Idle);
+    const std::string &question = SpriteRegistry::blockPath(
+        BlockType::Question, theme, SpriteRegistry::BlockVisualState::Idle);
+    CHECK(std::filesystem::exists(brick) && std::filesystem::exists(question),
+          "brick and question block art exist on disk for every theme");
+    brickPaths.push_back(brick);
+    questionPaths.push_back(question);
+
+    // Brick art doesn't change between Idle/Hit/Used -- it either breaks
+    // entirely or just bumps, with no separate flash/emptied sprite.
+    CHECK(SpriteRegistry::blockPath(BlockType::Brick, theme,
+                                    SpriteRegistry::BlockVisualState::Hit) == brick &&
+              SpriteRegistry::blockPath(BlockType::Brick, theme,
+                                        SpriteRegistry::BlockVisualState::Used) == brick,
+          "brick block art is identical across every visual state");
+  }
+  CHECK(brickPaths[0] != brickPaths[1] && brickPaths[1] != brickPaths[2] &&
+            brickPaths[0] != brickPaths[2],
+        "each theme uses a distinct brick block file");
+  CHECK(questionPaths[0] != questionPaths[1] && questionPaths[1] != questionPaths[2] &&
+            questionPaths[0] != questionPaths[2],
+        "each theme uses a distinct question block file");
+
+  // A used Question block falls back to one generic emptied sprite, the same
+  // for every theme -- there's no per-theme "emptied block" art in the pack.
+  const std::string &usedOverworld = SpriteRegistry::blockPath(
+      BlockType::Question, LevelTheme::Overworld,
+      SpriteRegistry::BlockVisualState::Used);
+  for (LevelTheme theme : kAllThemes) {
+    CHECK(SpriteRegistry::blockPath(BlockType::Question, theme,
+                                    SpriteRegistry::BlockVisualState::Used) ==
+              usedOverworld,
+          "a used question block shares one generic sprite across every theme");
+  }
+  CHECK(std::filesystem::exists(usedOverworld),
+        "the generic used-block sprite exists on disk");
+}
+
+static void testCoinPathVariesByThemeWithDistinctGifs() {
+  std::vector<std::string> coinPaths;
+  for (LevelTheme theme : kAllThemes) {
+    const std::string &coin = SpriteRegistry::coinPath(theme, 0);
+    CHECK(std::filesystem::exists(coin),
+          "coin shimmer GIF exists on disk for every theme");
+    coinPaths.push_back(coin);
+  }
+  CHECK(coinPaths[0] != coinPaths[1] && coinPaths[1] != coinPaths[2] &&
+            coinPaths[0] != coinPaths[2],
+        "each theme uses a distinct coin shimmer GIF");
+}
+
+static void testEnemyAndPowerUpArtIsIntentionallyThemeIndependent() {
+  // Documented, deliberate decisions (see SpriteRegistry.cpp comments): no
+  // Castle Goomba/Koopa art survived, and no per-theme recolor exists for
+  // Mushroom/Fire Flower/Star, so these intentionally return the same file
+  // for every theme. A future partial per-theme fix that only updates one
+  // theme should trip this guard.
+  for (auto pathForTheme :
+       {&SpriteRegistry::goombaPath, &SpriteRegistry::koopaWalkPath}) {
+    const std::string &overworld = pathForTheme(LevelTheme::Overworld, 0);
+    CHECK(std::filesystem::exists(overworld),
+          "shared (non-themed) enemy walk art exists on disk");
+    for (LevelTheme theme : kAllThemes) {
+      CHECK(pathForTheme(theme, 0) == overworld,
+            "enemy walk art is intentionally identical across every theme");
+    }
+  }
+
+  const std::string &squish = SpriteRegistry::goombaSquishPath(LevelTheme::Overworld);
+  const std::string &shell =
+      SpriteRegistry::koopaShellPath(LevelTheme::Overworld, false);
+  CHECK(std::filesystem::exists(squish) && std::filesystem::exists(shell),
+        "shared squish/shell art exists on disk");
+  for (LevelTheme theme : kAllThemes) {
+    CHECK(SpriteRegistry::goombaSquishPath(theme) == squish,
+          "Goomba squish art is intentionally identical across every theme");
+    CHECK(SpriteRegistry::koopaShellPath(theme, false) == shell,
+          "Koopa shell art is intentionally identical across every theme");
+  }
+
+  const std::string &mushroom = SpriteRegistry::mushroomPath(LevelTheme::Overworld);
+  const std::string &fireFlower = SpriteRegistry::fireFlowerPath(LevelTheme::Overworld);
+  const std::string &star = SpriteRegistry::starPath(LevelTheme::Overworld, 0);
+  CHECK(std::filesystem::exists(mushroom) && std::filesystem::exists(fireFlower) &&
+            std::filesystem::exists(star),
+        "shared power-up art exists on disk");
+  for (LevelTheme theme : kAllThemes) {
+    CHECK(SpriteRegistry::mushroomPath(theme) == mushroom,
+          "Mushroom art is intentionally identical across every theme");
+    CHECK(SpriteRegistry::fireFlowerPath(theme) == fireFlower,
+          "Fire Flower art is intentionally identical across every theme");
+    CHECK(SpriteRegistry::starPath(theme, 0) == star,
+          "Star art is intentionally identical across every theme");
+  }
+}
+
+static void testFixedFrameCountsMatchTheirSpriteSheets() {
+  CHECK(SpriteRegistry::goombaFrameCount() == 16,
+        "Goomba.png is an 8x2 grid of 16 walk frames");
+  CHECK(SpriteRegistry::koopaFrameCount() == 20,
+        "Koopa.png is a 5x4 grid of 20 frames");
+  CHECK(SpriteRegistry::troopaFrameCount() == 4,
+        "Troopa.png holds four flight frames");
+  CHECK(SpriteRegistry::bowserBreathFrameCount() == 6,
+        "Bowser_Breath.png holds six unevenly-sized breath frames");
+  CHECK(SpriteRegistry::bowserFireFrameCount() == 3,
+        "Bowser_Fire.png holds three fireball frames");
+  CHECK(SpriteRegistry::fireballFrameCount() == 4,
+        "Fire_Ball.png is a 64x16 sheet of four contiguous 16x16 frames");
+  CHECK(SpriteRegistry::flowersBuffFrameCount() == 4,
+        "FlowersBuff.png holds four 16x16 frames spaced 2px apart");
+
+  CHECK(std::filesystem::exists(SpriteRegistry::troopaPath()) &&
+            std::filesystem::exists(SpriteRegistry::bowserPath()) &&
+            std::filesystem::exists(SpriteRegistry::bowserBreathPath()) &&
+            std::filesystem::exists(SpriteRegistry::bowserFirePath()) &&
+            std::filesystem::exists(SpriteRegistry::fireballPath()) &&
+            std::filesystem::exists(SpriteRegistry::flowersBuffPath()),
+        "every fixed-frame-count sheet asset exists on disk");
+}
+
+static void testBowserBreathFrameRectMatchesSheetLayout() {
+  constexpr int widths[] = {78, 78, 78, 91, 105, 103};
+  constexpr int offsets[] = {0, 78, 156, 234, 325, 430};
+  for (int frame = 0; frame < SpriteRegistry::bowserBreathFrameCount(); ++frame) {
+    const sf::IntRect rect = SpriteRegistry::bowserBreathFrameRect(frame);
+    CHECK(rect.left == offsets[frame] && rect.width == widths[frame] &&
+              rect.top == 0 && rect.height == 60,
+          "each Bowser breath frame matches its documented sheet offset/width");
+  }
+
+  const sf::IntRect lastFrame = SpriteRegistry::bowserBreathFrameRect(5);
+  CHECK(SpriteRegistry::bowserBreathFrameRect(99) == lastFrame,
+        "an out-of-range high frame clamps to the last breath frame");
+  CHECK(SpriteRegistry::bowserBreathFrameRect(-5) ==
+            SpriteRegistry::bowserBreathFrameRect(0),
+        "a negative frame clamps to the first breath frame");
+}
+
+static void testPlayerFrameCountsMatchEachSheetDefinition() {
+  struct Expectation {
+    SpriteRegistry::PlayerAnim anim;
+    int marioFrames;
+    int luigiFrames;
+  };
+  const std::vector<Expectation> expectations = {
+      {SpriteRegistry::PlayerAnim::Idle, 4, 3},
+      {SpriteRegistry::PlayerAnim::Walk, 6, 8},
+      {SpriteRegistry::PlayerAnim::Jump, 3, 5},
+      {SpriteRegistry::PlayerAnim::Fire, 2, 1},
+      {SpriteRegistry::PlayerAnim::Climb, 2, 4},
+      // Skid has no dedicated pose for either character -- both fall back to
+      // their Idle sheet and share its frame count.
+      {SpriteRegistry::PlayerAnim::Skid, 4, 3},
+  };
+  for (const Expectation &expectation : expectations) {
+    CHECK(SpriteRegistry::playerFrameCount(CharacterId::Mario, PowerUpState::Small,
+                                           expectation.anim) == expectation.marioFrames,
+          "Mario's sheet exposes the documented frame count for this animation");
+    CHECK(SpriteRegistry::playerFrameCount(CharacterId::Luigi, PowerUpState::Small,
+                                           expectation.anim) == expectation.luigiFrames,
+          "Luigi's sheet exposes the documented frame count for this animation");
+    // Power-up state no longer selects a different sheet for either
+    // character -- the frame count must stay the same at every power level.
+    CHECK(SpriteRegistry::playerFrameCount(CharacterId::Mario, PowerUpState::Fire,
+                                           expectation.anim) == expectation.marioFrames &&
+              SpriteRegistry::playerFrameCount(CharacterId::Luigi, PowerUpState::Big,
+                                               expectation.anim) == expectation.luigiFrames,
+          "player animation frame counts are independent of power-up state");
+
+    CHECK(std::filesystem::exists(SpriteRegistry::playerPath(
+              CharacterId::Mario, PowerUpState::Small, expectation.anim, 0)),
+          "Mario's sheet for this animation exists on disk");
+    CHECK(std::filesystem::exists(SpriteRegistry::playerPath(
+              CharacterId::Luigi, PowerUpState::Small, expectation.anim, 0)),
+          "Luigi's sheet for this animation exists on disk");
+  }
+
+  CHECK(std::filesystem::exists(SpriteRegistry::playerDeathPath(CharacterId::Mario)) &&
+            std::filesystem::exists(SpriteRegistry::playerDeathPath(CharacterId::Luigi)),
+        "each character's death sprite exists on disk");
+  CHECK(SpriteRegistry::playerDeathPath(CharacterId::Mario) !=
+            SpriteRegistry::playerDeathPath(CharacterId::Luigi),
+        "Mario and Luigi use distinct death sprites");
+}
+
+static void testCoinAndStarGifFrameCountsAreStableAndPositive() {
+  const int coinFrames = SpriteRegistry::coinFrameCount();
+  const int starFrames = SpriteRegistry::starFrameCount();
+  CHECK(coinFrames > 0, "the coin shimmer GIF decodes at least one frame");
+  CHECK(starFrames > 0, "the Starman GIF decodes at least one frame");
+  CHECK(SpriteRegistry::coinFrameCount() == coinFrames &&
+            SpriteRegistry::starFrameCount() == starFrames,
+        "repeated frame-count lookups agree (cached, not re-decoded differently)");
+}
+
 static void testFlagpoleSlideRectClampsNegativeFrame() {
   // playerFlagpoleSlideRect() used to index a 2-element array with a raw
   // signed frame % count, so a negative frame produced an out-of-bounds
@@ -1586,6 +1840,14 @@ int main() {
   testGifFramesFallsBackToOneFrameForMissingFile();
   testPiranhaFramesAndEmergenceStayStable();
   testPiranhaPlantAttackTypes();
+  testGroundAndPipeTilePathsVaryDistinctlyByTheme();
+  testBlockPathsVaryByThemeExceptUsedState();
+  testCoinPathVariesByThemeWithDistinctGifs();
+  testEnemyAndPowerUpArtIsIntentionallyThemeIndependent();
+  testFixedFrameCountsMatchTheirSpriteSheets();
+  testBowserBreathFrameRectMatchesSheetLayout();
+  testPlayerFrameCountsMatchEachSheetDefinition();
+  testCoinAndStarGifFrameCountsAreStableAndPositive();
   testFlagpoleSlideRectClampsNegativeFrame();
   testFlagpoleSlideFramesAndCutscene();
   testPlayerDeathAnimationUsesFacingPoses();
