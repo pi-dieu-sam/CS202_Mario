@@ -415,7 +415,7 @@ void PlayingState::loadLevel(int levelNumber) {
     if (progress.isPvP()) {
         // PvP always loads the dedicated arena — no level progression
         filename = "assets/levels/pvp_arena.txt";
-        theme    = LevelTheme::Overworld;
+        theme    = LevelTheme::Castle;
     } else {
         filename = getLevelPath(levelNumber, false);
         theme    = getLevelTheme(levelNumber, false);
