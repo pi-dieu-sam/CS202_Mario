@@ -268,6 +268,7 @@ void PlayingState::update(float dt) {
         }
         if (m_player->wantsToShoot()) {
             m_player->clearShootFlag();
+            SoundManager::getInstance().playSound(SoundID::Fireball);
             int dir = m_player->isFacingRight() ? 1 : -1;
             auto fb = std::make_unique<Fireball>(
                 m_player->getPosition().x + (dir > 0 ? 20.0f : -20.0f),
@@ -289,6 +290,7 @@ void PlayingState::update(float dt) {
         }
         if (m_player2->wantsToShoot()) {
             m_player2->clearShootFlag();
+            SoundManager::getInstance().playSound(SoundID::Fireball);
             int dir = m_player2->isFacingRight() ? 1 : -1;
             auto fb = std::make_unique<Fireball>(
                 m_player2->getPosition().x + (dir > 0 ? 20.0f : -20.0f),

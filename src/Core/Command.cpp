@@ -30,6 +30,7 @@ void SprintCommand::execute(Player& player, float dt) {
 }
 
 void FireCommand::execute(Player& player, float dt) {
-    SoundManager::getInstance().playSound(SoundID::Fireball);
+    // The sound now plays where the fireball is actually spawned
+    // (PlayingState::update), not here where a shot is merely requested.
     player.shoot();
 }
