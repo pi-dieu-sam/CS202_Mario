@@ -32,6 +32,13 @@ public:
     /// inside the zero-arg subclass constructors).
     void setTheme(LevelTheme theme);
 
+    /// Called by Level right after a Side::Bottom tile/block collision is
+    /// resolved for this item. resolveCollision() unconditionally zeroes
+    /// vertical velocity on landing; subclasses that need different landing
+    /// behavior (e.g. Star bouncing) override this instead of re-deriving
+    /// the collision side themselves. No-op by default.
+    virtual void onLanded() {}
+
 protected:
     /// Subclasses override to (re)apply their themed texture rect once
     /// m_theme is known (can't be done in the constructor).

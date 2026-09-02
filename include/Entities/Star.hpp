@@ -7,6 +7,7 @@ public:
     Star();
     void activate(Player& player) override;
     void update(float dt) override;
+    void onLanded() override;
 
 protected:
     void refreshSprite() override;

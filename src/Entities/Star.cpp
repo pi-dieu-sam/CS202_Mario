@@ -37,3 +37,7 @@ void Star::update(float dt) {
 void Star::refreshSprite() {
     m_texturePath = SpriteRegistry::starPath(m_theme, m_animFrame);
 }
+
+void Star::onLanded() {
+    m_velocity.y = m_bounceVelocity;
+}
