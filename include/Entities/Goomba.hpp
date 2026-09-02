@@ -7,6 +7,7 @@ class Goomba : public Enemy {
     friend class SnapshotAccess;
 public:
     Goomba();
+    virtual ~Goomba() = default;
 
     void onStomped() override;
     void update(float dt) override;
